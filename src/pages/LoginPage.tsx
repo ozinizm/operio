@@ -9,7 +9,7 @@ import { useToast } from '../components/ui/Toast';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { setAuth, isAuthenticated, isLoading } = useAuth();
+  const { setAuth, isAuthenticated, isLoading, user } = useAuth();
   const { showToast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,10 +17,14 @@ export default function LoginPage() {
 
   // If already authenticated, skip login page
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      navigate('/dashboard', { replace: true });
+    if (!isLoading && isAuthenticated && user) {
+      if (user.is_super_admin) {
+        navigate('/platform', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     }
-  }, [isAuthenticated, isLoading, navigate]);
+  }, [isAuthenticated, isLoading, navigate, user]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,7 +50,13 @@ export default function LoginPage() {
       setAuth(token, meData.user, meData.workspace, meData.role);
 
       showToast('Başarıyla giriş yapıldı', 'success');
-      navigate('/dashboard', { replace: true });
+      
+      // Super Admin goes to /platform, others go to /dashboard
+      if (meData.user.is_super_admin) {
+        navigate('/platform', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     } catch (error: any) {
       console.error('Login error:', error);
       localStorage.removeItem('token');

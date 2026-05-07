@@ -29,6 +29,13 @@ export const platformApi = {
     return response.data;
   },
 
+  updateWorkspace: async (id: number, data: any) => {
+    const response = await axios.put(`${API_URL}/platform/workspaces/${id}`, data, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  },
+
   getAuditLogs: async () => {
     const response = await axios.get(`${API_URL}/platform/audit-logs`, {
       headers: getAuthHeader()

@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout';
+import PlatformLayout from '../components/layout/PlatformLayout';
 import ProtectedRoute from '../components/auth/ProtectedRoute';
 import { ModuleRouteGuard } from '../components/auth/ModuleRouteGuard';
 import LoginPage from '../pages/LoginPage';
@@ -24,6 +25,7 @@ import DataImportPage from '../pages/DataImportPage';
 import PlatformDashboard from '../pages/platform/PlatformDashboard';
 import PlatformWorkspaces from '../pages/platform/PlatformWorkspaces';
 import PlatformWorkspaceCreate from '../pages/platform/PlatformWorkspaceCreate';
+import PlatformWorkspaceDetail from '../pages/platform/PlatformWorkspaceDetail';
 import PlatformAuditLogs from '../pages/platform/PlatformAuditLogs';
 
 export default function AppRoutes() {
@@ -147,28 +149,18 @@ export default function AppRoutes() {
             <NotificationsPage />
           </ModuleRouteGuard>
         } />
+      </Route>
 
-        {/* Platform Admin Routes */}
-        <Route path="platform" element={
-          <ProtectedRoute requiredSuperAdmin>
-            <PlatformDashboard />
-          </ProtectedRoute>
-        } />
-        <Route path="platform/workspaces" element={
-          <ProtectedRoute requiredSuperAdmin>
-            <PlatformWorkspaces />
-          </ProtectedRoute>
-        } />
-        <Route path="platform/workspaces/new" element={
-          <ProtectedRoute requiredSuperAdmin>
-            <PlatformWorkspaceCreate />
-          </ProtectedRoute>
-        } />
-        <Route path="platform/audit-logs" element={
-          <ProtectedRoute requiredSuperAdmin>
-            <PlatformAuditLogs />
-          </ProtectedRoute>
-        } />
+      <Route path="/platform" element={
+        <ProtectedRoute requiredSuperAdmin>
+          <PlatformLayout />
+        </ProtectedRoute>
+      }>
+        <Route index element={<PlatformDashboard />} />
+        <Route path="workspaces" element={<PlatformWorkspaces />} />
+        <Route path="workspaces/:id" element={<PlatformWorkspaceDetail />} />
+        <Route path="workspaces/new" element={<PlatformWorkspaceCreate />} />
+        <Route path="audit-logs" element={<PlatformAuditLogs />} />
       </Route>
       
       <Route path="*" element={<Navigate to="/" replace />} />
