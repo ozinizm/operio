@@ -5,15 +5,18 @@ services:
     region: frankfurt
     plan: free
     buildCommand: |
-      # 1. Backend: Upgrade pip and install requirements
+      # 1. Backend: Upgrade pip and install requirements from root
       python -m pip install --upgrade pip
-      python -m pip install -r backend/requirements.txt
+      python -m pip install -r requirements.txt
       
-      # 2. Frontend: Install and Build
+      # 2. Verify dependencies
+      python -c "import sqlalchemy, fastapi, uvicorn; print('Backend dependencies OK')"
+      
+      # 3. Frontend: Install and Build
       npm ci
       npm run build
       
-      # 3. Backend: Ensure Seed (runs migrations/init if needed)
+      # 4. Backend: Ensure Seed
       cd backend && python scripts/ensure_demo_seed.py
       
     startCommand: cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
