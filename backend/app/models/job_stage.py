@@ -23,4 +23,4 @@ class JobStage(Base):
 
     workspace = relationship("Workspace")
     job = relationship("Job", back_populates="stages")
-    responsible_user = relationship("User")
+    responsible_user = relationship("User", foreign_keys=[responsible_user_id])

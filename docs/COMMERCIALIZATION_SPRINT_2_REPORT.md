@@ -44,10 +44,11 @@ This sprint focused on transforming Operio into a production-ready commercial pl
 > 3. **Column Defaults**: New columns were added as `nullable=True` to prevent data insertion failures on existing records, but default values should be verified post-migration if business logic requires them.
 > 4. **Render Free Limitation**: The Render Free tier demo environment is for demonstration only. Production customer data should never be hosted on the free tier without a dedicated PostgreSQL instance and backup strategy.
 
-## 5. Deployment Status
-- **Git Push**: NOT PERFORMED.
-- **Render Deploy**: NOT PERFORMED.
-- **Live DB Migration**: NOT PERFORMED.
+## 5. Deployment Status (Hotfix Applied)
+- **Git Push**: PERFORMED (Commit: 2603260)
+- **Render Deploy**: PERFORMED (Manual Deploy for Hotfix)
+- **SQLAlchemy Hotfix**: Implemented `foreign_keys` on all dual-User relationships (Offer, Job, Task, Customer, etc.) to resolve mapper ambiguity.
+- **Live DB Migration**: NOT PERFORMED (Schema remains SQLite).
 
 ---
 Hazırlayan: Fikir Software
