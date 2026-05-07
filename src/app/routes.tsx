@@ -27,6 +27,7 @@ import PlatformWorkspaces from '../pages/platform/PlatformWorkspaces';
 import PlatformWorkspaceCreate from '../pages/platform/PlatformWorkspaceCreate';
 import PlatformWorkspaceDetail from '../pages/platform/PlatformWorkspaceDetail';
 import PlatformAuditLogs from '../pages/platform/PlatformAuditLogs';
+import PlatformSettings from '../pages/platform/PlatformSettings';
 
 export default function AppRoutes() {
   return (
@@ -161,6 +162,7 @@ export default function AppRoutes() {
         <Route path="workspaces/:id" element={<PlatformWorkspaceDetail />} />
         <Route path="workspaces/new" element={<PlatformWorkspaceCreate />} />
         <Route path="audit-logs" element={<PlatformAuditLogs />} />
+        <Route path="settings" element={<PlatformSettings />} />
       </Route>
       
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -75,7 +75,7 @@ export default function AppLayout() {
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex flex-col w-72 bg-white border-r border-border shadow-xl z-30 transition-all duration-300">
         <div className="h-20 flex items-center px-8 border-b border-border">
-          <Link to="/dashboard" className="flex items-center gap-3 group">
+          <Link to={user?.is_super_admin ? "/platform" : "/dashboard"} className="flex items-center gap-3 group">
             <div className="w-10 h-10 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20 transition-transform group-hover:scale-110">
               <Package className="w-6 h-6 text-white" />
             </div>
@@ -293,9 +293,15 @@ export default function AppLayout() {
                 <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left transition-colors">
                   <UserCircle className="w-4 h-4 text-text-body" /> Profil Bilgileri
                 </button>
-                <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left transition-colors">
-                  <CreditCard className="w-4 h-4 text-text-body" /> Abonelik ve Plan
-                </button>
+                {user?.is_super_admin ? (
+                  <Link to="/platform/settings" className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left transition-colors">
+                    <Settings className="w-4 h-4 text-text-body" /> Sistem Ayarları
+                  </Link>
+                ) : (
+                  <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left transition-colors">
+                    <CreditCard className="w-4 h-4 text-text-body" /> Abonelik ve Plan
+                  </button>
+                )}
                 <div className="my-2 border-t border-border" />
                 <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 text-left transition-colors font-bold">
                   <LogOut className="w-4 h-4" /> Çıkış Yap

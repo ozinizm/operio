@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Outlet, useNavigate, Link } from 'react-router-dom';
 import { 
   Menu, X, Bell, ChevronDown, LogOut, 
-  UserCircle, ShieldCheck, Globe, Activity, Plus
+  UserCircle, ShieldCheck, Globe, Activity, Plus, Settings
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../ui/Toast';
@@ -48,6 +48,9 @@ export default function PlatformLayout() {
               </Link>
               <Link to="/platform/audit-logs" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-indigo-900 transition-all font-bold">
                 <Activity className="w-5 h-5" /> Aktivite Kayıtları
+              </Link>
+              <Link to="/platform/settings" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-indigo-900 transition-all font-bold">
+                <Settings className="w-5 h-5" /> Sistem Ayarları
               </Link>
             </nav>
           </aside>
@@ -96,9 +99,12 @@ export default function PlatformLayout() {
                   <p className="text-[10px] font-bold text-slate-400 uppercase opacity-50 tracking-widest mb-1">Hesabım</p>
                   <p className="text-xs font-bold text-slate-800 truncate">{user?.email}</p>
                 </div>
-                <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 text-left transition-colors">
-                  <UserCircle className="w-4 h-4 text-slate-400" /> Sistem Profili
-                </button>
+                <Link 
+                  to="/platform/settings" 
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 text-left transition-colors"
+                >
+                  <UserCircle className="w-4 h-4 text-slate-400" /> Sistem Ayarları
+                </Link>
                 <div className="my-2 border-t border-slate-100" />
                 <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 text-left transition-colors font-bold">
                   <LogOut className="w-4 h-4" /> Çıkış Yap
