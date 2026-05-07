@@ -452,6 +452,17 @@ export default function ModulesPage() {
   );
 }
 
+const categoryMap: Record<string, string> = {
+  'CUSTOMER_SERVICE': 'Müşteri Hizmetleri',
+  'FILES_REPORTS': 'Dosya ve Raporlar',
+  'OPERATIONS': 'Operasyon',
+  'INVENTORY_ASSETS': 'Stok ve Demirbaş',
+  'TEAM': 'Ekip',
+  'INTELLIGENCE': 'İçgörü',
+  'FINANCE': 'Finans',
+  'CORE': 'Sistem'
+};
+
 function ModuleCard({ mod, onAction, loading }: { 
   mod: ModuleDefinition, 
   onAction: (m: ModuleDefinition) => void, 
@@ -492,11 +503,13 @@ function ModuleCard({ mod, onAction, loading }: {
               ? 'bg-surface-dim text-text-body shadow-none' 
               : 'bg-white text-text-body shadow-black/5 group-hover:bg-primary group-hover:text-white'
         }`}>
-          <Icon className="w-7 h-7" />
+          <Icon className="w-6 h-6" />
         </div>
 
         <div className="space-y-1 mb-4">
-          <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em]">{mod.category}</p>
+          <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em]">
+            {categoryMap[mod.category] || mod.category}
+          </p>
           <h3 className="text-lg font-jakarta font-extrabold text-text-high tracking-tight">{mod.name}</h3>
         </div>
 

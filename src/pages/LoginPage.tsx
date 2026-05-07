@@ -64,7 +64,8 @@ export default function LoginPage() {
             <span className="text-3xl font-jakarta font-bold">O</span>
           </div>
           <h1 className="text-3xl font-jakarta font-bold text-text-high">Operio</h1>
-          <p className="text-text-body mt-2">Modular Operations Suite</p>
+          <p className="text-text-body mt-2">Modüler İşletme Yönetim Platformu</p>
+          <p className="text-[10px] font-bold text-primary uppercase mt-3 tracking-widest">Fikir Creative tarafından geliştirildi</p>
         </div>
 
         <div className="bg-surface border border-border p-8 rounded-3xl shadow-soft">
@@ -108,7 +109,7 @@ export default function LoginPage() {
         </div>
 
         <p className="mt-8 text-center text-xs text-text-body opacity-60">
-          © 2024 Operio Software. Tüm hakları saklıdır.
+          © 2026 Operio. Fikir Creative tarafından geliştirilmiştir. Tüm hakları saklıdır.
         </p>
       </div>
     </div>

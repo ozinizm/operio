@@ -24,7 +24,19 @@ const iconMap: Record<string, any> = {
   Layers, BarChart3
 };
 
-// Dynamic nav items moved to useModules context
+const coreLabelMap: Record<string, string> = {
+  'Dashboard': 'Panel',
+  'Modules': 'Modül Mağazası',
+  'Settings': 'Ayarlar',
+  'Customers': 'Müşteriler',
+  'Jobs': 'İş ve Siparişler',
+  'Tasks': 'Görevler',
+  'Finance': 'Finans',
+  'Operations': 'Operasyon',
+  'Inventory': 'Stok ve Demirbaş',
+  'Reports': 'Dosya ve Raporlar',
+  'Notifications': 'Bildirimler'
+};
 
 export default function AppLayout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -72,8 +84,6 @@ export default function AppLayout() {
         </div>
         <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1 no-scrollbar">
           {(() => {
-            // Filter out duplicate sidebar items (e.g. settings appearing in dynamic list and manual list)
-            // Also handle multiple modules pointing to the same route (e.g. data-import)
             const seenRoutes = new Set();
             return sidebarModules
               .filter(item => {
@@ -84,6 +94,7 @@ export default function AppLayout() {
               })
               .map((item) => {
                 const Icon = iconMap[item.icon] || Package;
+                const label = coreLabelMap[item.label] || item.label;
                 return (
                   <NavLink
                     key={item.key || item.route}
@@ -97,7 +108,7 @@ export default function AppLayout() {
                     }
                   >
                     <Icon className="w-5 h-5 transition-transform group-hover:scale-110" />
-                    <span className="text-sm font-semibold">{item.label}</span>
+                    <span className="text-sm font-semibold">{label}</span>
                   </NavLink>
                 );
               });
@@ -294,8 +305,16 @@ export default function AppLayout() {
         </header>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-10 bg-background/50 no-scrollbar relative">
-          <Outlet />
+        <main className="flex-1 overflow-y-auto p-4 lg:p-10 bg-background/50 no-scrollbar relative flex flex-col">
+          <div className="flex-1">
+            <Outlet />
+          </div>
+          
+          <footer className="mt-12 py-8 border-t border-border/50 text-center">
+            <p className="text-xs text-text-body opacity-60">
+              © 2026 Operio. <span className="font-bold">Fikir Creative</span> tarafından geliştirilmiştir. Tüm hakları saklıdır.
+            </p>
+          </footer>
         </main>
       </div>
 

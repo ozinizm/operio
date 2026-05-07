@@ -6,13 +6,13 @@ import { ExcelImportActions } from '../components/shared/ExcelImportActions';
 import { 
   User, Bell, Lock, CreditCard, Database, 
   Save, Download, FileText, Eye, EyeOff,
-  Check
+  Check, Info, ShieldCheck, Globe
 } from 'lucide-react';
 import { useToast } from '../components/ui/Toast';
 import { reportsApi } from '../services/reportsApi';
 import { useAuth } from '../context/AuthContext';
 
-type Tab = 'Profil' | 'Güvenlik' | 'Bildirimler' | 'Veri Aktarımı' | 'Ödeme & Plan';
+type Tab = 'Profil' | 'Güvenlik' | 'Bildirimler' | 'Veri Aktarımı' | 'Ödeme & Plan' | 'Sistem';
 
 const TABS: { name: Tab; icon: any }[] = [
   { name: 'Profil', icon: User },
@@ -20,6 +20,7 @@ const TABS: { name: Tab; icon: any }[] = [
   { name: 'Bildirimler', icon: Bell },
   { name: 'Veri Aktarımı', icon: Database },
   { name: 'Ödeme & Plan', icon: CreditCard },
+  { name: 'Sistem', icon: Info },
 ];
 
 export default function SettingsPage() {
@@ -341,6 +342,61 @@ export default function SettingsPage() {
                 >
                   Teklif Al
                 </Button>
+              </Card>
+            </div>
+          )}
+          {/* ── Sistem ── */}
+          {activeTab === 'Sistem' && (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader title="Sistem Bilgileri" />
+                <div className="mt-4 space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="p-4 bg-surface-dim/30 rounded-2xl border border-border">
+                      <p className="text-[10px] font-bold text-text-body uppercase opacity-60 mb-2">Ürün</p>
+                      <p className="text-sm font-bold text-text-high">Operio</p>
+                      <p className="text-xs text-text-body mt-1">Modüler İşletme Yönetim Platformu</p>
+                    </div>
+                    <div className="p-4 bg-surface-dim/30 rounded-2xl border border-border">
+                      <p className="text-[10px] font-bold text-text-body uppercase opacity-60 mb-2">Versiyon</p>
+                      <p className="text-sm font-bold text-text-high">v1.2.4-stable</p>
+                      <p className="text-xs text-text-body mt-1">Son Güncelleme: 07.05.2026</p>
+                    </div>
+                    <div className="p-4 bg-surface-dim/30 rounded-2xl border border-border">
+                      <p className="text-[10px] font-bold text-text-body uppercase opacity-60 mb-2">Geliştirici</p>
+                      <p className="text-sm font-bold text-text-high">Fikir Creative</p>
+                      <p className="text-xs text-text-body mt-1">Software & Design Studio</p>
+                    </div>
+                    <div className="p-4 bg-surface-dim/30 rounded-2xl border border-border">
+                      <p className="text-[10px] font-bold text-text-body uppercase opacity-60 mb-2">Yazılım Sahibi</p>
+                      <p className="text-sm font-bold text-text-high">Fikir Software</p>
+                      <p className="text-xs text-text-body mt-1">Fikir Creative iştirakidir.</p>
+                    </div>
+                  </div>
+
+                  <div className="p-6 bg-primary/5 rounded-3xl border border-primary/10 flex flex-col sm:flex-row items-center gap-6">
+                    <div className="w-16 h-16 bg-white rounded-2xl shadow-xl flex items-center justify-center text-primary shrink-0">
+                      <ShieldCheck className="w-8 h-8" />
+                    </div>
+                    <div className="text-center sm:text-left">
+                      <h4 className="text-base font-jakarta font-bold text-text-high">Lisans Bilgisi</h4>
+                      <p className="text-sm text-text-body mt-1">Bu yazılım <strong>Fikir Creative</strong> tarafından lisanslanmıştır. Kullanım hakları saklıdır.</p>
+                      <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-3">
+                        <span className="px-3 py-1 bg-primary text-white text-[10px] font-bold rounded-lg uppercase">Lisanslı Demo</span>
+                        <span className="px-3 py-1 bg-white text-text-high border border-border text-[10px] font-bold rounded-lg uppercase">Proprietary</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 flex justify-center gap-6">
+                    <a href="https://fikircreative.com" target="_blank" rel="noreferrer" className="flex items-center gap-2 text-xs font-bold text-primary hover:underline">
+                      <Globe className="w-4 h-4" /> Web Sitesi
+                    </a>
+                    <a href="mailto:info@fikircreative.com" className="flex items-center gap-2 text-xs font-bold text-primary hover:underline">
+                      <FileText className="w-4 h-4" /> Destek Talebi
+                    </a>
+                  </div>
+                </div>
               </Card>
             </div>
           )}
