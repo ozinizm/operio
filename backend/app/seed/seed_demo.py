@@ -19,8 +19,23 @@ from ..models.request_ticket import RequestTicket
 from ..models.inventory import InventoryItem
 from datetime import datetime, timedelta
 import random
+from ..core.config import settings
 
 def seed_data():
+    if settings.APP_ENV == "production":
+        print("\n" + "!"*60)
+        print("CRITICAL ERROR: CANNOT RUN DEMO SEED IN PRODUCTION ENVIRONMENT!")
+        print("!"*60 + "\n")
+        return
+
+    if settings.APP_ENV != "demo" and settings.APP_ENV != "development":
+        print(f"Warning: Current APP_ENV is {settings.APP_ENV}. Demo seed usually runs in 'demo' or 'development' mode.")
+        confirm = input("Are you sure you want to drop ALL tables and seed demo data? (y/n): ")
+        if confirm.lower() != 'y':
+            print("Aborted.")
+            return
+
+    print("Dropping and recreating tables for demo seed...")
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     

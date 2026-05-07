@@ -14,6 +14,11 @@ class Settings(BaseSettings):
     FRONTEND_DIST_DIR: str = "../dist"
     
     CORS_ORIGINS: Union[List[str], str] = ["http://localhost:5173", "http://localhost:5174"]
+    
+    # Production Bootstrap
+    OPERIO_SUPERADMIN_EMAIL: str = "superadmin@operio.dev"
+    OPERIO_SUPERADMIN_PASSWORD: str = "Operio123!"
+    OPERIO_SUPERADMIN_NAME: str = "Fikir Super Admin"
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

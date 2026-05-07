@@ -12,8 +12,9 @@ if not os.path.exists(settings.UPLOAD_DIR):
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 
 # Create tables
-# In production, use Alembic migrations
-Base.metadata.create_all(bind=engine)
+# In production, use Alembic migrations exclusively
+if settings.APP_ENV != "production":
+    Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title=settings.APP_NAME,
