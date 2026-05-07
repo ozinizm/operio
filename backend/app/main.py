@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
-from .routers import auth, customers, jobs, tasks, dashboard, offers, finance, files, reports, comments, notifications, watchers, delivery_services, request_tickets, modules, inventory, imports
+from .routers import auth, customers, jobs, tasks, dashboard, offers, finance, files, reports, comments, notifications, watchers, delivery_services, request_tickets, modules, inventory, imports, platform
 from .core.database import engine, Base
 from . import models
 
@@ -50,6 +50,7 @@ app.include_router(request_tickets.router, prefix="/api/requests", tags=["reques
 app.include_router(modules.router, prefix="/api/modules", tags=["modules"])
 app.include_router(inventory.router, prefix="/api/inventory", tags=["inventory"])
 app.include_router(imports.router, prefix="/api/imports", tags=["imports"])
+app.include_router(platform.router, prefix="/api/platform", tags=["platform"])
 
 @app.get("/api/health")
 def health_check():

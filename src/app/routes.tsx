@@ -21,6 +21,10 @@ import SettingsPage from '../pages/SettingsPage';
 import NotificationsPage from '../pages/NotificationsPage';
 import InventoryPage from '../pages/InventoryPage';
 import DataImportPage from '../pages/DataImportPage';
+import PlatformDashboard from '../pages/platform/PlatformDashboard';
+import PlatformWorkspaces from '../pages/platform/PlatformWorkspaces';
+import PlatformWorkspaceCreate from '../pages/platform/PlatformWorkspaceCreate';
+import PlatformAuditLogs from '../pages/platform/PlatformAuditLogs';
 
 export default function AppRoutes() {
   return (
@@ -142,6 +146,28 @@ export default function AppRoutes() {
           <ModuleRouteGuard moduleKey="notifications">
             <NotificationsPage />
           </ModuleRouteGuard>
+        } />
+
+        {/* Platform Admin Routes */}
+        <Route path="platform" element={
+          <ProtectedRoute requiredSuperAdmin>
+            <PlatformDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="platform/workspaces" element={
+          <ProtectedRoute requiredSuperAdmin>
+            <PlatformWorkspaces />
+          </ProtectedRoute>
+        } />
+        <Route path="platform/workspaces/new" element={
+          <ProtectedRoute requiredSuperAdmin>
+            <PlatformWorkspaceCreate />
+          </ProtectedRoute>
+        } />
+        <Route path="platform/audit-logs" element={
+          <ProtectedRoute requiredSuperAdmin>
+            <PlatformAuditLogs />
+          </ProtectedRoute>
         } />
       </Route>
       

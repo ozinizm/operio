@@ -29,6 +29,7 @@ class UserResponse(BaseModel):
     email: str
     full_name: Optional[str] = None
     is_active: bool = True
+    is_super_admin: bool = False
     created_at: Optional[datetime] = None
 
 class WorkspaceResponse(BaseModel):

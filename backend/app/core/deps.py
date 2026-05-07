@@ -74,3 +74,13 @@ def check_role(allowed_roles: list):
             )
         return member.role
     return role_checker
+
+def get_current_super_admin(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    if not current_user.is_super_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have platform admin permissions"
+        )
+    return current_user

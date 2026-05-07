@@ -128,6 +128,49 @@ export default function AppLayout() {
               <span className="text-sm font-semibold">Modüller</span>
             </NavLink>
           )}
+
+          {/* Platform Admin Section */}
+          {user?.is_super_admin && (
+            <div className="mt-8 mb-4">
+              <p className="px-4 text-[10px] font-bold uppercase tracking-wider text-text-medium opacity-60 mb-2">Platform Yönetimi</p>
+              <div className="space-y-1">
+                <NavLink
+                  to="/platform"
+                  end
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 group ${
+                      isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-text-body hover:bg-surface-dim'
+                    }`
+                  }
+                >
+                  <Globe className="w-5 h-5" />
+                  <span className="text-sm font-semibold">Dashboard</span>
+                </NavLink>
+                <NavLink
+                  to="/platform/workspaces"
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 group ${
+                      isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-text-body hover:bg-surface-dim'
+                    }`
+                  }
+                >
+                  <Users className="w-5 h-5" />
+                  <span className="text-sm font-semibold">İşletmeler</span>
+                </NavLink>
+                <NavLink
+                  to="/platform/audit-logs"
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 group ${
+                      isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-text-body hover:bg-surface-dim'
+                    }`
+                  }
+                >
+                  <Activity className="w-5 h-5" />
+                  <span className="text-sm font-semibold">Aktivite Kayıtları</span>
+                </NavLink>
+              </div>
+            </div>
+          )}
         </nav>
         <div className="p-4 border-t border-border">
           <div className="bg-primary/5 rounded-2xl p-4 border border-primary/10">

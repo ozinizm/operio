@@ -43,6 +43,7 @@ def seed_data():
             {"email": "staff@operio.dev", "full_name": "Caner Çalışan", "role": "staff"},
             {"email": "finance@operio.dev", "full_name": "Figen Finans", "role": "finance"},
             {"email": "field@operio.dev", "full_name": "Saha Ekipleri", "role": "field"},
+            {"email": "superadmin@operio.dev", "full_name": "Fikir Super Admin", "role": "admin", "is_super_admin": True},
         ]
         
         db_users = {}
@@ -50,7 +51,8 @@ def seed_data():
             user = User(
                 email=config["email"],
                 full_name=config["full_name"],
-                password_hash=get_password_hash("Operio123!")
+                password_hash=get_password_hash("Operio123!"),
+                is_super_admin=config.get("is_super_admin", False)
             )
             db.add(user)
             db.flush()
