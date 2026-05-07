@@ -453,14 +453,15 @@ export default function ModulesPage() {
 }
 
 const categoryMap: Record<string, string> = {
-  'CUSTOMER_SERVICE': 'Müşteri Hizmetleri',
-  'FILES_REPORTS': 'Dosya ve Raporlar',
-  'OPERATIONS': 'Operasyon',
-  'INVENTORY_ASSETS': 'Stok ve Demirbaş',
-  'TEAM': 'Ekip',
-  'INTELLIGENCE': 'İçgörü',
-  'FINANCE': 'Finans',
-  'CORE': 'Sistem'
+  'customer_service': 'Müşteri Hizmetleri',
+  'files_reports': 'Dosya ve Raporlar',
+  'operations': 'Operasyon',
+  'inventory_assets': 'Stok ve Demirbaş',
+  'team': 'Ekip',
+  'intelligence': 'İçgörü',
+  'finance': 'Finans',
+  'core': 'Sistem',
+  'sales': 'Satış'
 };
 
 function ModuleCard({ mod, onAction, loading }: { 
