@@ -24,3 +24,5 @@ class Task(Base):
     workspace = relationship("Workspace", back_populates="tasks")
     customer = relationship("Customer", back_populates="tasks")
     job = relationship("Job", back_populates="tasks")
+    assignee = relationship("User", foreign_keys=[assignee_user_id])
+    deleted_by_user = relationship("User", foreign_keys=[deleted_by_user_id])

@@ -34,7 +34,8 @@ class FileAsset(Base):
 
     # Relationships
     workspace = relationship("Workspace")
-    uploader = relationship("User")
+    uploader = relationship("User", foreign_keys=[uploaded_by_user_id])
+    deleted_by_user = relationship("User", foreign_keys=[deleted_by_user_id])
     customer = relationship("Customer")
     job = relationship("Job")
     offer = relationship("Offer")

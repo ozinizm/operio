@@ -27,6 +27,7 @@ class InventoryItem(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
 
     workspace = relationship("Workspace")
+    deleted_by_user = relationship("User", foreign_keys=[deleted_by_user_id])
 
     def update_status(self):
         if self.quantity <= 0:

@@ -18,3 +18,4 @@ class Activity(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     workspace = relationship("Workspace", back_populates="activities")
+    actor = relationship("User", foreign_keys=[actor_user_id])

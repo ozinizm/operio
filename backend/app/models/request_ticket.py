@@ -34,5 +34,6 @@ class RequestTicket(Base):
     customer = relationship("Customer")
     job = relationship("Job")
     delivery_service = relationship("DeliveryService")
-    assigned_user = relationship("User")
+    assigned_user = relationship("User", foreign_keys=[assigned_user_id])
+    deleted_by_user = relationship("User", foreign_keys=[deleted_by_user_id])
     files = relationship("FileAsset", back_populates="request_ticket")

@@ -23,5 +23,7 @@ class Customer(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     workspace = relationship("Workspace", back_populates="customers")
+    responsible_user = relationship("User", foreign_keys=[responsible_user_id])
+    deleted_by_user = relationship("User", foreign_keys=[deleted_by_user_id])
     jobs = relationship("Job", back_populates="customer")
     tasks = relationship("Task", back_populates="customer")

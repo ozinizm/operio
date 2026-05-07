@@ -30,3 +30,4 @@ class FinanceEntry(Base):
     workspace = relationship("Workspace")
     customer = relationship("Customer")
     job = relationship("Job")
+    deleted_by_user = relationship("User", foreign_keys=[deleted_by_user_id])

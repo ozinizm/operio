@@ -24,5 +24,7 @@ class Job(Base):
 
     workspace = relationship("Workspace", back_populates="jobs")
     customer = relationship("Customer", back_populates="jobs")
+    responsible_user = relationship("User", foreign_keys=[responsible_user_id])
+    deleted_by_user = relationship("User", foreign_keys=[deleted_by_user_id])
     tasks = relationship("Task", back_populates="job")
     stages = relationship("JobStage", back_populates="job", cascade="all, delete-orphan")

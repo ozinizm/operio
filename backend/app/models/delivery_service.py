@@ -35,5 +35,6 @@ class DeliveryService(Base):
     workspace = relationship("Workspace")
     customer = relationship("Customer")
     job = relationship("Job")
-    assigned_user = relationship("User")
+    assigned_user = relationship("User", foreign_keys=[assigned_user_id])
+    deleted_by_user = relationship("User", foreign_keys=[deleted_by_user_id])
     files = relationship("FileAsset", back_populates="delivery_service")

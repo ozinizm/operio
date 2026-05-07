@@ -28,5 +28,6 @@ class Offer(Base):
 
     workspace = relationship("Workspace")
     customer = relationship("Customer")
-    responsible_user = relationship("User")
+    responsible_user = relationship("User", foreign_keys=[responsible_user_id])
+    deleted_by_user = relationship("User", foreign_keys=[deleted_by_user_id])
     converted_job = relationship("Job", foreign_keys=[converted_job_id])
