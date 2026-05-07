@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: operio
+    env: python
+    region: frankfurt
+    plan: free
+    buildCommand: |
+      # 1. Backend: Install requirements
+      cd backend
+      pip install -r requirements.txt
+      cd ..
+      
+      # 2. Frontend: Install and Build
+      npm install
+      npm run build
+      
+      # 3. Backend: Ensure Seed (runs migrations/init if needed)
+      cd backend
+      python scripts/ensure_demo_seed.py
+      cd ..
+      
+    startCommand: cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: APP_NAME
+        value: Operio
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        value: sqlite:///./operio_demo.db
+      - key: UPLOAD_DIR
+        value: storage/uploads
+      - key: MAX_UPLOAD_MB
+        value: "10"
+      - key: FRONTEND_DIST_DIR
+        value: ../dist
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "1440"
+      - key: CORS_ORIGINS
+        value: "https://operio.fikircreative.com"

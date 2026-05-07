@@ -1,0 +1,146 @@
+from typing import Any, List, Optional
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from ..core.database import get_db
+from ..core.deps import get_current_user, get_current_workspace
+from ..models.user import User
+from ..models.workspace import Workspace
+from ..models.task import Task as TaskModel
+from ..schemas.task import Task, TaskCreate, TaskUpdate
+from ..services.activity_service import create_activity
+from ..services.notification_service import create_notification, add_watcher
+
+router = APIRouter()
+
+@router.get("/", response_model=List[Task])
+def read_tasks(
+    db: Session = Depends(get_db),
+    workspace: Workspace = Depends(get_current_workspace),
+    status: Optional[str] = None,
+    assignee_user_id: Optional[int] = None,
+    job_id: Optional[int] = None,
+    skip: int = 0,
+    limit: int = 100,
+) -> Any:
+    query = db.query(TaskModel).filter(TaskModel.workspace_id == workspace.id)
+    
+    if status:
+        query = query.filter(TaskModel.status == status)
+    if assignee_user_id:
+        query = query.filter(TaskModel.assignee_user_id == assignee_user_id)
+    if job_id:
+        query = query.filter(TaskModel.job_id == job_id)
+        
+    return query.offset(skip).limit(limit).all()
+
+@router.post("/", response_model=Task)
+def create_task(
+    *,
+    db: Session = Depends(get_db),
+    workspace: Workspace = Depends(get_current_workspace),
+    user: User = Depends(get_current_user),
+    task_in: TaskCreate,
+) -> Any:
+    task = TaskModel(
+        **task_in.dict(),
+        workspace_id=workspace.id
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    
+    create_activity(
+        db, workspace.id, user.id, "task", task.id, "create",
+        f"{task.title} görevi oluşturuldu."
+    )
+    
+    if task.assignee_user_id:
+        create_notification(
+            db, workspace.id, task.assignee_user_id, "task_assigned",
+            "Yeni Görev Atandı",
+            f"'{task.title}' görevi size atandı.",
+            actor_user_id=user.id,
+            entity_type="task",
+            entity_id=task.id
+        )
+        # Auto-watch for assignee
+        add_watcher(db, workspace.id, task.assignee_user_id, "task", task.id)
+    
+    return task
+
+@router.put("/{task_id}", response_model=Task)
+def update_task(
+    *,
+    db: Session = Depends(get_db),
+    workspace: Workspace = Depends(get_current_workspace),
+    user: User = Depends(get_current_user),
+    task_id: int,
+    task_in: TaskUpdate,
+) -> Any:
+    task = db.query(TaskModel).filter(
+        TaskModel.id == task_id,
+        TaskModel.workspace_id == workspace.id
+    ).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    old_assignee_id = task.assignee_user_id
+    old_status = task.status
+    
+    update_data = task_in.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(task, field, value)
+        
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    
+    # Notification for new assignee
+    if task.assignee_user_id and task.assignee_user_id != old_assignee_id:
+        create_notification(
+            db, workspace.id, task.assignee_user_id, "task_assigned",
+            "Yeni Görev Atandı",
+            f"'{task.title}' görevi size atandı.",
+            actor_user_id=user.id,
+            entity_type="task",
+            entity_id=task.id
+        )
+        add_watcher(db, workspace.id, task.assignee_user_id, "task", task.id)
+        
+    if task.status == "completed":
+        create_activity(
+            db, workspace.id, user.id, "task", task.id, "complete",
+            f"{task.title} görevi tamamlandı."
+        )
+    else:
+        create_activity(
+            db, workspace.id, user.id, "task", task.id, "update",
+            f"{task.title} görevi güncellendi."
+        )
+    
+    return task
+
+@router.delete("/{task_id}", response_model=Task)
+def delete_task(
+    *,
+    db: Session = Depends(get_db),
+    workspace: Workspace = Depends(get_current_workspace),
+    user: User = Depends(get_current_user),
+    task_id: int,
+) -> Any:
+    task = db.query(TaskModel).filter(
+        TaskModel.id == task_id,
+        TaskModel.workspace_id == workspace.id
+    ).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    db.delete(task)
+    db.commit()
+    
+    create_activity(
+        db, workspace.id, user.id, "task", task_id, "delete",
+        f"{task.title} görevi silindi."
+    )
+    
+    return task

@@ -1,0 +1,14 @@
+[Unit]
+Description=Operio Backend Service
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/operio/backend
+# Assuming the path on the VPS is /var/www/operio
+ExecStart=/var/www/operio/backend/.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

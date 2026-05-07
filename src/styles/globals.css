@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #f9f9ff;
+  --color-surface: #ffffff;
+  --color-surface-dim: #cfdaf2;
+  --color-border: #e2e8f0;
+  
+  --color-primary: #004ac6;
+  --color-primary-container: #2563eb;
+  --color-primary-hover: #1e40af;
+  
+  --color-text-high: #111c2d;
+  --color-text-body: #434655;
+  
+  --color-error: #ba1a1a;
+  
+  --font-jakarta: "Plus Jakarta Sans", sans-serif;
+  --font-inter: "Inter", sans-serif;
+  
+  --shadow-soft: 0px 4px 6px -1px rgba(0, 0, 0, 0.05);
+  --shadow-modal: 0px 10px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+@layer base {
+  body {
+    @apply bg-background text-text-body font-inter antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-jakarta text-text-high;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
