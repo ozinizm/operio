@@ -22,7 +22,10 @@ def read_offers(
     skip: int = 0,
     limit: int = 100,
 ) -> Any:
-    return db.query(OfferModel).filter(OfferModel.workspace_id == workspace.id).offset(skip).limit(limit).all()
+    return db.query(OfferModel).filter(
+        OfferModel.workspace_id == workspace.id,
+        OfferModel.is_deleted == False
+    ).offset(skip).limit(limit).all()
 
 @router.post("/", response_model=Offer)
 def create_offer(
@@ -43,7 +46,7 @@ def create_offer(
     db.refresh(offer)
     
     create_activity(
-        db, workspace.id, user.id, "offer", offer.id, "create",
+        db, workspace.id, user.id, "offer", offer.id, "offer.created",
         f"{offer.title} teklifi oluşturuldu."
     )
     
@@ -68,7 +71,11 @@ def read_offer(
     db: Session = Depends(get_db),
     workspace: Workspace = Depends(get_current_workspace),
 ) -> Any:
-    offer = db.query(OfferModel).filter(OfferModel.id == offer_id, OfferModel.workspace_id == workspace.id).first()
+    offer = db.query(OfferModel).filter(
+        OfferModel.id == offer_id, 
+        OfferModel.workspace_id == workspace.id,
+        OfferModel.is_deleted == False
+    ).first()
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
     return offer
@@ -82,7 +89,11 @@ def update_offer(
     offer_id: int,
     offer_in: OfferUpdate,
 ) -> Any:
-    offer = db.query(OfferModel).filter(OfferModel.id == offer_id, OfferModel.workspace_id == workspace.id).first()
+    offer = db.query(OfferModel).filter(
+        OfferModel.id == offer_id, 
+        OfferModel.workspace_id == workspace.id,
+        OfferModel.is_deleted == False
+    ).first()
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
     
@@ -95,7 +106,7 @@ def update_offer(
     db.refresh(offer)
     
     create_activity(
-        db, workspace.id, user.id, "offer", offer.id, "update",
+        db, workspace.id, user.id, "offer", offer.id, "offer.updated",
         f"{offer.title} teklifi güncellendi."
     )
     
@@ -109,16 +120,24 @@ def delete_offer(
     user: User = Depends(get_current_user),
     offer_id: int,
 ) -> Any:
-    offer = db.query(OfferModel).filter(OfferModel.id == offer_id, OfferModel.workspace_id == workspace.id).first()
+    offer = db.query(OfferModel).filter(
+        OfferModel.id == offer_id, 
+        OfferModel.workspace_id == workspace.id,
+        OfferModel.is_deleted == False
+    ).first()
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
     
-    db.delete(offer)
+    offer.is_deleted = True
+    offer.deleted_at = datetime.now()
+    offer.deleted_by_user_id = user.id
+    
+    db.add(offer)
     db.commit()
     
     create_activity(
-        db, workspace.id, user.id, "offer", offer_id, "delete",
-        f"{offer.title} teklifi silindi."
+        db, workspace.id, user.id, "offer", offer_id, "offer.deleted",
+        f"{offer.title} teklifi arşivlendi."
     )
     
     return offer
@@ -130,7 +149,11 @@ def convert_offer_to_job(
     workspace: Workspace = Depends(get_current_workspace),
     user: User = Depends(get_current_user),
 ) -> Any:
-    offer = db.query(OfferModel).filter(OfferModel.id == offer_id, OfferModel.workspace_id == workspace.id).first()
+    offer = db.query(OfferModel).filter(
+        OfferModel.id == offer_id, 
+        OfferModel.workspace_id == workspace.id,
+        OfferModel.is_deleted == False
+    ).first()
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
     
@@ -159,12 +182,12 @@ def convert_offer_to_job(
     db.refresh(job)
     
     create_activity(
-        db, workspace.id, user.id, "offer", offer.id, "convert",
+        db, workspace.id, user.id, "offer", offer.id, "offer.converted_to_job",
         f"{offer.title} teklifi işe dönüştürüldü: #{job.id}"
     )
     
     create_activity(
-        db, workspace.id, user.id, "job", job.id, "create",
+        db, workspace.id, user.id, "job", job.id, "job.created",
         f"Tekliften yeni iş oluşturuldu: {job.title}"
     )
     

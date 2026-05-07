@@ -82,23 +82,26 @@ export default function PlatformAuditLogs() {
                       <p className="text-xs text-text-medium">{format(new Date(log.created_at), 'HH:mm')}</p>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold uppercase ${
-                        log.action === 'create' ? 'bg-green-100 text-green-700' :
-                        log.action === 'delete' ? 'bg-red-100 text-red-700' :
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                        log.action.includes('create') ? 'bg-green-100 text-green-700' :
+                        log.action.includes('delete') ? 'bg-red-100 text-red-700' :
+                        log.action.includes('status') ? 'bg-purple-100 text-purple-700' :
                         'bg-blue-100 text-blue-700'
                       }`}>
-                        {log.action}
+                        {log.action.replace('.', ' ')}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-text-high">{log.description}</td>
-                    <td className="px-6 py-4 text-sm text-text-medium flex items-center gap-2">
-                      <User className="w-4 h-4" />
-                      ID: {log.actor_user_id}
+                    <td className="px-6 py-4 text-sm text-text-high font-medium">{log.description}</td>
+                    <td className="px-6 py-4 text-sm text-text-medium">
+                      <div className="flex items-center gap-2">
+                        <User className="w-4 h-4 text-gray-400" />
+                        <span title={`ID: ${log.actor_user_id}`}>{log.actor_email || `Kullanıcı #${log.actor_user_id}`}</span>
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-text-medium text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Globe className="w-3 h-3" />
-                        ID: {log.workspace_id}
+                      <div className="flex items-center justify-end gap-1.5 bg-gray-100 px-2 py-1 rounded-lg w-fit ml-auto">
+                        <Globe className="w-3 h-3 text-gray-500" />
+                        <span className="font-mono text-[11px]">WID: {log.workspace_id || 'Global'}</span>
                       </div>
                     </td>
                   </tr>

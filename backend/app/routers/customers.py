@@ -8,6 +8,7 @@ from ..models.workspace import Workspace
 from ..models.customer import Customer as CustomerModel
 from ..schemas.customer import Customer, CustomerCreate, CustomerUpdate
 from ..services.activity_service import create_activity
+from datetime import datetime
 
 router = APIRouter()
 
@@ -20,7 +21,10 @@ def read_customers(
     skip: int = 0,
     limit: int = 100,
 ) -> Any:
-    query = db.query(CustomerModel).filter(CustomerModel.workspace_id == workspace.id)
+    query = db.query(CustomerModel).filter(
+        CustomerModel.workspace_id == workspace.id,
+        CustomerModel.is_deleted == False
+    )
     
     if q:
         query = query.filter(CustomerModel.name.ilike(f"%{q}%"))
@@ -46,7 +50,7 @@ def create_customer(
     db.refresh(customer)
     
     create_activity(
-        db, workspace.id, user.id, "customer", customer.id, "create",
+        db, workspace.id, user.id, "customer", customer.id, "customer.created",
         f"{customer.name} müşterisi oluşturuldu."
     )
     
@@ -60,7 +64,8 @@ def read_customer(
 ) -> Any:
     customer = db.query(CustomerModel).filter(
         CustomerModel.id == customer_id,
-        CustomerModel.workspace_id == workspace.id
+        CustomerModel.workspace_id == workspace.id,
+        CustomerModel.is_deleted == False
     ).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
@@ -77,7 +82,8 @@ def update_customer(
 ) -> Any:
     customer = db.query(CustomerModel).filter(
         CustomerModel.id == customer_id,
-        CustomerModel.workspace_id == workspace.id
+        CustomerModel.workspace_id == workspace.id,
+        CustomerModel.is_deleted == False
     ).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
@@ -91,7 +97,7 @@ def update_customer(
     db.refresh(customer)
     
     create_activity(
-        db, workspace.id, user.id, "customer", customer.id, "update",
+        db, workspace.id, user.id, "customer", customer.id, "customer.updated",
         f"{customer.name} müşteri bilgileri güncellendi."
     )
     
@@ -107,17 +113,22 @@ def delete_customer(
 ) -> Any:
     customer = db.query(CustomerModel).filter(
         CustomerModel.id == customer_id,
-        CustomerModel.workspace_id == workspace.id
+        CustomerModel.workspace_id == workspace.id,
+        CustomerModel.is_deleted == False
     ).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
     
-    db.delete(customer)
+    customer.is_deleted = True
+    customer.deleted_at = datetime.now()
+    customer.deleted_by_user_id = user.id
+    
+    db.add(customer)
     db.commit()
     
     create_activity(
-        db, workspace.id, user.id, "customer", customer_id, "delete",
-        f"{customer.name} müşterisi silindi."
+        db, workspace.id, user.id, "customer", customer_id, "customer.deleted",
+        f"{customer.name} müşterisi arşivlendi."
     )
     
     return customer

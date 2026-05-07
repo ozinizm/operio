@@ -1,6 +1,64 @@
+import json
+import logging
+from typing import Any, Dict, Optional
 from sqlalchemy.orm import Session
 from ..models.activity import Activity
-from ..schemas.activity import ActivityCreate
+
+logger = logging.getLogger(__name__)
+
+def log_audit_event(
+    db: Session,
+    action: str,
+    entity_type: str,
+    entity_id: Optional[int] = None,
+    workspace_id: Optional[int] = None,
+    actor_user: Any = None,
+    actor_id: Optional[int] = None,
+    actor_email: Optional[str] = None,
+    description: Optional[str] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+    ip_address: Optional[str] = None
+) -> Optional[Activity]:
+    """
+    Centralized audit logging helper.
+    Ensures that logging failures do not break the main transaction flow.
+    """
+    try:
+        # Resolve actor details
+        if actor_user:
+            if not actor_id:
+                actor_id = getattr(actor_user, 'id', None)
+            if not actor_email:
+                actor_email = getattr(actor_user, 'email', None)
+
+        metadata_str = None
+        if metadata:
+            try:
+                metadata_str = json.dumps(metadata)
+            except Exception as e:
+                logger.warning(f"Could not serialize audit metadata: {e}")
+                metadata_str = str(metadata)
+
+        activity = Activity(
+            workspace_id=workspace_id,
+            actor_user_id=actor_id,
+            actor_email=actor_email,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            action=action,
+            description=description,
+            metadata_json=metadata_str,
+            ip_address=ip_address
+        )
+        db.add(activity)
+        db.commit()
+        db.refresh(activity)
+        return activity
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Audit log failed for action {action}: {e}")
+        # Instruction: Helper hata verirse ana işlemi patlatmamalı
+        return None
 
 def create_activity(
     db: Session, 
@@ -11,15 +69,15 @@ def create_activity(
     action: str, 
     description: str = None
 ):
-    activity = Activity(
+    """
+    Legacy wrapper for compatibility.
+    """
+    return log_audit_event(
+        db=db,
         workspace_id=workspace_id,
-        actor_user_id=actor_id,
+        actor_id=actor_id,
         entity_type=entity_type,
         entity_id=entity_id,
         action=action,
         description=description
     )
-    db.add(activity)
-    db.commit()
-    db.refresh(activity)
-    return activity

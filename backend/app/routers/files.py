@@ -12,6 +12,7 @@ from app.schemas.file_asset import FileAssetResponse, FileAssetUpdate
 from app.core.config import settings
 from app.services.activity_service import create_activity
 from app.services.notification_service import notify_watchers, add_watcher
+from datetime import datetime
 
 router = APIRouter(prefix="/files", tags=["Files"])
 
@@ -102,7 +103,7 @@ async def upload_file(
         db, 
         workspace_id=workspace_id,
         actor_id=current_user.id,
-        action="file_uploaded",
+        action="file.created",
         entity_type="file",
         entity_id=new_file.id,
         description=f"'{file.filename}' dosyası yüklendi. (Kategori: {category})"
@@ -133,7 +134,10 @@ def list_files(
     db: Session = Depends(get_db),
     member = Depends(get_current_workspace_member)
 ):
-    query = db.query(FileAsset).filter(FileAsset.workspace_id == member.workspace_id)
+    query = db.query(FileAsset).filter(
+        FileAsset.workspace_id == member.workspace_id,
+        FileAsset.is_deleted == False
+    )
     
     if customer_id:
         query = query.filter(FileAsset.customer_id == customer_id)
@@ -162,7 +166,8 @@ def get_file_info(
 ):
     file_asset = db.query(FileAsset).filter(
         FileAsset.id == file_id, 
-        FileAsset.workspace_id == member.workspace_id
+        FileAsset.workspace_id == member.workspace_id,
+        FileAsset.is_deleted == False
     ).first()
     
     if not file_asset:
@@ -177,7 +182,8 @@ def download_file(
 ):
     file_asset = db.query(FileAsset).filter(
         FileAsset.id == file_id, 
-        FileAsset.workspace_id == member.workspace_id
+        FileAsset.workspace_id == member.workspace_id,
+        FileAsset.is_deleted == False
     ).first()
     
     if not file_asset:
@@ -202,7 +208,8 @@ def update_file_info(
 ):
     file_asset = db.query(FileAsset).filter(
         FileAsset.id == file_id, 
-        FileAsset.workspace_id == member.workspace_id
+        FileAsset.workspace_id == member.workspace_id,
+        FileAsset.is_deleted == False
     ).first()
     
     if not file_asset:
@@ -235,15 +242,11 @@ def delete_file(
     if not file_asset:
         raise HTTPException(status_code=404, detail="File not found")
         
-    # Delete physical file
-    if os.path.exists(file_asset.file_path):
-        try:
-            os.remove(file_asset.file_path)
-        except Exception as e:
-            # Continue even if physical file fails, we want to clean DB
-            print(f"Error removing file: {e}")
-            
-    db.delete(file_asset)
+    file_asset.is_deleted = True
+    file_asset.deleted_at = datetime.now()
+    file_asset.deleted_by_user_id = current_user.id
+    
+    db.add(file_asset)
     db.commit()
     
     # Log activity
@@ -251,10 +254,10 @@ def delete_file(
         db, 
         workspace_id=member.workspace_id,
         actor_id=current_user.id,
-        action="file_deleted",
+        action="file.deleted",
         entity_type="file",
         entity_id=file_id,
-        description=f"'{file_asset.original_filename}' dosyası silindi."
+        description=f"'{file_asset.original_filename}' dosyası arşivlendi."
     )
     
-    return {"message": "File deleted successfully"}
+    return {"message": "File archived successfully"}

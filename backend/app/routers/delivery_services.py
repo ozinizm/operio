@@ -27,7 +27,10 @@ def read_delivery_services(
     skip: int = 0,
     limit: int = 100,
 ) -> Any:
-    query = db.query(DeliveryModel).filter(DeliveryModel.workspace_id == workspace.id)
+    query = db.query(DeliveryModel).filter(
+        DeliveryModel.workspace_id == workspace.id,
+        DeliveryModel.is_deleted == False
+    )
     
     if customer_id:
         query = query.filter(DeliveryModel.customer_id == customer_id)
@@ -74,7 +77,7 @@ def create_delivery_service(
     db.refresh(delivery)
     
     create_activity(
-        db, workspace.id, user.id, "delivery_service", delivery.id, "create",
+        db, workspace.id, user.id, "delivery_service", delivery.id, "delivery.created",
         f"Yeni {delivery.type} planlaması yapıldı: {delivery.title}"
     )
     
@@ -105,7 +108,8 @@ def read_delivery_service(
 ) -> Any:
     delivery = db.query(DeliveryModel).filter(
         DeliveryModel.id == delivery_id,
-        DeliveryModel.workspace_id == workspace.id
+        DeliveryModel.workspace_id == workspace.id,
+        DeliveryModel.is_deleted == False
     ).first()
     if not delivery:
         raise HTTPException(status_code=404, detail="Delivery/Service record not found")
@@ -127,7 +131,8 @@ def update_delivery_service(
 ) -> Any:
     delivery = db.query(DeliveryModel).filter(
         DeliveryModel.id == delivery_id,
-        DeliveryModel.workspace_id == workspace.id
+        DeliveryModel.workspace_id == workspace.id,
+        DeliveryModel.is_deleted == False
     ).first()
     if not delivery:
         raise HTTPException(status_code=404, detail="Delivery/Service record not found")
@@ -150,7 +155,7 @@ def update_delivery_service(
         )
     
     create_activity(
-        db, workspace.id, user.id, "delivery_service", delivery.id, "update",
+        db, workspace.id, user.id, "delivery_service", delivery.id, "delivery.updated",
         f"{delivery.title} planlaması güncellendi."
     )
     
@@ -168,7 +173,8 @@ def complete_delivery_service(
 ) -> Any:
     delivery = db.query(DeliveryModel).filter(
         DeliveryModel.id == delivery_id,
-        DeliveryModel.workspace_id == workspace.id
+        DeliveryModel.workspace_id == workspace.id,
+        DeliveryModel.is_deleted == False
     ).first()
     if not delivery:
         raise HTTPException(status_code=404, detail="Delivery/Service record not found")
@@ -183,7 +189,7 @@ def complete_delivery_service(
     db.refresh(delivery)
     
     create_activity(
-        db, workspace.id, user.id, "delivery_service", delivery.id, "complete",
+        db, workspace.id, user.id, "delivery_service", delivery.id, "delivery.completed",
         f"{delivery.title} tamamlandı."
     )
     
@@ -214,7 +220,8 @@ def postpone_delivery_service(
 ) -> Any:
     delivery = db.query(DeliveryModel).filter(
         DeliveryModel.id == delivery_id,
-        DeliveryModel.workspace_id == workspace.id
+        DeliveryModel.workspace_id == workspace.id,
+        DeliveryModel.is_deleted == False
     ).first()
     if not delivery:
         raise HTTPException(status_code=404, detail="Delivery/Service record not found")
@@ -229,7 +236,7 @@ def postpone_delivery_service(
     db.refresh(delivery)
     
     create_activity(
-        db, workspace.id, user.id, "delivery_service", delivery.id, "postpone",
+        db, workspace.id, user.id, "delivery_service", delivery.id, "delivery.postponed",
         f"{delivery.title} ertelendi. Yeni tarih: {new_date.strftime('%d.%m.%Y %H:%M')}"
     )
     
@@ -252,7 +259,8 @@ def cancel_delivery_service(
 ) -> Any:
     delivery = db.query(DeliveryModel).filter(
         DeliveryModel.id == delivery_id,
-        DeliveryModel.workspace_id == workspace.id
+        DeliveryModel.workspace_id == workspace.id,
+        DeliveryModel.is_deleted == False
     ).first()
     if not delivery:
         raise HTTPException(status_code=404, detail="Delivery/Service record not found")
@@ -266,7 +274,7 @@ def cancel_delivery_service(
     db.refresh(delivery)
     
     create_activity(
-        db, workspace.id, user.id, "delivery_service", delivery.id, "cancel",
+        db, workspace.id, user.id, "delivery_service", delivery.id, "delivery.cancelled",
         f"{delivery.title} iptal edildi."
     )
     
@@ -293,12 +301,16 @@ def delete_delivery_service(
     if not delivery:
         raise HTTPException(status_code=404, detail="Delivery/Service record not found")
         
-    db.delete(delivery)
+    delivery.is_deleted = True
+    delivery.deleted_at = datetime.utcnow()
+    delivery.deleted_by_user_id = user.id
+    
+    db.add(delivery)
     db.commit()
     
     create_activity(
-        db, workspace.id, user.id, "delivery_service", delivery_id, "delete",
-        f"{delivery.title} kaydı silindi."
+        db, workspace.id, user.id, "delivery_service", delivery_id, "delivery.deleted",
+        f"{delivery.title} kaydı arşivlendi."
     )
     
     return {"message": "Record deleted successfully"}

@@ -27,7 +27,10 @@ def read_jobs(
     skip: int = 0,
     limit: int = 100,
 ) -> Any:
-    query = db.query(JobModel).filter(JobModel.workspace_id == workspace.id)
+    query = db.query(JobModel).filter(
+        JobModel.workspace_id == workspace.id,
+        JobModel.is_deleted == False
+    )
     if status:
         query = query.filter(JobModel.status == status)
     if priority:
@@ -48,7 +51,10 @@ def create_job(
     db.add(job)
     db.commit()
     db.refresh(job)
-    create_activity(db, workspace.id, user.id, "job", job.id, "create", f"{job.title} işi oluşturuldu.")
+    create_activity(
+        db, workspace.id, user.id, "job", job.id, "job.created",
+        f"{job.title} işi oluşturuldu."
+    )
     
     # Auto-watch for creator and responsible
     add_watcher(db, workspace.id, user.id, "job", job.id)
@@ -70,7 +76,11 @@ def read_job(
     db: Session = Depends(get_db),
     workspace: Workspace = Depends(get_current_workspace),
 ) -> Any:
-    job = db.query(JobModel).filter(JobModel.id == job_id, JobModel.workspace_id == workspace.id).first()
+    job = db.query(JobModel).filter(
+        JobModel.id == job_id, 
+        JobModel.workspace_id == workspace.id,
+        JobModel.is_deleted == False
+    ).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     return job
@@ -103,7 +113,16 @@ def update_job(
             actor_user_id=user.id
         )
     
-    create_activity(db, workspace.id, user.id, "job", job.id, "update", f"{job.title} iş bilgileri güncellendi.")
+    create_activity(
+        db, workspace.id, user.id, "job", job.id, "job.updated",
+        f"{job.title} iş bilgileri güncellendi."
+    )
+    
+    if job.status != old_status:
+        create_activity(
+            db, workspace.id, user.id, "job", job.id, "job.status_changed",
+            f"İş durumu değişti: {old_status} -> {job.status}"
+        )
     return job
 
 @router.delete("/{job_id}", response_model=Job)
@@ -114,12 +133,25 @@ def delete_job(
     user: User = Depends(get_current_user),
     job_id: int,
 ) -> Any:
-    job = db.query(JobModel).filter(JobModel.id == job_id, JobModel.workspace_id == workspace.id).first()
+    job = db.query(JobModel).filter(
+        JobModel.id == job_id, 
+        JobModel.workspace_id == workspace.id,
+        JobModel.is_deleted == False
+    ).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    db.delete(job)
+    
+    job.is_deleted = True
+    job.deleted_at = datetime.now()
+    job.deleted_by_user_id = user.id
+    
+    db.add(job)
     db.commit()
-    create_activity(db, workspace.id, user.id, "job", job_id, "delete", f"{job.title} işi silindi.")
+    
+    create_activity(
+        db, workspace.id, user.id, "job", job_id, "job.deleted",
+        f"{job.title} işi arşivlendi."
+    )
     return job
 
 # --- Job Stages ---

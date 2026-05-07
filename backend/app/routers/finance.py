@@ -27,7 +27,10 @@ def read_finance_entries(
     limit: int = 100,
     _ = finance_access
 ) -> Any:
-    query = db.query(FinanceModel).filter(FinanceModel.workspace_id == workspace.id)
+    query = db.query(FinanceModel).filter(
+        FinanceModel.workspace_id == workspace.id,
+        FinanceModel.is_deleted == False
+    )
     if type:
         query = query.filter(FinanceModel.type == type)
     if status:
@@ -54,7 +57,7 @@ def create_finance_entry(
     db.refresh(entry)
     
     create_activity(
-        db, workspace.id, user.id, "finance", entry.id, "create",
+        db, workspace.id, user.id, "finance", entry.id, "finance.created",
         f"{entry.title} finans kaydı oluşturuldu ({entry.amount} {entry.currency})."
     )
     
@@ -71,25 +74,29 @@ def get_finance_summary(
     total_income = db.query(func.sum(FinanceModel.amount)).filter(
         FinanceModel.workspace_id == workspace.id,
         FinanceModel.type == "income",
-        FinanceModel.status == "paid"
+        FinanceModel.status == "paid",
+        FinanceModel.is_deleted == False
     ).scalar() or 0.0
     
     total_expense = db.query(func.sum(FinanceModel.amount)).filter(
         FinanceModel.workspace_id == workspace.id,
         FinanceModel.type == "expense",
-        FinanceModel.status == "paid"
+        FinanceModel.status == "paid",
+        FinanceModel.is_deleted == False
     ).scalar() or 0.0
     
     pending_collection = db.query(func.sum(FinanceModel.amount)).filter(
         FinanceModel.workspace_id == workspace.id,
         FinanceModel.type == "income",
-        FinanceModel.status == "pending"
+        FinanceModel.status == "pending",
+        FinanceModel.is_deleted == False
     ).scalar() or 0.0
     
     overdue_collection = db.query(func.sum(FinanceModel.amount)).filter(
         FinanceModel.workspace_id == workspace.id,
         FinanceModel.type == "income",
-        FinanceModel.status == "overdue"
+        FinanceModel.status == "overdue",
+        FinanceModel.is_deleted == False
     ).scalar() or 0.0
     
     return {
@@ -107,7 +114,11 @@ def read_finance_entry(
     workspace: Workspace = Depends(get_current_workspace),
     _ = finance_access
 ) -> Any:
-    entry = db.query(FinanceModel).filter(FinanceModel.id == entry_id, FinanceModel.workspace_id == workspace.id).first()
+    entry = db.query(FinanceModel).filter(
+        FinanceModel.id == entry_id, 
+        FinanceModel.workspace_id == workspace.id,
+        FinanceModel.is_deleted == False
+    ).first()
     if not entry:
         raise HTTPException(status_code=404, detail="Entry not found")
     return entry
@@ -122,7 +133,11 @@ def update_finance_entry(
     entry_in: FinanceEntryUpdate,
     _ = finance_access
 ) -> Any:
-    entry = db.query(FinanceModel).filter(FinanceModel.id == entry_id, FinanceModel.workspace_id == workspace.id).first()
+    entry = db.query(FinanceModel).filter(
+        FinanceModel.id == entry_id, 
+        FinanceModel.workspace_id == workspace.id,
+        FinanceModel.is_deleted == False
+    ).first()
     if not entry:
         raise HTTPException(status_code=404, detail="Entry not found")
     
@@ -135,7 +150,7 @@ def update_finance_entry(
     db.refresh(entry)
     
     create_activity(
-        db, workspace.id, user.id, "finance", entry.id, "update",
+        db, workspace.id, user.id, "finance", entry.id, "finance.updated",
         f"{entry.title} finans kaydı güncellendi."
     )
     
@@ -154,12 +169,16 @@ def delete_finance_entry(
     if not entry:
         raise HTTPException(status_code=404, detail="Entry not found")
     
-    db.delete(entry)
+    entry.is_deleted = True
+    entry.deleted_at = datetime.now()
+    entry.deleted_by_user_id = user.id
+    
+    db.add(entry)
     db.commit()
     
     create_activity(
-        db, workspace.id, user.id, "finance", entry_id, "delete",
-        f"{entry.title} finans kaydı silindi."
+        db, workspace.id, user.id, "finance", entry_id, "finance.deleted",
+        f"{entry.title} finans kaydı arşivlendi."
     )
     
     return entry

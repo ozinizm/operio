@@ -11,6 +11,7 @@ from ..models.activity import Activity
 from ..schemas.workspace import Workspace as WorkspaceSchema, WorkspaceCreate, WorkspaceUpdate, PlatformWorkspaceCreate
 from ..schemas.user import User as UserSchema
 from ..core.security import get_password_hash
+from ..services.activity_service import log_audit_event
 from datetime import datetime
 
 router = APIRouter()
@@ -83,15 +84,25 @@ def create_workspace_full(
             db.add(wm)
 
         # 6. Audit Log
-        audit = Activity(
-            workspace_id=workspace.id,
-            actor_user_id=current_super_admin.id,
+        log_audit_event(
+            db=db,
+            action="workspace.created",
             entity_type="workspace",
             entity_id=workspace.id,
-            action="create",
+            workspace_id=workspace.id,
+            actor_user=current_super_admin,
             description=f"Yeni işletme oluşturuldu: {workspace.name}"
         )
-        db.add(audit)
+        
+        log_audit_event(
+            db=db,
+            action="user.created",
+            entity_type="user",
+            entity_id=user.id,
+            workspace_id=workspace.id,
+            actor_user=current_super_admin,
+            description=f"İşletme sahibi kullanıcısı oluşturuldu: {user.email}"
+        )
 
         db.commit()
         db.refresh(workspace)
@@ -109,6 +120,49 @@ def read_workspace(
     workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
     if not workspace:
         raise HTTPException(status_code=404, detail="Workspace not found")
+    return workspace
+
+@router.put("/workspaces/{workspace_id}", response_model=WorkspaceSchema)
+def update_workspace_platform(
+    workspace_id: int,
+    workspace_in: WorkspaceUpdate,
+    db: Session = Depends(get_db),
+    current_super_admin: User = Depends(get_current_super_admin),
+) -> Any:
+    workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    
+    old_status = workspace.status
+    update_data = workspace_in.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(workspace, field, value)
+    
+    db.add(workspace)
+    db.commit()
+    db.refresh(workspace)
+    
+    log_audit_event(
+        db=db,
+        action="workspace.updated",
+        entity_type="workspace",
+        entity_id=workspace.id,
+        workspace_id=workspace.id,
+        actor_user=current_super_admin,
+        description=f"İşletme bilgileri güncellendi: {workspace.name}"
+    )
+    
+    if workspace.status != old_status:
+        log_audit_event(
+            db=db,
+            action="workspace.status_changed",
+            entity_type="workspace",
+            entity_id=workspace.id,
+            workspace_id=workspace.id,
+            actor_user=current_super_admin,
+            description=f"İşletme durumu değişti: {old_status} -> {workspace.status}"
+        )
+        
     return workspace
 
 @router.get("/audit-logs", response_model=List[Any]) # Simplified for now

@@ -130,7 +130,7 @@ def enable_module(
     db.commit()
     
     create_activity(
-        db, workspace.id, user.id, "module", 0, "enable",
+        db, workspace.id, user.id, "module", 0, "module.enabled",
         f"{definition.name} modülü aktif edildi."
     )
     
@@ -170,7 +170,7 @@ def disable_module(
     db.commit()
     
     create_activity(
-        db, workspace.id, user.id, "module", 0, "disable",
+        db, workspace.id, user.id, "module", 0, "module.disabled",
         f"{definition.name} modülü devre dışı bırakıldı."
     )
     
@@ -214,7 +214,7 @@ def enable_sector_pack(
     db.commit()
     
     create_activity(
-        db, workspace.id, user.id, "module_pack", 0, "enable",
+        db, workspace.id, user.id, "module_pack", 0, "module.pack_enabled",
         f"{pack['name']} aktif edildi."
     )
     

@@ -27,17 +27,20 @@ def get_dashboard_summary(
     # Counts
     active_customers = db.query(Customer).filter(
         Customer.workspace_id == workspace.id,
-        Customer.status == "active"
+        Customer.status == "active",
+        Customer.is_deleted == False
     ).count()
 
     open_jobs = db.query(Job).filter(
         Job.workspace_id == workspace.id,
-        Job.status.in_(["new", "planned", "in_progress", "waiting"])
+        Job.status.in_(["new", "planned", "in_progress", "waiting"]),
+        Job.is_deleted == False
     ).count()
 
     today_tasks = db.query(Task).filter(
         Task.workspace_id == workspace.id,
-        Task.status.in_(["todo", "in_progress"])
+        Task.status.in_(["todo", "in_progress"]),
+        Task.is_deleted == False
     ).count()
 
     # Recent Activities — serialize to plain dicts (ORM objects are not JSON-serializable)
@@ -61,7 +64,8 @@ def get_dashboard_summary(
     # Upcoming Tasks — serialize to plain dicts
     task_rows = db.query(Task).filter(
         Task.workspace_id == workspace.id,
-        Task.status.in_(["todo", "in_progress"])
+        Task.status.in_(["todo", "in_progress"]),
+        Task.is_deleted == False
     ).order_by(Task.due_date.asc()).limit(5).all()
 
     upcoming_tasks = [
@@ -83,55 +87,67 @@ def get_dashboard_summary(
         db.query(func.sum(FinanceEntry.amount)).filter(
             FinanceEntry.workspace_id == workspace.id,
             FinanceEntry.type == "income",
-            FinanceEntry.status == "pending"
+            FinanceEntry.status == "pending",
+            FinanceEntry.is_deleted == False
         ).scalar() or 0
     )
 
     # Offer Summary — cast aggregate to float
     sent_offers = db.query(Offer).filter(
-        Offer.workspace_id == workspace.id, Offer.status == "sent"
+        Offer.workspace_id == workspace.id, 
+        Offer.status == "sent",
+        Offer.is_deleted == False
     ).count()
     approved_offers = db.query(Offer).filter(
-        Offer.workspace_id == workspace.id, Offer.status == "approved"
+        Offer.workspace_id == workspace.id, 
+        Offer.status == "approved",
+        Offer.is_deleted == False
     ).count()
     total_offer_amount = float(
         db.query(func.sum(Offer.amount)).filter(
-            Offer.workspace_id == workspace.id
+            Offer.workspace_id == workspace.id,
+            Offer.is_deleted == False
         ).scalar() or 0
     )
 
     # Operation Summary (by status) — plain dict of str -> int
     job_stats = db.query(Job.status, func.count(Job.id)).filter(
-        Job.workspace_id == workspace.id
+        Job.workspace_id == workspace.id,
+        Job.is_deleted == False
     ).group_by(Job.status).all()
 
     operation_summary = {s: c for s, c in job_stats}
 
     # File count
     total_files = db.query(FileAsset).filter(
-        FileAsset.workspace_id == workspace.id
+        FileAsset.workspace_id == workspace.id,
+        FileAsset.is_deleted == False
     ).count()
 
     # Delivery & Requests
     pending_deliveries = db.query(DeliveryService).filter(
         DeliveryService.workspace_id == workspace.id,
-        DeliveryService.status.in_(["planned", "on_the_way", "in_progress"])
+        DeliveryService.status.in_(["planned", "on_the_way", "in_progress"]),
+        DeliveryService.is_deleted == False
     ).count()
 
     open_complaints = db.query(RequestTicket).filter(
         RequestTicket.workspace_id == workspace.id,
-        RequestTicket.status.in_(["new", "reviewing", "in_progress", "waiting_customer"])
+        RequestTicket.status.in_(["new", "reviewing", "in_progress", "waiting_customer"]),
+        RequestTicket.is_deleted == False
     ).count()
 
     critical_requests = db.query(RequestTicket).filter(
         RequestTicket.workspace_id == workspace.id,
         RequestTicket.priority == "critical",
-        RequestTicket.status != "closed"
+        RequestTicket.status != "closed",
+        RequestTicket.is_deleted == False
     ).count()
 
     low_stock_count = db.query(InventoryItem).filter(
         InventoryItem.workspace_id == workspace.id,
-        InventoryItem.status.in_(["low_stock", "out_of_stock"])
+        InventoryItem.status.in_(["low_stock", "out_of_stock"]),
+        InventoryItem.is_deleted == False
     ).count()
 
     return {

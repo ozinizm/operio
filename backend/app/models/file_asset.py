@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, BigInteger
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, BigInteger, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from ..core.database import Base
@@ -26,6 +26,9 @@ class FileAsset(Base):
     category = Column(String, nullable=False)  # contract, offer, invoice, etc.
     description = Column(String, nullable=True)
     
+    is_deleted = Column(Boolean, default=False)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+    deleted_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

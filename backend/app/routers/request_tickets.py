@@ -28,7 +28,10 @@ def read_requests(
     skip: int = 0,
     limit: int = 100,
 ) -> Any:
-    query = db.query(RequestModel).filter(RequestModel.workspace_id == workspace.id)
+    query = db.query(RequestModel).filter(
+        RequestModel.workspace_id == workspace.id,
+        RequestModel.is_deleted == False
+    )
     
     if customer_id:
         query = query.filter(RequestModel.customer_id == customer_id)
@@ -77,7 +80,7 @@ def create_request(
     db.refresh(request)
     
     create_activity(
-        db, workspace.id, user.id, "request_ticket", request.id, "create",
+        db, workspace.id, user.id, "request_ticket", request.id, "request.created",
         f"Yeni talep oluşturuldu: {request.title} ({request.type})"
     )
     
@@ -112,7 +115,8 @@ def read_request(
 ) -> Any:
     request = db.query(RequestModel).filter(
         RequestModel.id == request_id,
-        RequestModel.workspace_id == workspace.id
+        RequestModel.workspace_id == workspace.id,
+        RequestModel.is_deleted == False
     ).first()
     if not request:
         raise HTTPException(status_code=404, detail="Request ticket not found")
@@ -134,7 +138,8 @@ def update_request(
 ) -> Any:
     request = db.query(RequestModel).filter(
         RequestModel.id == request_id,
-        RequestModel.workspace_id == workspace.id
+        RequestModel.workspace_id == workspace.id,
+        RequestModel.is_deleted == False
     ).first()
     if not request:
         raise HTTPException(status_code=404, detail="Request ticket not found")
@@ -157,7 +162,7 @@ def update_request(
         )
     
     create_activity(
-        db, workspace.id, user.id, "request_ticket", request.id, "update",
+        db, workspace.id, user.id, "request_ticket", request.id, "request.updated",
         f"{request.title} talebi güncellendi."
     )
     
@@ -175,7 +180,8 @@ def resolve_request(
 ) -> Any:
     request = db.query(RequestModel).filter(
         RequestModel.id == request_id,
-        RequestModel.workspace_id == workspace.id
+        RequestModel.workspace_id == workspace.id,
+        RequestModel.is_deleted == False
     ).first()
     if not request:
         raise HTTPException(status_code=404, detail="Request ticket not found")
@@ -189,7 +195,7 @@ def resolve_request(
     db.refresh(request)
     
     create_activity(
-        db, workspace.id, user.id, "request_ticket", request.id, "resolve",
+        db, workspace.id, user.id, "request_ticket", request.id, "request.resolved",
         f"{request.title} talebi çözüldü."
     )
     
@@ -211,7 +217,8 @@ def close_request(
 ) -> Any:
     request = db.query(RequestModel).filter(
         RequestModel.id == request_id,
-        RequestModel.workspace_id == workspace.id
+        RequestModel.workspace_id == workspace.id,
+        RequestModel.is_deleted == False
     ).first()
     if not request:
         raise HTTPException(status_code=404, detail="Request ticket not found")
@@ -223,7 +230,7 @@ def close_request(
     db.refresh(request)
     
     create_activity(
-        db, workspace.id, user.id, "request_ticket", request.id, "close",
+        db, workspace.id, user.id, "request_ticket", request.id, "request.closed",
         f"{request.title} talebi kapatıldı."
     )
     
@@ -238,7 +245,8 @@ def reopen_request(
 ) -> Any:
     request = db.query(RequestModel).filter(
         RequestModel.id == request_id,
-        RequestModel.workspace_id == workspace.id
+        RequestModel.workspace_id == workspace.id,
+        RequestModel.is_deleted == False
     ).first()
     if not request:
         raise HTTPException(status_code=404, detail="Request ticket not found")
@@ -250,7 +258,7 @@ def reopen_request(
     db.refresh(request)
     
     create_activity(
-        db, workspace.id, user.id, "request_ticket", request.id, "reopen",
+        db, workspace.id, user.id, "request_ticket", request.id, "request.reopened",
         f"{request.title} talebi yeniden açıldı."
     )
     
@@ -277,12 +285,16 @@ def delete_request(
     if not request:
         raise HTTPException(status_code=404, detail="Request ticket not found")
         
-    db.delete(request)
+    request.is_deleted = True
+    request.deleted_at = datetime.utcnow()
+    request.deleted_by_user_id = user.id
+    
+    db.add(request)
     db.commit()
     
     create_activity(
-        db, workspace.id, user.id, "request_ticket", request_id, "delete",
-        f"{request.title} talebi silindi."
+        db, workspace.id, user.id, "request_ticket", request_id, "request.deleted",
+        f"{request.title} talebi arşivlendi."
     )
     
     return {"message": "Ticket deleted successfully"}

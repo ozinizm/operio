@@ -31,21 +31,21 @@ def get_overview_report(
 
     workspace_id = member.workspace_id
     
-    total_customers = db.query(Customer).filter(Customer.workspace_id == workspace_id).count()
-    active_customers = db.query(Customer).filter(Customer.workspace_id == workspace_id, Customer.status == "active").count()
+    total_customers = db.query(Customer).filter(Customer.workspace_id == workspace_id, Customer.is_deleted == False).count()
+    active_customers = db.query(Customer).filter(Customer.workspace_id == workspace_id, Customer.status == "active", Customer.is_deleted == False).count()
     
-    total_jobs = db.query(Job).filter(Job.workspace_id == workspace_id).count()
-    open_jobs = db.query(Job).filter(Job.workspace_id == workspace_id, Job.status.in_(["new", "planned", "in_progress"])).count()
-    completed_jobs = db.query(Job).filter(Job.workspace_id == workspace_id, Job.status == "completed").count()
+    total_jobs = db.query(Job).filter(Job.workspace_id == workspace_id, Job.is_deleted == False).count()
+    open_jobs = db.query(Job).filter(Job.workspace_id == workspace_id, Job.status.in_(["new", "planned", "in_progress"]), Job.is_deleted == False).count()
+    completed_jobs = db.query(Job).filter(Job.workspace_id == workspace_id, Job.status == "completed", Job.is_deleted == False).count()
     
-    total_offers = db.query(Offer).filter(Offer.workspace_id == workspace_id).count()
-    approved_offers = db.query(Offer).filter(Offer.workspace_id == workspace_id, Offer.status == "approved").count()
+    total_offers = db.query(Offer).filter(Offer.workspace_id == workspace_id, Offer.is_deleted == False).count()
+    approved_offers = db.query(Offer).filter(Offer.workspace_id == workspace_id, Offer.status == "approved", Offer.is_deleted == False).count()
     
     finance_summary = db.query(
         func.sum(case((FinanceEntry.type == "income", FinanceEntry.amount), else_=0)).label("income"),
         func.sum(case((FinanceEntry.type == "expense", FinanceEntry.amount), else_=0)).label("expense"),
         func.sum(case((and_(FinanceEntry.type == "income", FinanceEntry.status != "paid"), FinanceEntry.amount), else_=0)).label("pending")
-    ).filter(FinanceEntry.workspace_id == workspace_id).first()
+    ).filter(FinanceEntry.workspace_id == workspace_id, FinanceEntry.is_deleted == False).first()
 
     total_income = float(finance_summary.income or 0)
     total_expense = float(finance_summary.expense or 0)
@@ -54,7 +54,8 @@ def get_overview_report(
     overdue_tasks = db.query(Task).filter(
         Task.workspace_id == workspace_id,
         Task.status != "completed",
-        Task.due_date < datetime.utcnow()
+        Task.due_date < datetime.utcnow(),
+        Task.is_deleted == False
     ).count()
     
     completion_rate = (completed_jobs / total_jobs * 100) if total_jobs > 0 else 0
@@ -67,12 +68,14 @@ def get_overview_report(
     # Delivery & Requests for overview
     pending_deliveries = db.query(DeliveryService).filter(
         DeliveryService.workspace_id == workspace_id,
-        DeliveryService.status.in_(["planned", "on_the_way", "in_progress"])
+        DeliveryService.status.in_(["planned", "on_the_way", "in_progress"]),
+        DeliveryService.is_deleted == False
     ).count()
     
     open_requests = db.query(RequestTicket).filter(
         RequestTicket.workspace_id == workspace_id,
-        RequestTicket.status.in_(["new", "reviewing", "in_progress", "waiting_customer"])
+        RequestTicket.status.in_(["new", "reviewing", "in_progress", "waiting_customer"]),
+        RequestTicket.is_deleted == False
     ).count()
 
     return {
@@ -104,15 +107,15 @@ def get_customer_report(
 
     workspace_id = member.workspace_id
     
-    by_status = db.query(Customer.status, func.count(Customer.id)).filter(Customer.workspace_id == workspace_id).group_by(Customer.status).all()
-    by_sector = db.query(Customer.sector, func.count(Customer.id)).filter(Customer.workspace_id == workspace_id).group_by(Customer.sector).all()
+    by_status = db.query(Customer.status, func.count(Customer.id)).filter(Customer.workspace_id == workspace_id, Customer.is_deleted == False).group_by(Customer.status).all()
+    by_sector = db.query(Customer.sector, func.count(Customer.id)).filter(Customer.workspace_id == workspace_id, Customer.is_deleted == False).group_by(Customer.sector).all()
     
     # Top customers by revenue (from finance entries)
     top_revenue = db.query(
         Customer.name, 
         func.sum(FinanceEntry.amount).label("revenue")
     ).join(FinanceEntry, FinanceEntry.customer_id == Customer.id)\
-     .filter(Customer.workspace_id == workspace_id, FinanceEntry.type == "income")\
+     .filter(Customer.workspace_id == workspace_id, FinanceEntry.type == "income", Customer.is_deleted == False, FinanceEntry.is_deleted == False)\
      .group_by(Customer.id)\
      .order_by(func.sum(FinanceEntry.amount).desc())\
      .limit(5).all()
@@ -134,15 +137,16 @@ def get_job_report(
 
     workspace_id = member.workspace_id
     
-    by_status = db.query(Job.status, func.count(Job.id)).filter(Job.workspace_id == workspace_id).group_by(Job.status).all()
-    by_priority = db.query(Job.priority, func.count(Job.id)).filter(Job.workspace_id == workspace_id).group_by(Job.priority).all()
+    by_status = db.query(Job.status, func.count(Job.id)).filter(Job.workspace_id == workspace_id, Job.is_deleted == False).group_by(Job.status).all()
+    by_priority = db.query(Job.priority, func.count(Job.id)).filter(Job.workspace_id == workspace_id, Job.is_deleted == False).group_by(Job.priority).all()
     
-    avg_progress = db.query(func.avg(Job.progress)).filter(Job.workspace_id == workspace_id).scalar() or 0
+    avg_progress = db.query(func.avg(Job.progress)).filter(Job.workspace_id == workspace_id, Job.is_deleted == False).scalar() or 0
     
     overdue_jobs = db.query(Job).filter(
         Job.workspace_id == workspace_id,
         Job.status != "completed",
-        Job.due_date < datetime.utcnow()
+        Job.due_date < datetime.utcnow(),
+        Job.is_deleted == False
     ).count()
 
     return {
@@ -167,13 +171,13 @@ def get_finance_report(
         func.sum(case((FinanceEntry.type == "expense", FinanceEntry.amount), else_=0)).label("expense"),
         func.sum(case((and_(FinanceEntry.type == "income", FinanceEntry.status != "paid"), FinanceEntry.amount), else_=0)).label("pending_income"),
         func.sum(case((and_(FinanceEntry.type == "income", FinanceEntry.status == "overdue"), FinanceEntry.amount), else_=0)).label("overdue_income")
-    ).filter(FinanceEntry.workspace_id == workspace_id).first()
+    ).filter(FinanceEntry.workspace_id == workspace_id, FinanceEntry.is_deleted == False).first()
     
     # Income by category
     by_category = db.query(
         FinanceEntry.category, 
         func.sum(FinanceEntry.amount)
-    ).filter(FinanceEntry.workspace_id == workspace_id, FinanceEntry.type == "expense")\
+    ).filter(FinanceEntry.workspace_id == workspace_id, FinanceEntry.type == "expense", FinanceEntry.is_deleted == False)\
      .group_by(FinanceEntry.category).all()
 
     return {
@@ -194,13 +198,13 @@ def get_operations_report(
 
     workspace_id = member.workspace_id
     
-    stages_by_status = db.query(JobStage.status, func.count(JobStage.id)).join(Job).filter(Job.workspace_id == workspace_id).group_by(JobStage.status).all()
+    stages_by_status = db.query(JobStage.status, func.count(JobStage.id)).join(Job).filter(Job.workspace_id == workspace_id, Job.is_deleted == False).group_by(JobStage.status).all()
     
     # Delivery stats
-    delivery_stats = db.query(DeliveryService.status, func.count(DeliveryService.id)).filter(DeliveryService.workspace_id == workspace_id).group_by(DeliveryService.status).all()
+    delivery_stats = db.query(DeliveryService.status, func.count(DeliveryService.id)).filter(DeliveryService.workspace_id == workspace_id, DeliveryService.is_deleted == False).group_by(DeliveryService.status).all()
     
     # Request stats
-    request_stats = db.query(RequestTicket.status, func.count(RequestTicket.id)).filter(RequestTicket.workspace_id == workspace_id).group_by(RequestTicket.status).all()
+    request_stats = db.query(RequestTicket.status, func.count(RequestTicket.id)).filter(RequestTicket.workspace_id == workspace_id, RequestTicket.is_deleted == False).group_by(RequestTicket.status).all()
     
     return {
         "stages_by_status": dict(stages_by_status),
@@ -223,13 +227,13 @@ def export_summary(
     writer.writerow(["Rapor Tipi", "Değer", "Detay"])
     
     # Gather data (simplified for MVP)
-    customers = db.query(Customer).filter(Customer.workspace_id == workspace_id).count()
-    jobs = db.query(Job).filter(Job.workspace_id == workspace_id).count()
+    customers = db.query(Customer).filter(Customer.workspace_id == workspace_id, Customer.is_deleted == False).count()
+    jobs = db.query(Job).filter(Job.workspace_id == workspace_id, Job.is_deleted == False).count()
     
     finance = db.query(
         func.sum(case((FinanceEntry.type == "income", FinanceEntry.amount), else_=0)).label("income"),
         func.sum(case((FinanceEntry.type == "expense", FinanceEntry.amount), else_=0)).label("expense")
-    ).filter(FinanceEntry.workspace_id == workspace_id).first()
+    ).filter(FinanceEntry.workspace_id == workspace_id, FinanceEntry.is_deleted == False).first()
 
     writer.writerow(["Toplam Müşteri", customers, "Sistemdeki tüm müşteriler"])
     writer.writerow(["Toplam İş", jobs, "Sistemdeki tüm işler"])

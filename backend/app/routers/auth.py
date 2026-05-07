@@ -11,6 +11,8 @@ from ..models.workspace import Workspace, WorkspaceMember
 from ..schemas.auth import Token, Register, AuthMeResponse, UserResponse, WorkspaceResponse
 from ..schemas.user import User as UserSchema
 from ..schemas.workspace import Workspace as WorkspaceSchema
+from ..services.activity_service import log_audit_event
+from datetime import datetime
 
 router = APIRouter()
 
@@ -77,6 +79,27 @@ def register(
     db.add(member)
     db.commit()
     db.refresh(new_user)
+    
+    # Audit Logs
+    log_audit_event(
+        db=db,
+        action="workspace.created",
+        entity_type="workspace",
+        entity_id=new_workspace.id,
+        workspace_id=new_workspace.id,
+        actor_user=new_user, # The new user is the actor here
+        description=f"Yeni işletme oluşturuldu (Kayıt): {new_workspace.name}"
+    )
+    
+    log_audit_event(
+        db=db,
+        action="user.created",
+        entity_type="user",
+        entity_id=new_user.id,
+        workspace_id=new_workspace.id,
+        actor_user=new_user,
+        description=f"Yeni kullanıcı hesabı oluşturuldu (Kayıt): {new_user.email}"
+    )
     
     return new_user
 

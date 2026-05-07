@@ -23,28 +23,35 @@ def get_inventory_summary(
     db: Session = Depends(get_db),
     workspace: Workspace = Depends(get_current_workspace),
 ) -> Any:
-    total_items = db.query(InventoryItemModel).filter(InventoryItemModel.workspace_id == workspace.id).count()
+    total_items = db.query(InventoryItemModel).filter(
+        InventoryItemModel.workspace_id == workspace.id,
+        InventoryItemModel.is_deleted == False
+    ).count()
     low_stock_items = db.query(InventoryItemModel).filter(
         InventoryItemModel.workspace_id == workspace.id,
-        InventoryItemModel.status == "low_stock"
+        InventoryItemModel.status == "low_stock",
+        InventoryItemModel.is_deleted == False
     ).count()
     out_of_stock_items = db.query(InventoryItemModel).filter(
         InventoryItemModel.workspace_id == workspace.id,
-        InventoryItemModel.status == "out_of_stock"
+        InventoryItemModel.status == "out_of_stock",
+        InventoryItemModel.is_deleted == False
     ).count()
     
     # Simple stock value calculation (quantity * purchase_price)
     # Filter out None prices
     stock_value_query = db.query(func.sum(InventoryItemModel.quantity * InventoryItemModel.purchase_price)).filter(
         InventoryItemModel.workspace_id == workspace.id,
-        InventoryItemModel.purchase_price.isnot(None)
+        InventoryItemModel.purchase_price.isnot(None),
+        InventoryItemModel.is_deleted == False
     ).scalar()
     
     total_stock_value = stock_value_query or 0.0
     
     categories_count = db.query(func.count(func.distinct(InventoryItemModel.category))).filter(
         InventoryItemModel.workspace_id == workspace.id,
-        InventoryItemModel.category.isnot(None)
+        InventoryItemModel.category.isnot(None),
+        InventoryItemModel.is_deleted == False
     ).scalar()
     
     return {
@@ -67,7 +74,10 @@ def read_inventory_items(
     skip: int = 0,
     limit: int = 100,
 ) -> Any:
-    query = db.query(InventoryItemModel).filter(InventoryItemModel.workspace_id == workspace.id)
+    query = db.query(InventoryItemModel).filter(
+        InventoryItemModel.workspace_id == workspace.id,
+        InventoryItemModel.is_deleted == False
+    )
     
     if q:
         query = query.filter(InventoryItemModel.name.ilike(f"%{q}%") | InventoryItemModel.sku.ilike(f"%{q}%"))
@@ -100,7 +110,7 @@ def create_inventory_item(
     db.refresh(item)
     
     create_activity(
-        db, workspace.id, user.id, "inventory", item.id, "create",
+        db, workspace.id, user.id, "inventory", item.id, "inventory.created",
         f"Stok kalemi oluşturuldu: {item.name}."
     )
     
@@ -153,7 +163,10 @@ def export_inventory(
     workspace: Workspace = Depends(get_current_workspace),
     user: User = Depends(get_current_user),
 ):
-    items = db.query(InventoryItemModel).filter(InventoryItemModel.workspace_id == workspace.id).order_by(InventoryItemModel.name.asc()).all()
+    items = db.query(InventoryItemModel).filter(
+        InventoryItemModel.workspace_id == workspace.id,
+        InventoryItemModel.is_deleted == False
+    ).order_by(InventoryItemModel.name.asc()).all()
     
     wb = Workbook()
     ws = wb.active
@@ -192,7 +205,7 @@ def export_inventory(
     buffer.seek(0)
     
     create_activity(
-        db, workspace.id, user.id, "inventory", 0, "export",
+        db, workspace.id, user.id, "inventory", 0, "inventory.export",
         "Stok listesi dışa aktarıldı."
     )
     
@@ -210,7 +223,8 @@ def read_inventory_item(
 ) -> Any:
     item = db.query(InventoryItemModel).filter(
         InventoryItemModel.id == item_id,
-        InventoryItemModel.workspace_id == workspace.id
+        InventoryItemModel.workspace_id == workspace.id,
+        InventoryItemModel.is_deleted == False
     ).first()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
@@ -227,7 +241,8 @@ def update_inventory_item(
 ) -> Any:
     item = db.query(InventoryItemModel).filter(
         InventoryItemModel.id == item_id,
-        InventoryItemModel.workspace_id == workspace.id
+        InventoryItemModel.workspace_id == workspace.id,
+        InventoryItemModel.is_deleted == False
     ).first()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
@@ -242,7 +257,7 @@ def update_inventory_item(
     db.refresh(item)
     
     create_activity(
-        db, workspace.id, user.id, "inventory", item.id, "update",
+        db, workspace.id, user.id, "inventory", item.id, "inventory.updated",
         f"Stok kalemi güncellendi: {item.name}."
     )
     
@@ -267,12 +282,16 @@ def delete_inventory_item(
     # For now we assume role check is done in core/deps if needed, or check here
     # Assuming user role is in user model
     
-    db.delete(item)
+    item.is_deleted = True
+    item.deleted_at = datetime.now()
+    item.deleted_by_user_id = user.id
+    
+    db.add(item)
     db.commit()
     
     create_activity(
-        db, workspace.id, user.id, "inventory", item_id, "delete",
-        f"Stok kalemi silindi: {item.name}."
+        db, workspace.id, user.id, "inventory", item_id, "inventory.deleted",
+        f"Stok kalemi arşivlendi: {item.name}."
     )
     
     return item

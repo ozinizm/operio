@@ -9,6 +9,7 @@ from ..models.task import Task as TaskModel
 from ..schemas.task import Task, TaskCreate, TaskUpdate
 from ..services.activity_service import create_activity
 from ..services.notification_service import create_notification, add_watcher
+from datetime import datetime
 
 router = APIRouter()
 
@@ -22,7 +23,10 @@ def read_tasks(
     skip: int = 0,
     limit: int = 100,
 ) -> Any:
-    query = db.query(TaskModel).filter(TaskModel.workspace_id == workspace.id)
+    query = db.query(TaskModel).filter(
+        TaskModel.workspace_id == workspace.id,
+        TaskModel.is_deleted == False
+    )
     
     if status:
         query = query.filter(TaskModel.status == status)
@@ -50,7 +54,7 @@ def create_task(
     db.refresh(task)
     
     create_activity(
-        db, workspace.id, user.id, "task", task.id, "create",
+        db, workspace.id, user.id, "task", task.id, "task.created",
         f"{task.title} görevi oluşturuldu."
     )
     
@@ -79,7 +83,8 @@ def update_task(
 ) -> Any:
     task = db.query(TaskModel).filter(
         TaskModel.id == task_id,
-        TaskModel.workspace_id == workspace.id
+        TaskModel.workspace_id == workspace.id,
+        TaskModel.is_deleted == False
     ).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -107,14 +112,14 @@ def update_task(
         )
         add_watcher(db, workspace.id, task.assignee_user_id, "task", task.id)
         
-    if task.status == "completed":
+    if task.status == "completed" and old_status != "completed":
         create_activity(
-            db, workspace.id, user.id, "task", task.id, "complete",
+            db, workspace.id, user.id, "task", task.id, "task.completed",
             f"{task.title} görevi tamamlandı."
         )
     else:
         create_activity(
-            db, workspace.id, user.id, "task", task.id, "update",
+            db, workspace.id, user.id, "task", task.id, "task.updated",
             f"{task.title} görevi güncellendi."
         )
     
@@ -130,17 +135,22 @@ def delete_task(
 ) -> Any:
     task = db.query(TaskModel).filter(
         TaskModel.id == task_id,
-        TaskModel.workspace_id == workspace.id
+        TaskModel.workspace_id == workspace.id,
+        TaskModel.is_deleted == False
     ).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     
-    db.delete(task)
+    task.is_deleted = True
+    task.deleted_at = datetime.now()
+    task.deleted_by_user_id = user.id
+    
+    db.add(task)
     db.commit()
     
     create_activity(
-        db, workspace.id, user.id, "task", task_id, "delete",
-        f"{task.title} görevi silindi."
+        db, workspace.id, user.id, "task", task_id, "task.deleted",
+        f"{task.title} görevi arşivlendi."
     )
     
     return task

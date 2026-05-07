@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, func, Text
+from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, func, Text, Boolean
 from sqlalchemy.orm import relationship
 from ..core.database import Base
 
@@ -15,6 +15,9 @@ class Task(Base):
     priority = Column(String, default="normal") # low, normal, high, critical
     assignee_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     due_date = Column(DateTime, nullable=True)
+    is_deleted = Column(Boolean, default=False)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+    deleted_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
