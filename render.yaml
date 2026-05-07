@@ -5,10 +5,8 @@ services:
     region: frankfurt
     plan: free
     buildCommand: |
-      # 1. Backend: Setup virtualenv and install requirements
-      python -m venv .venv
-      . .venv/bin/activate
-      python -m pip install --upgrade pip
+      # 1. Backend: Upgrade pip and install requirements
+      python -m pip install --upgrade pip setuptools wheel
       python -m pip install -r backend/requirements.txt
       
       # 2. Verify dependencies
@@ -19,10 +17,12 @@ services:
       npm run build
       
       # 4. Backend: Ensure Seed
-      cd backend && ../.venv/bin/python scripts/ensure_demo_seed.py
+      cd backend && python scripts/ensure_demo_seed.py
       
-    startCommand: cd backend && ../.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
       - key: APP_NAME
         value: Operio
       - key: APP_ENV
