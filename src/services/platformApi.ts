@@ -41,5 +41,34 @@ export const platformApi = {
       headers: getAuthHeader()
     });
     return response.data;
+  },
+
+  getWorkspaceMembers: async (workspaceId: number) => {
+    const response = await axios.get(`${API_URL}/platform/workspaces/${workspaceId}/members`, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  },
+
+  getWorkspaceModules: async (workspaceId: number) => {
+    const response = await axios.get(`${API_URL}/platform/workspaces/${workspaceId}/modules`, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  },
+
+  toggleModule: async (workspaceId: number, moduleKey: string, enabled: boolean) => {
+    const response = await axios.post(`${API_URL}/platform/workspaces/${workspaceId}/modules/toggle`, null, {
+      params: { module_key: moduleKey, enabled },
+      headers: getAuthHeader()
+    });
+    return response.data;
+  },
+
+  getWorkspaceActivities: async (workspaceId: number) => {
+    const response = await axios.get(`${API_URL}/platform/workspaces/${workspaceId}/activities`, {
+      headers: getAuthHeader()
+    });
+    return response.data;
   }
 };

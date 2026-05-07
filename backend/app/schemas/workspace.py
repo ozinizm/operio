@@ -30,7 +30,8 @@ class WorkspaceInDBBase(WorkspaceBase):
         from_attributes = True
 
 class Workspace(WorkspaceInDBBase):
-    pass
+    members_count: Optional[int] = 0
+    modules_count: Optional[int] = 0
 
 class WorkspaceMemberBase(BaseModel):
     workspace_id: int

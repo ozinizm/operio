@@ -51,6 +51,13 @@ export default function PlatformSettings() {
         </div>
         <h1 className="text-4xl font-jakarta font-extrabold text-slate-800 tracking-tight">Sistem Ayarları</h1>
         <p className="text-slate-500 font-medium">Operio platformuna ait genel yapılandırma, güvenlik, lisans ve sistem ayarları bu alanda yönetilecektir.</p>
+        <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-2xl mt-4 flex items-start gap-3 max-w-3xl">
+           <Info className="w-5 h-5 text-indigo-500 mt-0.5" />
+           <p className="text-xs text-indigo-700 font-bold leading-relaxed">
+             Bu alan platformun global güvenlik, lisans ve yedekleme ayarları için ayrılmıştır. 
+             Aktif düzenleme yetkileri production veritabanı geçişinden sonra açılacaktır.
+           </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

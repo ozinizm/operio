@@ -24,6 +24,9 @@ def read_workspaces(
     limit: int = 100,
 ) -> Any:
     workspaces = db.query(Workspace).offset(skip).limit(limit).all()
+    for w in workspaces:
+        w.members_count = db.query(WorkspaceMember).filter(WorkspaceMember.workspace_id == w.id).count()
+        w.modules_count = db.query(WorkspaceModule).filter(WorkspaceModule.workspace_id == w.id, WorkspaceModule.is_enabled == True).count()
     return workspaces
 
 @router.post("/workspaces", response_model=WorkspaceSchema)
@@ -120,6 +123,10 @@ def read_workspace(
     workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
     if not workspace:
         raise HTTPException(status_code=404, detail="Workspace not found")
+    
+    workspace.members_count = db.query(WorkspaceMember).filter(WorkspaceMember.workspace_id == workspace.id).count()
+    workspace.modules_count = db.query(WorkspaceModule).filter(WorkspaceModule.workspace_id == workspace.id, WorkspaceModule.is_enabled == True).count()
+    
     return workspace
 
 @router.put("/workspaces/{workspace_id}", response_model=WorkspaceSchema)
@@ -165,7 +172,87 @@ def update_workspace_platform(
         
     return workspace
 
-@router.get("/audit-logs", response_model=List[Any]) # Simplified for now
+@router.get("/workspaces/{workspace_id}/members", response_model=List[Any])
+def read_workspace_members(
+    workspace_id: int,
+    db: Session = Depends(get_db),
+    current_super_admin: User = Depends(get_current_super_admin),
+) -> Any:
+    members = db.query(WorkspaceMember).filter(WorkspaceMember.workspace_id == workspace_id).all()
+    # We want to return member info + user info
+    result = []
+    for m in members:
+        user = db.query(User).filter(User.id == m.user_id).first()
+        if user:
+            result.append({
+                "id": m.id,
+                "user_id": user.id,
+                "full_name": user.full_name,
+                "email": user.email,
+                "role": m.role,
+                "is_active": m.is_active,
+                "created_at": m.created_at
+            })
+    return result
+
+@router.get("/workspaces/{workspace_id}/modules", response_model=List[Any])
+def read_workspace_modules(
+    workspace_id: int,
+    db: Session = Depends(get_db),
+    current_super_admin: User = Depends(get_current_super_admin),
+) -> Any:
+    modules = db.query(WorkspaceModule).filter(WorkspaceModule.workspace_id == workspace_id).all()
+    return modules
+
+@router.post("/workspaces/{workspace_id}/modules/toggle")
+def toggle_workspace_module(
+    workspace_id: int,
+    module_key: str,
+    enabled: bool,
+    db: Session = Depends(get_db),
+    current_super_admin: User = Depends(get_current_super_admin),
+) -> Any:
+    wm = db.query(WorkspaceModule).filter(
+        WorkspaceModule.workspace_id == workspace_id,
+        WorkspaceModule.module_key == module_key
+    ).first()
+    
+    if not wm:
+        wm = WorkspaceModule(
+            workspace_id=workspace_id,
+            module_key=module_key,
+            is_enabled=enabled
+        )
+        db.add(wm)
+    else:
+        wm.is_enabled = enabled
+    
+    db.commit()
+    
+    log_audit_event(
+        db=db,
+        action="module.enabled" if enabled else "module.disabled",
+        entity_type="module",
+        entity_id=workspace_id, # using workspace_id as entity_id for modules for now
+        workspace_id=workspace_id,
+        actor_user=current_super_admin,
+        description=f"Modül {'aktif' if enabled else 'pasif'} edildi: {module_key}"
+    )
+    
+    return {"status": "ok", "module_key": module_key, "is_enabled": enabled}
+
+@router.get("/workspaces/{workspace_id}/activities", response_model=List[Any])
+def read_workspace_activities(
+    workspace_id: int,
+    db: Session = Depends(get_db),
+    current_super_admin: User = Depends(get_current_super_admin),
+    skip: int = 0,
+    limit: int = 50,
+) -> Any:
+    logs = db.query(Activity).filter(Activity.workspace_id == workspace_id).order_by(Activity.created_at.desc()).offset(skip).limit(limit).all()
+    return logs
+
+@router.get("/audit-logs", response_model=List[Any])
 def read_audit_logs(
     db: Session = Depends(get_db),
     current_super_admin: User = Depends(get_current_super_admin),
