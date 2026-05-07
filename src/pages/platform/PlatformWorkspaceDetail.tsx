@@ -140,8 +140,10 @@ export default function PlatformWorkspaceDetail() {
     try {
       await platformApi.toggleModule(Number(id), moduleKey, !currentEnabled);
       showToast('Modül durumu güncellendi.', 'success');
+      // Update local state optimistically or refetch
       fetchModules();
     } catch (error) {
+      // If error, don't show success, just error
       showToast('Modül güncellenemedi.', 'error');
     }
   };
@@ -209,16 +211,21 @@ export default function PlatformWorkspaceDetail() {
   ];
 
   const availableModules = [
+    { key: 'dashboard', label: 'Dashboard', description: 'İşletme genel durum özeti ve KPI takibi.' },
+    { key: 'customers', label: 'Müşteri Yönetimi', description: 'Müşteri veri tabanı ve iletişim geçmişi.' },
+    { key: 'jobs', label: 'İş ve Siparişler', description: 'İş emirleri ve sipariş yönetim süreci.' },
+    { key: 'settings', label: 'Ayarlar', description: 'İşletme özel yapılandırma ve tanımlar.' },
     { key: 'offers', label: 'Teklif Yönetimi', description: 'Gelişmiş teklif oluşturma ve takip sistemi.' },
     { key: 'tasks', label: 'Görev Yönetimi', description: 'Ekip içi görev atama ve durum takibi.' },
     { key: 'operations', label: 'Operasyon', description: 'Üretim ve iş süreci yönetimi.' },
     { key: 'delivery_service', label: 'Teslimat / Servis', description: 'Saha operasyonları ve teslimat takibi.' },
-    { key: 'complaints_requests', label: 'Şikayet & Talep', description: 'Müşteri geri bildirim yönetim sistemi.' },
+    { key: 'complaints', label: 'Şikayet & Talep', description: 'Müşteri geri bildirim yönetim sistemi.' },
     { key: 'finance', label: 'Finans', description: 'Gelir-gider takibi ve finansal raporlama.' },
     { key: 'inventory', label: 'Stok Yönetimi', description: 'Stok ve demirbaş takibi.' },
     { key: 'data_import', label: 'Veri Aktarımı', description: 'Excel ve toplu veri içe aktarma araçları.' },
     { key: 'reports', label: 'Raporlar', description: 'Gelişmiş analitik ve görsel raporlama.' },
     { key: 'notifications', label: 'Bildirimler', description: 'Sistem içi ve e-posta bildirimleri.' },
+    { key: 'files', label: 'Dosya Yönetimi', description: 'Kurumsal döküman ve dosya saklama.' },
   ];
 
   const coreModules = ['dashboard', 'customers', 'jobs', 'settings'];
@@ -434,8 +441,9 @@ export default function PlatformWorkspaceDetail() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {availableModules.map((mod) => {
-                const isActive = modules.some(m => m.module_key === mod.key && m.is_enabled);
-                const isCore = coreModules.includes(mod.key);
+                const moduleData = modules.find(m => m.module_key === mod.key);
+                const isActive = moduleData ? moduleData.is_enabled : false;
+                const isCore = moduleData ? moduleData.is_core : coreModules.includes(mod.key);
                 
                 return (
                   <div key={mod.key} className={`p-6 rounded-[24px] border transition-all ${

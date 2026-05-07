@@ -14,6 +14,15 @@ from ..core.security import get_password_hash
 from ..services.activity_service import log_audit_event
 from datetime import datetime
 
+# Standard module keys
+CORE_MODULES = ["dashboard", "customers", "jobs", "settings"]
+ADDITIONAL_MODULES = [
+    "offers", "tasks", "operations", "delivery_service", 
+    "complaints", "finance", "inventory", "data_import", 
+    "reports", "notifications", "files"
+]
+ALL_MODULES = CORE_MODULES + ADDITIONAL_MODULES
+
 router = APIRouter()
 
 @router.get("/workspaces", response_model=List[WorkspaceSchema])
@@ -75,16 +84,17 @@ def create_workspace_full(
 
         # 5. Active Modules
         # Core modules (always active)
-        core_modules = ["dashboard", "customers", "jobs", "tasks", "settings", "modules", "notifications"]
-        all_modules = list(set(core_modules + workspace_in.active_modules))
+        active_modules_in = workspace_in.active_modules or []
+        all_modules_to_create = list(set(CORE_MODULES + active_modules_in))
         
-        for module_key in all_modules:
-            wm = WorkspaceModule(
-                workspace_id=workspace.id,
-                module_key=module_key,
-                is_enabled=True
-            )
-            db.add(wm)
+        for module_key in all_modules_to_create:
+            if module_key in ALL_MODULES:
+                wm = WorkspaceModule(
+                    workspace_id=workspace.id,
+                    module_key=module_key,
+                    is_enabled=True
+                )
+                db.add(wm)
 
         # 6. Audit Log
         log_audit_event(
@@ -146,9 +156,6 @@ def update_workspace_platform(
         setattr(workspace, field, value)
     
     db.add(workspace)
-    db.commit()
-    db.refresh(workspace)
-    
     log_audit_event(
         db=db,
         action="workspace.updated",
@@ -169,7 +176,9 @@ def update_workspace_platform(
             actor_user=current_super_admin,
             description=f"İşletme durumu değişti: {old_status} -> {workspace.status}"
         )
-        
+
+    db.commit()
+    db.refresh(workspace)
     return workspace
 
 @router.get("/workspaces/{workspace_id}/members", response_model=List[Any])
@@ -201,8 +210,19 @@ def read_workspace_modules(
     db: Session = Depends(get_db),
     current_super_admin: User = Depends(get_current_super_admin),
 ) -> Any:
-    modules = db.query(WorkspaceModule).filter(WorkspaceModule.workspace_id == workspace_id).all()
-    return modules
+    # Get enabled modules from DB
+    db_modules = db.query(WorkspaceModule).filter(WorkspaceModule.workspace_id == workspace_id).all()
+    enabled_keys = {m.module_key for m in db_modules if m.is_enabled}
+    
+    # Return all modules with status
+    result = []
+    for m_key in ALL_MODULES:
+        result.append({
+            "module_key": m_key,
+            "is_enabled": m_key in CORE_MODULES or m_key in enabled_keys,
+            "is_core": m_key in CORE_MODULES
+        })
+    return result
 
 @router.post("/workspaces/{workspace_id}/modules/toggle")
 def toggle_workspace_module(
@@ -212,6 +232,9 @@ def toggle_workspace_module(
     db: Session = Depends(get_db),
     current_super_admin: User = Depends(get_current_super_admin),
 ) -> Any:
+    if module_key in CORE_MODULES:
+        raise HTTPException(status_code=400, detail="Core modules cannot be disabled")
+        
     wm = db.query(WorkspaceModule).filter(
         WorkspaceModule.workspace_id == workspace_id,
         WorkspaceModule.module_key == module_key
@@ -221,23 +244,30 @@ def toggle_workspace_module(
         wm = WorkspaceModule(
             workspace_id=workspace_id,
             module_key=module_key,
-            is_enabled=enabled
+            is_enabled=enabled,
+            enabled_at=datetime.utcnow() if enabled else None,
+            enabled_by_user_id=current_super_admin.id if enabled else None
         )
         db.add(wm)
     else:
         wm.is_enabled = enabled
-    
-    db.commit()
+        if enabled:
+            wm.enabled_at = datetime.utcnow()
+            wm.enabled_by_user_id = current_super_admin.id
+        else:
+            wm.disabled_at = datetime.utcnow()
     
     log_audit_event(
         db=db,
         action="module.enabled" if enabled else "module.disabled",
         entity_type="module",
-        entity_id=workspace_id, # using workspace_id as entity_id for modules for now
+        entity_id=workspace_id,
         workspace_id=workspace_id,
         actor_user=current_super_admin,
         description=f"Modül {'aktif' if enabled else 'pasif'} edildi: {module_key}"
     )
+    
+    db.commit()
     
     return {"status": "ok", "module_key": module_key, "is_enabled": enabled}
 
@@ -250,7 +280,20 @@ def read_workspace_activities(
     limit: int = 50,
 ) -> Any:
     logs = db.query(Activity).filter(Activity.workspace_id == workspace_id).order_by(Activity.created_at.desc()).offset(skip).limit(limit).all()
-    return logs
+    
+    # Return as list of dicts for safer serialization
+    result = []
+    for log in logs:
+        result.append({
+            "id": log.id,
+            "action": log.action,
+            "entity_type": log.entity_type,
+            "entity_id": log.entity_id,
+            "description": log.description,
+            "actor_email": log.actor_email,
+            "created_at": log.created_at.isoformat() if log.created_at else None
+        })
+    return result
 
 @router.get("/audit-logs", response_model=List[Any])
 def read_audit_logs(
@@ -260,4 +303,16 @@ def read_audit_logs(
     limit: int = 100,
 ) -> Any:
     logs = db.query(Activity).order_by(Activity.created_at.desc()).offset(skip).limit(limit).all()
-    return logs
+    
+    result = []
+    for log in logs:
+        result.append({
+            "id": log.id,
+            "action": log.action,
+            "entity_type": log.entity_type,
+            "entity_id": log.entity_id,
+            "description": log.description,
+            "actor_email": log.actor_email,
+            "created_at": log.created_at.isoformat() if log.created_at else None
+        })
+    return result

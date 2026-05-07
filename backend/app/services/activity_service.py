@@ -39,25 +39,26 @@ def log_audit_event(
                 logger.warning(f"Could not serialize audit metadata: {e}")
                 metadata_str = str(metadata)
 
-        activity = Activity(
-            workspace_id=workspace_id,
-            actor_user_id=actor_id,
-            actor_email=actor_email,
-            entity_type=entity_type,
-            entity_id=entity_id,
-            action=action,
-            description=description,
-            metadata_json=metadata_str,
-            ip_address=ip_address
-        )
-        db.add(activity)
-        db.commit()
-        db.refresh(activity)
+        # Use a subtransaction (savepoint) to ensure logging failure doesn't break main transaction
+        with db.begin_nested():
+            activity = Activity(
+                workspace_id=workspace_id,
+                actor_user_id=actor_id,
+                actor_email=actor_email,
+                entity_type=entity_type,
+                entity_id=entity_id,
+                action=action,
+                description=description,
+                metadata_json=metadata_str,
+                ip_address=ip_address
+            )
+            db.add(activity)
+        
+        # Flush to get ID if needed, but don't commit
+        db.flush()
         return activity
     except Exception as e:
-        db.rollback()
         logger.error(f"Audit log failed for action {action}: {e}")
-        # Instruction: Helper hata verirse ana işlemi patlatmamalı
         return None
 
 def create_activity(
