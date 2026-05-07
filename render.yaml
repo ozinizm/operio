@@ -5,19 +5,16 @@ services:
     region: frankfurt
     plan: free
     buildCommand: |
-      # 1. Backend: Install requirements
-      cd backend
-      pip install -r requirements.txt
-      cd ..
+      # 1. Backend: Upgrade pip and install requirements
+      python -m pip install --upgrade pip
+      python -m pip install -r backend/requirements.txt
       
       # 2. Frontend: Install and Build
-      npm install
+      npm ci
       npm run build
       
       # 3. Backend: Ensure Seed (runs migrations/init if needed)
-      cd backend
-      python scripts/ensure_demo_seed.py
-      cd ..
+      cd backend && python scripts/ensure_demo_seed.py
       
     startCommand: cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
