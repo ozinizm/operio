@@ -17,6 +17,7 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { WorkspaceHardDeleteModal } from '../../components/platform/WorkspaceHardDeleteModal';
+import { UserPasswordResetModal } from '../../components/platform/UserPasswordResetModal';
 
 export default function PlatformWorkspaceDetail() {
   const { id } = useParams();
@@ -54,6 +55,15 @@ export default function PlatformWorkspaceDetail() {
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Password Reset Modal State
+  const [resetPasswordModal, setResetPasswordModal] = useState<{
+    isOpen: boolean;
+    member: any;
+  }>({
+    isOpen: false,
+    member: null
+  });
 
   const fetchData = async () => {
     try {
@@ -178,22 +188,26 @@ export default function PlatformWorkspaceDetail() {
     });
   };
 
-  const handleResetPassword = async (member: any) => {
-    const tempPassword = Math.random().toString(36).slice(-8);
-    setConfirmState({
+  const handleResetPassword = (member: any) => {
+    setResetPasswordModal({
       isOpen: true,
-      title: 'Şifre Sıfırla',
-      description: `${member.full_name} (${member.email}) kullanıcısı için geçici şifre oluşturulacaktır: ${tempPassword}. Kullanıcı bir sonraki girişinde şifresini değiştirmeye zorlanacaktır. Onaylıyor musunuz?`,
-      variant: 'warning',
-      action: async () => {
-        try {
-          await platformApi.resetUserPassword(Number(id), member.user_id, tempPassword);
-          showToast('Kullanıcı şifresi başarıyla sıfırlandı.', 'success');
-        } catch (error) {
-          showToast('Şifre sıfırlanamadı.', 'error');
-        }
-      }
+      member
     });
+  };
+
+  const confirmResetPassword = async (tempPassword: string) => {
+    if (!resetPasswordModal.member) return;
+    try {
+      await platformApi.resetUserPassword(
+        Number(id), 
+        resetPasswordModal.member.user_id, 
+        tempPassword
+      );
+      showToast('Kullanıcı şifresi başarıyla sıfırlandı.', 'success');
+    } catch (error) {
+      showToast('Şifre sıfırlanamadı.', 'error');
+      throw error; // Rethrow to let modal handle loading state
+    }
   };
 
   const handleExportWorkspace = async () => {
@@ -872,6 +886,14 @@ export default function PlatformWorkspaceDetail() {
         workspaceSlug={workspace.slug}
         workspaceStatus={workspace.status}
         isDeleting={isDeleting}
+      />
+
+      <UserPasswordResetModal
+        isOpen={resetPasswordModal.isOpen}
+        onClose={() => setResetPasswordModal({ isOpen: false, member: null })}
+        onConfirm={confirmResetPassword}
+        userName={resetPasswordModal.member?.full_name || ''}
+        userEmail={resetPasswordModal.member?.email || ''}
       />
     </div>
   );

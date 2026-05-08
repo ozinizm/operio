@@ -36,12 +36,15 @@ export default function ChangePasswordPage() {
         new_password_confirm: newPasswordConfirm
       });
       
-      // Logout and redirect to login with success message
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('workspace');
-      localStorage.removeItem('role');
-      navigate('/login?passwordChanged=1', { replace: true });
+      // Full logout and cleanup
+      localStorage.clear(); // Clear all to be absolutely sure
+      
+      showToast('Şifreniz başarıyla güncellendi.', 'success');
+      
+      // Redirect to login with success flag
+      setTimeout(() => {
+        navigate('/login?passwordChanged=1', { replace: true });
+      }, 100);
     } catch (error: any) {
       showToast(error.message || 'Şifre değiştirilemedi.', 'error');
     } finally {

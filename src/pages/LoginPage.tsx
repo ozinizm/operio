@@ -8,6 +8,9 @@ import { getErrorMessage } from '../services/apiClient';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import { BrandLogo } from '../components/brand/BrandLogo';
+import { SupportContactModal } from '../components/support/SupportContactModal';
+import { ForgotPasswordModal } from '../components/auth/ForgotPasswordModal';
+import { HelpCircle } from 'lucide-react';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -16,15 +19,19 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSupportModal, setShowSupportModal] = useState(false);
+  const [showForgotModal, setShowForgotModal] = useState(false);
 
   // If already authenticated, skip login page
   useEffect(() => {
     if (!isLoading && isAuthenticated && user) {
-      if (user.is_super_admin) {
-        navigate('/platform', { replace: true });
-      } else {
-        navigate('/dashboard', { replace: true });
-      }
+      const target = user.must_change_password 
+        ? '/change-password' 
+        : user.is_super_admin 
+          ? '/platform' 
+          : '/dashboard';
+      
+      navigate(target, { replace: true });
     }
   }, [isAuthenticated, isLoading, navigate, user]);
   
@@ -49,7 +56,7 @@ export default function LoginPage() {
 
     try {
       const formData = new FormData();
-      formData.append('username', email);
+      formData.append('username', email.trim());
       formData.append('password', password);
       
       // 1. Get token from backend
@@ -94,12 +101,15 @@ export default function LoginPage() {
           <p className="text-[10px] font-bold text-primary uppercase mt-3 tracking-widest">Fikir Creative tarafından geliştirildi</p>
         </div>
 
-        <div className="bg-surface border border-border p-8 rounded-3xl shadow-soft">
+        <div className="bg-surface border border-border p-8 rounded-3xl shadow-soft relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-indigo-400 to-primary-hover opacity-0 group-hover:opacity-100 transition-all duration-500" />
+          
           <form onSubmit={handleLogin} className="space-y-6">
             <Input 
               label="E-posta" 
               type="email" 
               placeholder="ornek@sirket.com" 
+              autoComplete="username"
               icon={<Mail className="w-4 h-4" />}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -107,13 +117,20 @@ export default function LoginPage() {
               disabled={isSubmitting}
             />
             <div className="space-y-1">
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center px-1">
                 <label className="text-sm font-medium text-text-high">Şifre</label>
-                <button type="button" className="text-xs text-primary font-bold hover:underline">Şifremi Unuttum</button>
+                <button 
+                  type="button" 
+                  onClick={() => setShowForgotModal(true)}
+                  className="text-xs text-primary font-bold hover:underline"
+                >
+                  Şifremi Unuttum
+                </button>
               </div>
               <Input 
                 type="password" 
                 placeholder="••••••••" 
+                autoComplete="current-password"
                 icon={<Lock className="w-4 h-4" />}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -122,22 +139,46 @@ export default function LoginPage() {
               />
             </div>
 
-            <Button type="submit" className="w-full py-3 text-base shadow-lg shadow-primary/20" disabled={isSubmitting}>
+            <Button type="submit" className="w-full py-3 text-base shadow-xl shadow-primary/20 hover:scale-[1.01] active:scale-[0.99] transition-all" disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Giriş Yap <ChevronRight className="w-5 h-5 ml-2" /></>}
             </Button>
           </form>
 
           <div className="mt-8 pt-8 border-t border-border text-center">
             <p className="text-xs text-text-body">
-              Hesabınız yok mu? <button className="text-primary font-bold hover:underline">Destek ile iletişime geçin</button>
+              Hesabınız yok mu? <button onClick={() => setShowSupportModal(true)} className="text-primary font-bold hover:underline">Destek ile iletişime geçin</button>
             </p>
           </div>
         </div>
 
-        <p className="mt-8 text-center text-xs text-text-body opacity-60">
-          © 2026 Operio. Fikir Creative tarafından geliştirilmiştir. Tüm hakları saklıdır.
-        </p>
+        <div className="mt-8 flex flex-col items-center gap-4">
+          <button 
+            onClick={() => setShowSupportModal(true)}
+            className="flex items-center gap-2 text-xs font-bold text-text-body opacity-60 hover:opacity-100 hover:text-primary transition-all group"
+          >
+            <HelpCircle className="w-4 h-4 group-hover:rotate-12 transition-transform" />
+            Yardım ve Destek Merkezi
+          </button>
+          
+          <p className="text-[11px] text-text-body opacity-60 font-medium">
+            © 2026 Operio. <span className="font-bold">Fikir Creative</span> tarafından geliştirilmiştir.
+          </p>
+        </div>
       </div>
+
+      <SupportContactModal 
+        isOpen={showSupportModal} 
+        onClose={() => setShowSupportModal(false)} 
+      />
+      
+      <ForgotPasswordModal 
+        isOpen={showForgotModal} 
+        onClose={() => setShowForgotModal(false)}
+        onSupportClick={() => {
+          setShowForgotModal(false);
+          setShowSupportModal(true);
+        }}
+      />
     </div>
   );
 }

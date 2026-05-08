@@ -117,12 +117,11 @@ export const WorkspaceHardDeleteModal: React.FC<WorkspaceHardDeleteModalProps> =
           >
             Vazgeç
           </Button>
-          <Button 
-            variant="outline"
-            className={`rounded-xl px-8 font-jakarta font-bold transition-all shadow-xl ${
+          <button 
+            className={`rounded-xl px-8 h-12 flex items-center justify-center font-jakarta font-bold transition-all shadow-xl ${
               canDelete 
-                ? 'bg-red-600 text-white border-red-600 hover:bg-red-700 shadow-red-100' 
-                : 'bg-slate-200 text-slate-400 border-slate-200 cursor-not-allowed shadow-none'
+                ? 'bg-red-600 text-white hover:bg-red-700 shadow-red-200 active:scale-95' 
+                : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
             }`}
             onClick={() => onConfirm(confirmSlug, backupConfirmed)}
             disabled={!canDelete || isDeleting}
@@ -132,7 +131,7 @@ export const WorkspaceHardDeleteModal: React.FC<WorkspaceHardDeleteModalProps> =
             ) : (
               <><Trash2 className="w-4 h-4 mr-2" /> İşletmeyi Tamamen Sil</>
             )}
-          </Button>
+          </button>
         </div>
       </div>
     </div>
