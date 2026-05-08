@@ -8,7 +8,9 @@ from ..core.database import get_db
 from ..core.deps import get_current_user, get_current_workspace, get_current_workspace_member
 from ..models.user import User
 from ..models.workspace import Workspace, WorkspaceMember
+from ..models.platform import SupportRequest
 from ..schemas.auth import Token, Register, AuthMeResponse, UserResponse, WorkspaceResponse, ChangePassword
+from ..schemas.platform import ForgotPasswordRequest
 from ..schemas.user import User as UserSchema
 from ..schemas.workspace import Workspace as WorkspaceSchema
 from ..services.activity_service import log_audit_event
@@ -95,6 +97,9 @@ def register(
     db: Session = Depends(get_db),
     reg_in: Register
 ) -> Any:
+    """
+    Create new user and workspace.
+    """
     user = db.query(User).filter(User.email == reg_in.email).first()
     if user:
         raise HTTPException(
@@ -136,7 +141,7 @@ def register(
         entity_type="workspace",
         entity_id=new_workspace.id,
         workspace_id=new_workspace.id,
-        actor_user=new_user, # The new user is the actor here
+        actor_user=new_user, 
         description=f"Yeni işletme oluşturuldu (Kayıt): {new_workspace.name}"
     )
     
@@ -151,6 +156,28 @@ def register(
     )
     
     return new_user
+
+@router.post("/forgot-password")
+async def forgot_password(
+    data: ForgotPasswordRequest,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    # Save request
+    new_request = SupportRequest(
+        email=data.email,
+        type="forgot_password",
+        ip_address=request.client.host,
+        user_agent=request.headers.get("user-agent"),
+        status="new"
+    )
+    db.add(new_request)
+    db.commit()
+    
+    # Always return success message to prevent enumeration
+    return {
+        "message": "Şifre sıfırlama talebiniz alındı. Hesabınız doğrulandıktan sonra işletme yöneticiniz veya Operio destek ekibi sizinle iletişime geçecektir."
+    }
 
 @router.get("/me", response_model=AuthMeResponse)
 def read_user_me(

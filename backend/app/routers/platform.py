@@ -7,9 +7,11 @@ from ..core.deps import get_current_super_admin
 from ..models import (
     User, Workspace, WorkspaceMember, WorkspaceModule, Activity,
     Customer, Job, Offer, Task, FinanceEntry, InventoryItem,
-    DeliveryService, RequestTicket, FileAsset, Notification, Comment
+    DeliveryService, RequestTicket, FileAsset, Notification, Comment,
+    PlatformSetting, SupportRequest
 )
 from ..schemas.workspace import Workspace as WorkspaceSchema, WorkspaceCreate, WorkspaceUpdate, PlatformWorkspaceCreate
+from ..schemas.platform import PlatformSettingSchema, PlatformSettingUpdate, SupportRequestSchema, SupportRequestUpdate
 from ..core.security import get_password_hash
 from ..services.activity_service import log_audit_event
 from datetime import datetime
@@ -563,3 +565,76 @@ def hard_delete_workspace(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Silme işlemi sırasında hata: {str(e)}")
+
+# --- Platform Settings Management ---
+
+@router.get("/settings", response_model=List[PlatformSettingSchema])
+def get_platform_settings(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_super_admin)
+):
+    return db.query(PlatformSetting).all()
+
+@router.put("/settings")
+def update_platform_settings(
+    data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_super_admin)
+):
+    for key, value in data.items():
+        setting = db.query(PlatformSetting).filter(PlatformSetting.key == key).first()
+        if setting:
+            setting.value = str(value)
+            setting.updated_by_id = current_user.id
+        else:
+            new_setting = PlatformSetting(
+                key=key,
+                value=str(value),
+                updated_by_id=current_user.id,
+                is_public=key.startswith("support_") or key.startswith("platform_")
+            )
+            db.add(new_setting)
+    
+    log_audit_event(
+        db=db,
+        action="platform.settings.updated",
+        entity_type="platform",
+        entity_id=0,
+        actor_user=current_user,
+        description="Sistem ayarları güncellendi."
+    )
+    
+    db.commit()
+    return {"message": "Sistem ayarları başarıyla güncellendi."}
+
+# --- Support Requests Management ---
+
+@router.get("/support-requests", response_model=List[SupportRequestSchema])
+def get_support_requests(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_super_admin)
+):
+    return db.query(SupportRequest).order_by(SupportRequest.created_at.desc()).all()
+
+@router.patch("/support-requests/{request_id}")
+def update_support_request(
+    request_id: int,
+    data: SupportRequestUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_super_admin)
+):
+    req = db.query(SupportRequest).filter(SupportRequest.id == request_id).first()
+    if not req:
+        raise HTTPException(status_code=404, detail="Talep bulunamadı.")
+    
+    if data.status:
+        req.status = data.status
+        if data.status in ["resolved", "cancelled"]:
+            req.resolved_at = datetime.utcnow()
+            req.resolved_by_id = current_user.id
+            
+    if data.note is not None:
+        req.note = data.note
+        
+    db.commit()
+    return {"message": "Talep başarıyla güncellendi."}

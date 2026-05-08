@@ -16,3 +16,4 @@ from .request_ticket import RequestTicket
 from .workspace_module import WorkspaceModule
 from .inventory import InventoryItem
 from .import_job import ImportJob
+from .platform import PlatformSetting, SupportRequest

@@ -20,4 +20,12 @@ export const authApi = {
     const response = await apiClient.post('/auth/change-password', data);
     return response.data;
   },
+  forgotPassword: async (email: string) => {
+    const response = await apiClient.post('/auth/forgot-password', { email });
+    return response.data;
+  },
+  getPublicSettings: async () => {
+    const response = await apiClient.get('/public/platform-settings');
+    return response.data;
+  }
 };

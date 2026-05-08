@@ -99,5 +99,29 @@ export const platformApi = {
       headers: getAuthHeader()
     });
     return response.data;
+  },
+  getSettings: async () => {
+    const response = await axios.get(`${API_URL}/platform/settings`, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  },
+  updateSettings: async (settings: any) => {
+    const response = await axios.put(`${API_URL}/platform/settings`, settings, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  },
+  getSupportRequests: async () => {
+    const response = await axios.get(`${API_URL}/platform/support-requests`, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  },
+  updateSupportRequest: async (requestId: number, data: any) => {
+    const response = await axios.patch(`${API_URL}/platform/support-requests/${requestId}`, data, {
+      headers: getAuthHeader()
+    });
+    return response.data;
   }
 };

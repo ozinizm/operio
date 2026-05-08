@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Lock, Mail, ChevronRight, CheckCircle2, X, ArrowLeft } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
+import { authApi } from '../../services/authApi';
 
 interface ForgotPasswordModalProps {
   isOpen: boolean;
@@ -20,11 +21,15 @@ export function ForgotPasswordModal({ isOpen, onClose, onSupportClick }: ForgotP
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    setIsSubmitting(false);
-    setIsSubmitted(true);
+    try {
+      await authApi.forgotPassword(email);
+    } catch (error) {
+      console.error('Password reset request error:', error);
+      // We still show success to user for security (no enumeration)
+    } finally {
+      setIsSubmitting(false);
+      setIsSubmitted(true);
+    }
   };
 
   const handleReset = () => {
