@@ -20,7 +20,18 @@ export const ModuleProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [loading, setLoading] = useState(true);
 
   const refreshModules = useCallback(async () => {
+    // Guard: If no user or if Super Admin is in platform area without a workspace
     if (!user) return;
+    
+    const isPlatformManager = localStorage.getItem('operio_platform_manager_mode') === 'true';
+    const isPlatformArea = window.location.pathname.startsWith('/platform');
+    
+    // Skip if Super Admin is in platform area AND not in manager mode
+    if (user.is_super_admin && isPlatformArea && !isPlatformManager) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const [enabledData, sidebarData] = await Promise.all([
@@ -41,6 +52,9 @@ export const ModuleProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setSidebarModules(normalizedSidebar);
     } catch (err) {
       console.error('Failed to load modules:', err);
+      // For Super Admin or in case of error, set empty to avoid persistent loading state
+      setEnabledModules([]);
+      setSidebarModules([]);
     } finally {
       setLoading(false);
     }

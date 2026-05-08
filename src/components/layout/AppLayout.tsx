@@ -31,11 +31,16 @@ const coreLabelMap: Record<string, string> = {
   'Customers': 'Müşteriler',
   'Jobs': 'İş ve Siparişler',
   'Tasks': 'Görevler',
+  'Offers': 'Teklifler',
   'Finance': 'Finans',
   'Operations': 'Operasyon',
-  'Inventory': 'Stok ve Demirbaş',
-  'Reports': 'Dosya ve Raporlar',
-  'Notifications': 'Bildirimler'
+  'Inventory': 'Stok Yönetimi',
+  'Reports': 'Raporlar',
+  'Files': 'Dosyalar',
+  'Notifications': 'Bildirimler',
+  'Data Import': 'Veri Aktarımı',
+  'Delivery Service': 'Teslimat & Servis',
+  'Complaints & Requests': 'Şikayet & Talep'
 };
 
 export default function AppLayout() {
@@ -64,15 +69,52 @@ export default function AppLayout() {
     setIsQuickCreateOpen(false);
   };
 
+  const isPlatformManager = localStorage.getItem('operio_platform_manager_mode') === 'true';
+  const activeWorkspaceName = localStorage.getItem('operio_active_workspace_name');
+
+  const handleExitPlatformManager = () => {
+    localStorage.removeItem('operio_platform_manager_mode');
+    localStorage.removeItem('operio_active_workspace_id');
+    localStorage.removeItem('operio_active_workspace_name');
+    localStorage.removeItem('operio_active_workspace_slug');
+    
+    showToast('Platform yönetici modundan çıkıldı.', 'info');
+    navigate('/platform/workspaces');
+    window.location.reload();
+  };
+
   const handleLogout = () => {
+    localStorage.removeItem('operio_platform_manager_mode');
+    localStorage.removeItem('operio_active_workspace_id');
+    localStorage.removeItem('operio_active_workspace_name');
+    localStorage.removeItem('operio_active_workspace_slug');
     logout();
     navigate('/login');
     showToast('Başarıyla çıkış yapıldı.', 'success');
   };
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      {/* Desktop Sidebar */}
+    <div className="flex h-screen bg-background overflow-hidden flex-col">
+      {/* Platform Manager Banner */}
+      {isPlatformManager && (
+        <div className="bg-indigo-600 text-white px-4 py-2.5 flex items-center justify-center gap-4 shadow-lg z-50 animate-in slide-in-from-top duration-500">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4" />
+            <span className="text-xs font-bold tracking-tight">
+              PLATFORM YÖNETİCİ MODU: <span className="opacity-75 font-medium ml-1">Şu anda {activeWorkspaceName} çalışma alanını yönetiyorsunuz.</span>
+            </span>
+          </div>
+          <button 
+            onClick={handleExitPlatformManager}
+            className="bg-white/20 hover:bg-white/30 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border border-white/10"
+          >
+            Platform Paneline Dön
+          </button>
+        </div>
+      )}
+
+      <div className="flex flex-1 overflow-hidden">
+        {/* Desktop Sidebar */}
       <aside className="hidden lg:flex flex-col w-72 bg-white border-r border-border shadow-xl z-30 transition-all duration-300">
         <div className="h-20 flex items-center px-8 border-b border-border">
           <Link to={user?.is_super_admin ? "/platform" : "/dashboard"} className="flex items-center gap-3 group">
@@ -89,6 +131,14 @@ export default function AppLayout() {
               .filter(item => {
                 if (!item || !item.route || !item.label) return false;
                 if (seenRoutes.has(item.route)) return false;
+                
+                // Only show if module is enabled
+                // For core modules, item.key might not be provided, so we check if key is in core list
+                const coreKeys = ['dashboard', 'customers', 'jobs', 'settings'];
+                if (item.key && !coreKeys.includes(item.key) && !isModuleEnabled(item.key)) {
+                  return false;
+                }
+                
                 seenRoutes.add(item.route);
                 return true;
               })
@@ -156,11 +206,19 @@ export default function AppLayout() {
                   .filter(item => {
                     if (!item || !item.route || !item.label) return false;
                     if (seenRoutes.has(item.route)) return false;
+                    
+                    // Only show if module is enabled
+                    const coreKeys = ['dashboard', 'customers', 'jobs', 'settings'];
+                    if (item.key && !coreKeys.includes(item.key) && !isModuleEnabled(item.key)) {
+                      return false;
+                    }
+                    
                     seenRoutes.add(item.route);
                     return true;
                   })
                   .map((item) => {
                     const Icon = iconMap[item.icon] || Package;
+                    const label = coreLabelMap[item.label] || item.label;
                     return (
                       <NavLink
                         key={item.key || item.route}
@@ -175,7 +233,7 @@ export default function AppLayout() {
                         }
                       >
                         <Icon className="w-5 h-5" />
-                        <span className="font-semibold">{item.label}</span>
+                        <span className="font-semibold">{label}</span>
                       </NavLink>
                     );
                   });
@@ -324,6 +382,7 @@ export default function AppLayout() {
           </footer>
         </main>
       </div>
+    </div>
 
       <GlobalQuickCreateModal 
         type={quickCreateType} 

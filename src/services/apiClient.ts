@@ -17,6 +17,19 @@ apiClient.interceptors.request.use(
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Platform Manager Mode Header
+    const isPlatformManager = localStorage.getItem('operio_platform_manager_mode') === 'true';
+    const activeWorkspaceId = localStorage.getItem('operio_active_workspace_id');
+    const userJson = localStorage.getItem('user');
+    const user = userJson ? JSON.parse(userJson) : null;
+
+    if (isPlatformManager && activeWorkspaceId && user?.is_super_admin && config.headers) {
+      // Don't add header to auth or platform endpoints to avoid context confusion
+      // but backend deps are designed to handle it safely
+      config.headers['X-Active-Workspace-Id'] = activeWorkspaceId;
+    }
+
     return config;
   },
   (error: AxiosError) => {

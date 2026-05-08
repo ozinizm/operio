@@ -70,5 +70,12 @@ export const platformApi = {
       headers: getAuthHeader()
     });
     return response.data;
+  },
+
+  enterWorkspace: async (id: number) => {
+    const response = await axios.post(`${API_URL}/platform/workspaces/${id}/enter`, null, {
+      headers: getAuthHeader()
+    });
+    return response.data;
   }
 };

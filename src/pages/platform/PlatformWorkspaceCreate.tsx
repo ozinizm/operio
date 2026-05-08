@@ -10,12 +10,12 @@ import { useToast } from '../../components/ui/Toast';
 
 const availableModules = [
   { key: 'offers', label: 'Teklif Yönetimi', icon: 'FileText' },
-  { key: 'operations', label: 'Operasyon Takibi', icon: 'Activity' },
+  { key: 'operations', label: 'Operasyon', icon: 'Activity' },
   { key: 'delivery_service', label: 'Teslimat & Servis', icon: 'Truck' },
   { key: 'complaints_requests', label: 'Şikayet & Talep', icon: 'AlertCircle' },
-  { key: 'finance', label: 'Operasyonel Finans', icon: 'DollarSign' },
+  { key: 'finance', label: 'Finans', icon: 'DollarSign' },
   { key: 'inventory', label: 'Stok Yönetimi', icon: 'Package' },
-  { key: 'reports', label: 'Gelişmiş Raporlar', icon: 'BarChart2' },
+  { key: 'reports', label: 'Raporlar', icon: 'BarChart2' },
   { key: 'data_import', label: 'Veri Aktarımı', icon: 'FileSpreadsheet' }
 ];
 
@@ -33,6 +33,40 @@ export default function PlatformWorkspaceCreate() {
     owner_password: 'Operio' + Math.floor(Math.random() * 9000 + 1000) + '!',
     active_modules: [] as string[]
   });
+
+  const [isManuallyEditingSlug, setIsManuallyEditingSlug] = useState(false);
+
+  const slugify = (text: string) => {
+    const trMap: Record<string, string> = {
+      'ç': 'c', 'ğ': 'g', 'ı': 'i', 'ö': 'o', 'ş': 's', 'ü': 'u',
+      'Ç': 'c', 'Ğ': 'g', 'İ': 'i', 'Ö': 'o', 'Ş': 's', 'Ü': 'u'
+    };
+    let slug = text;
+    for (const key in trMap) {
+      slug = slug.replace(new RegExp(key, 'g'), trMap[key]);
+    }
+    return slug
+      .toLowerCase()
+      .replace(/[^a-z0-9 -]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .trim();
+  };
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value;
+    setFormData(prev => ({
+      ...prev,
+      name: newName,
+      slug: isManuallyEditingSlug ? prev.slug : slugify(newName)
+    }));
+  };
+
+  const handleSlugChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setIsManuallyEditingSlug(true);
+    setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/ /g, '-') });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,7 +104,7 @@ export default function PlatformWorkspaceCreate() {
           <ArrowLeft className="w-4 h-4" /> İşletmeler Listesine Dön
         </button>
         <div className="flex items-center gap-3 text-indigo-600 font-bold text-xs uppercase tracking-widest">
-          <Zap className="w-4 h-4" /> New Deployment
+          <Zap className="w-4 h-4" /> Yeni Kurulum
         </div>
         <h1 className="text-4xl font-jakarta font-extrabold text-slate-800 tracking-tight">Yeni İşletme Kurulumu</h1>
         <p className="text-slate-500 font-medium">Platform üzerinde yeni bir müşteri ekosistemi ve yönetici hesabı oluşturun.</p>
@@ -96,7 +130,7 @@ export default function PlatformWorkspaceCreate() {
                   className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-400 focus:bg-white transition-all"
                   placeholder="Örn: Bora Mobilya Sanayi"
                   value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  onChange={handleNameChange}
                 />
               </div>
               <div className="space-y-2">
@@ -109,7 +143,7 @@ export default function PlatformWorkspaceCreate() {
                     className="flex-1 bg-transparent border-none outline-none text-sm p-0 ml-0.5 font-bold text-indigo-600"
                     placeholder="boramobilya"
                     value={formData.slug}
-                    onChange={(e) => setFormData({...formData, slug: e.target.value.toLowerCase().replace(/ /g, '-')})}
+                    onChange={handleSlugChange}
                   />
                 </div>
               </div>
@@ -260,11 +294,14 @@ export default function PlatformWorkspaceCreate() {
               {isSubmitting ? 'İŞLEM SÜRÜYOR...' : 'İŞLETMEYİ KUR'}
             </button>
 
-            <div className="bg-amber-50 border border-amber-100 p-6 rounded-[32px] flex gap-4">
+            <div className="bg-amber-50 border border-amber-100 p-6 rounded-[32px] flex gap-4 shadow-sm">
               <AlertCircle className="w-6 h-6 text-amber-600 shrink-0" />
-              <p className="text-[11px] text-amber-900 font-medium leading-relaxed">
-                <strong>KRİTİK UYARI:</strong> Bu işlem veritabanında yeni bir işletme kümesi, owner yetkili hesabı ve modül yapılandırması oluşturacaktır. Rollback işlemi manuel müdahale gerektirir.
-              </p>
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-amber-900">Dikkat</p>
+                <p className="text-[10px] text-amber-800 font-medium leading-relaxed">
+                  Bu işlem yeni bir işletme çalışma alanı, yönetici hesabı ve seçilen modül ayarlarını oluşturur. İşlem tamamlandıktan sonra işletme panelden düzenlenebilir, askıya alınabilir veya arşivlenebilir.
+                </p>
+              </div>
             </div>
           </div>
         </div>

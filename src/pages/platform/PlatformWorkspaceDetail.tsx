@@ -6,7 +6,7 @@ import {
   AlertTriangle, Save, Loader2, UserPlus,
   Layers, ShieldCheck, Mail, Phone, User,
   ToggleLeft, ToggleRight, Archive,
-  Search, Calendar, Info
+  Search, Calendar, Info, Plus
 } from 'lucide-react';
 import { platformApi } from '../../services/platformApi';
 import { useToast } from '../../components/ui/Toast';
@@ -211,7 +211,7 @@ export default function PlatformWorkspaceDetail() {
   ];
 
   const availableModules = [
-    { key: 'dashboard', label: 'Dashboard', description: 'İşletme genel durum özeti ve KPI takibi.' },
+    { key: 'dashboard', label: 'Panel', description: 'İşletme genel durum özeti ve KPI takibi.' },
     { key: 'customers', label: 'Müşteri Yönetimi', description: 'Müşteri veri tabanı ve iletişim geçmişi.' },
     { key: 'jobs', label: 'İş ve Siparişler', description: 'İş emirleri ve sipariş yönetim süreci.' },
     { key: 'settings', label: 'Ayarlar', description: 'İşletme özel yapılandırma ve tanımlar.' },
@@ -219,16 +219,47 @@ export default function PlatformWorkspaceDetail() {
     { key: 'tasks', label: 'Görev Yönetimi', description: 'Ekip içi görev atama ve durum takibi.' },
     { key: 'operations', label: 'Operasyon', description: 'Üretim ve iş süreci yönetimi.' },
     { key: 'delivery_service', label: 'Teslimat / Servis', description: 'Saha operasyonları ve teslimat takibi.' },
-    { key: 'complaints', label: 'Şikayet & Talep', description: 'Müşteri geri bildirim yönetim sistemi.' },
+    { key: 'complaints_requests', label: 'Şikayet & Talep', description: 'Müşteri geri bildirim yönetim sistemi.' },
     { key: 'finance', label: 'Finans', description: 'Gelir-gider takibi ve finansal raporlama.' },
     { key: 'inventory', label: 'Stok Yönetimi', description: 'Stok ve demirbaş takibi.' },
     { key: 'data_import', label: 'Veri Aktarımı', description: 'Excel ve toplu veri içe aktarma araçları.' },
     { key: 'reports', label: 'Raporlar', description: 'Gelişmiş analitik ve görsel raporlama.' },
     { key: 'notifications', label: 'Bildirimler', description: 'Sistem içi ve e-posta bildirimleri.' },
-    { key: 'files', label: 'Dosya Yönetimi', description: 'Kurumsal döküman ve dosya saklama.' },
+    { key: 'files', label: 'Dosyalar', description: 'Kurumsal döküman ve dosya saklama.' },
   ];
 
   const coreModules = ['dashboard', 'customers', 'jobs', 'settings'];
+
+  const handleEnterWorkspace = async () => {
+    setConfirmState({
+      isOpen: true,
+      title: 'İşletme Paneline Geç',
+      description: 'Bu işletmenin panelini Platform Yönetici Modu ile görüntüleyeceksiniz. Yapacağınız işlemler sizin kullanıcı hesabınızla kayıt altına alınacaktır. Devam etmek istiyor musunuz?',
+      variant: 'default',
+      action: async () => {
+        try {
+          const result = await platformApi.enterWorkspace(Number(id));
+          
+          // Set local context for platform manager mode
+          localStorage.setItem('operio_platform_manager_mode', 'true');
+          localStorage.setItem('operio_active_workspace_id', result.workspace_id.toString());
+          localStorage.setItem('operio_active_workspace_name', result.workspace_name);
+          localStorage.setItem('operio_active_workspace_slug', result.workspace_slug);
+          
+          showToast(`${result.workspace_name} paneline yönetici moduyla giriş yapıldı.`, 'success');
+          
+          // Small delay to ensure localStorage is set before navigation
+          setTimeout(() => {
+            navigate('/dashboard');
+            // Force reload or state refresh might be needed if using a global state
+            window.location.reload(); 
+          }, 500);
+        } catch (error) {
+          showToast('İşletme paneline geçiş yapılırken bir hata oluştu.', 'error');
+        }
+      }
+    });
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20">
@@ -255,12 +286,19 @@ export default function PlatformWorkspaceDetail() {
           </div>
           <div className="flex items-center gap-3">
             <div className="group relative">
-               <Button variant="outline" className="border-indigo-200 text-indigo-700 hover:bg-indigo-50" disabled>
+               <Button 
+                variant="outline" 
+                className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-bold"
+                onClick={handleEnterWorkspace}
+                disabled={workspace.status === 'archived'}
+               >
                  İşletme Paneline Geç
                </Button>
-               <div className="absolute top-full right-0 mt-2 w-64 p-3 bg-slate-800 text-white text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                 İşletme paneline geçiş bir sonraki sürümde aktif edilecektir.
-               </div>
+               {workspace.status === 'archived' && (
+                 <div className="absolute top-full right-0 mt-2 w-64 p-3 bg-slate-800 text-white text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                   Arşivlenmiş işletmelerin paneline erişilemez.
+                 </div>
+               )}
             </div>
           </div>
         </div>
@@ -434,45 +472,90 @@ export default function PlatformWorkspaceDetail() {
 
         {activeTab === 'modules' && (
           <div className="p-10">
-            <div className="mb-10">
-              <h3 className="text-xl font-bold text-slate-800">Modül Yapılandırması</h3>
-              <p className="text-sm text-slate-400 mt-1">İşletmenin erişebileceği özellikleri buradan kontrol edebilirsiniz.</p>
+            <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+              <div>
+                <h3 className="text-xl font-bold text-slate-800">Modül Yapılandırması</h3>
+                <p className="text-sm text-slate-400 mt-1">İşletmenin erişebileceği özellikleri buradan kontrol edebilirsiniz.</p>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 flex flex-col items-center min-w-[80px]">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Toplam Aktif</span>
+                  <span className="text-lg font-black text-indigo-600">{modules.filter(m => m.is_enabled).length}</span>
+                </div>
+                <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 flex flex-col items-center min-w-[80px]">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Temel</span>
+                  <span className="text-lg font-black text-slate-600">{modules.filter(m => m.is_enabled && coreModules.includes(m.module_key)).length}</span>
+                </div>
+                <div className="bg-indigo-50 px-4 py-2 rounded-xl border border-indigo-100 flex flex-col items-center min-w-[80px]">
+                  <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-tighter">Ek</span>
+                  <span className="text-lg font-black text-indigo-600">{modules.filter(m => m.is_enabled && !coreModules.includes(m.module_key)).length}</span>
+                </div>
+              </div>
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {availableModules.map((mod) => {
-                const moduleData = modules.find(m => m.module_key === mod.key);
-                const isActive = moduleData ? moduleData.is_enabled : false;
-                const isCore = moduleData ? moduleData.is_core : coreModules.includes(mod.key);
-                
-                return (
-                  <div key={mod.key} className={`p-6 rounded-[24px] border transition-all ${
-                    isActive ? 'bg-indigo-50/50 border-indigo-100 shadow-sm' : 'bg-white border-slate-100 opacity-60'
-                  }`}>
-                    <div className="flex items-start justify-between mb-4">
-                      <div className={`p-3 rounded-xl ${isActive ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                        <Layers className="w-5 h-5" />
+
+            <div className="space-y-12">
+              {/* Temel Modüller */}
+              <section>
+                <div className="flex items-center gap-2 mb-6">
+                  <ShieldCheck className="w-4 h-4 text-slate-400" />
+                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Temel Modüller</h4>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {availableModules.filter(mod => coreModules.includes(mod.key)).map((mod) => {
+                    return (
+                      <div key={mod.key} className="p-6 rounded-[24px] border bg-slate-50/50 border-slate-100">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="p-3 rounded-xl bg-slate-200 text-slate-600">
+                            <Layers className="w-5 h-5" />
+                          </div>
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-200/50 px-2 py-1 rounded-lg">Kilitli Modül</span>
+                        </div>
+                        <h4 className="font-bold text-slate-800 mb-1">{mod.label === 'Dashboard' ? 'Panel' : mod.label}</h4>
+                        <p className="text-xs text-slate-500 leading-relaxed">{mod.description}</p>
                       </div>
-                      {isCore ? (
-                        <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest bg-indigo-50 px-2 py-1 rounded-lg">Kilitli Modül</span>
-                      ) : (
-                        <button 
-                          onClick={() => handleToggleModule(mod.key, isActive)}
-                          className="transition-transform active:scale-90"
-                        >
-                          {isActive ? (
-                            <ToggleRight className="w-10 h-10 text-indigo-600" />
-                          ) : (
-                            <ToggleLeft className="w-10 h-10 text-slate-300" />
-                          )}
-                        </button>
-                      )}
-                    </div>
-                    <h4 className="font-bold text-slate-800 mb-1">{mod.label}</h4>
-                    <p className="text-xs text-slate-500 leading-relaxed">{mod.description}</p>
-                  </div>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              </section>
+
+              {/* Ek Modüller */}
+              <section>
+                <div className="flex items-center gap-2 mb-6">
+                  <Plus className="w-4 h-4 text-indigo-400" />
+                  <h4 className="text-xs font-black text-indigo-400 uppercase tracking-widest">Ek Modüller</h4>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {availableModules.filter(mod => !coreModules.includes(mod.key)).map((mod) => {
+                    const moduleData = modules.find(m => m.module_key === mod.key);
+                    const isActive = moduleData ? moduleData.is_enabled : false;
+                    
+                    return (
+                      <div key={mod.key} className={`p-6 rounded-[24px] border transition-all ${
+                        isActive ? 'bg-indigo-50/50 border-indigo-100 shadow-sm' : 'bg-white border-slate-100'
+                      }`}>
+                        <div className="flex items-start justify-between mb-4">
+                          <div className={`p-3 rounded-xl ${isActive ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                            <Layers className="w-5 h-5" />
+                          </div>
+                          <button 
+                            onClick={() => handleToggleModule(mod.key, isActive)}
+                            className="transition-transform active:scale-90"
+                          >
+                            {isActive ? (
+                              <ToggleRight className="w-10 h-10 text-indigo-600" />
+                            ) : (
+                              <ToggleLeft className="w-10 h-10 text-slate-300" />
+                            )}
+                          </button>
+                        </div>
+                        <h4 className="font-bold text-slate-800 mb-1">{mod.label}</h4>
+                        <p className="text-xs text-slate-500 leading-relaxed">{mod.description}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
             </div>
           </div>
         )}

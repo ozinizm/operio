@@ -27,9 +27,9 @@ export const ModuleRouteGuard: React.FC<ModuleRouteGuardProps> = ({ moduleKey, c
             <ShieldAlert className="w-10 h-10" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-2xl font-jakarta font-bold text-text-high">Bu modül aktif değil.</h1>
+            <h1 className="text-2xl font-jakarta font-bold text-text-high">Modül Aktif Değil</h1>
             <p className="text-text-body">
-              Bu çalışma alanında bu modül devre dışı. Devam etmek için yöneticinizden modülü aktif etmesini isteyin.
+              Bu modül işletmeniz için aktif değil. Erişim için platform yöneticinizle iletişime geçin.
             </p>
           </div>
           

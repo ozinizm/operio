@@ -1,5 +1,5 @@
 from typing import Generator, Optional
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Header, Request
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from sqlalchemy.orm import Session
@@ -30,10 +30,26 @@ def get_current_user(
     return user
 
 def get_current_workspace(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Workspace:
-    # Get the active workspace for the user (for MVP, we just take the first active one)
+    # Check for platform manager mode (Super Admin switching context)
+    active_workspace_id = request.headers.get("X-Active-Workspace-Id")
+    
+    if current_user.is_super_admin and active_workspace_id:
+        try:
+            ws_id = int(active_workspace_id)
+            workspace = db.query(Workspace).filter(Workspace.id == ws_id).first()
+            if not workspace:
+                raise HTTPException(status_code=404, detail="Selected workspace not found")
+            if workspace.status == "archived":
+                raise HTTPException(status_code=403, detail="Cannot access an archived workspace")
+            return workspace
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid workspace ID header")
+
+    # Normal user flow or Super Admin without header
     member = db.query(WorkspaceMember).filter(
         WorkspaceMember.user_id == current_user.id,
         WorkspaceMember.is_active == True
@@ -53,9 +69,35 @@ def get_current_active_user(
     return current_user
 
 def get_current_workspace_member(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> WorkspaceMember:
+    # Check for platform manager mode (Super Admin switching context)
+    active_workspace_id = request.headers.get("X-Active-Workspace-Id")
+    
+    if current_user.is_super_admin and active_workspace_id:
+        try:
+            ws_id = int(active_workspace_id)
+            # Create a virtual/mock member for the Super Admin in this context
+            # Or fetch if they happen to be a member (unlikely for random workspaces)
+            member = db.query(WorkspaceMember).filter(
+                WorkspaceMember.workspace_id == ws_id,
+                WorkspaceMember.user_id == current_user.id
+            ).first()
+            
+            if not member:
+                # Return a synthetic member with "admin" or "owner" role for context
+                return WorkspaceMember(
+                    workspace_id=ws_id,
+                    user_id=current_user.id,
+                    role="owner", # Give full power in manager mode
+                    is_active=True
+                )
+            return member
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid workspace ID header")
+
     member = db.query(WorkspaceMember).filter(
         WorkspaceMember.user_id == current_user.id,
         WorkspaceMember.is_active == True

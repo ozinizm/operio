@@ -316,3 +316,41 @@ def read_audit_logs(
             "created_at": log.created_at.isoformat() if log.created_at else None
         })
     return result
+
+@router.post("/workspaces/{workspace_id}/enter")
+def enter_workspace_context(
+    workspace_id: int,
+    db: Session = Depends(get_db),
+    current_super_admin: User = Depends(get_current_super_admin),
+) -> Any:
+    workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    
+    if workspace.status == "archived":
+        raise HTTPException(status_code=403, detail="Cannot enter an archived workspace")
+        
+    # Audit Log
+    log_audit_event(
+        db=db,
+        action="platform.workspace_context_entered",
+        entity_type="workspace",
+        entity_id=workspace.id,
+        workspace_id=workspace.id,
+        actor_user=current_super_admin,
+        description=f"İşletme paneline yönetici moduyla giriş yapıldı: {workspace.name}",
+        metadata={
+            "mode": "platform_manager",
+            "workspace_slug": workspace.slug
+        }
+    )
+    
+    db.commit()
+    
+    return {
+        "workspace_id": workspace.id,
+        "workspace_name": workspace.name,
+        "workspace_slug": workspace.slug,
+        "status": workspace.status,
+        "message": "Workspace context ready"
+    }
