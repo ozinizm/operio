@@ -1,5 +1,5 @@
 from .user import User
-from .workspace import Workspace
+from .workspace import Workspace, WorkspaceMember
 from .customer import Customer
 from .job import Job
 from .task import Task

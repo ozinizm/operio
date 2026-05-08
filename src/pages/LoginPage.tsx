@@ -4,6 +4,7 @@ import { Input } from '../components/ui/Input';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Mail, ChevronRight, Loader2 } from 'lucide-react';
 import { authApi } from '../services/authApi';
+import { getErrorMessage } from '../services/apiClient';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import { BrandLogo } from '../components/brand/BrandLogo';
@@ -31,6 +32,12 @@ export default function LoginPage() {
     e.preventDefault();
     setIsSubmitting(true);
     
+    // Clear any previous session leftovers
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('workspace');
+    localStorage.removeItem('role');
+
     try {
       const formData = new FormData();
       formData.append('username', email);
@@ -61,7 +68,7 @@ export default function LoginPage() {
     } catch (error: any) {
       console.error('Login error:', error);
       localStorage.removeItem('token');
-      showToast(error.response?.data?.detail || 'Giriş yapılamadı. Bilgilerinizi kontrol edin.', 'error');
+      showToast(getErrorMessage(error), 'error');
     } finally {
       setIsSubmitting(false);
     }

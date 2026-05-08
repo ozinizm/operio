@@ -85,5 +85,19 @@ export const platformApi = {
       headers: getAuthHeader()
     });
     return response.data;
+  },
+  exportWorkspace: async (id: number) => {
+    const response = await axios.get(`${API_URL}/platform/workspaces/${id}/export`, {
+      headers: getAuthHeader(),
+      responseType: 'blob'
+    });
+    return response.data;
+  },
+  hardDeleteWorkspace: async (id: number, confirmSlug: string, backupConfirmed: boolean) => {
+    const response = await axios.delete(`${API_URL}/platform/workspaces/${id}/hard-delete`, {
+      data: { confirm_slug: confirmSlug, backup_confirmed: backupConfirmed },
+      headers: getAuthHeader()
+    });
+    return response.data;
   }
 };

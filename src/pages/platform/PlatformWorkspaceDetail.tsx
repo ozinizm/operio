@@ -6,7 +6,8 @@ import {
   AlertTriangle, Save, Loader2, UserPlus,
   Layers, ShieldCheck, Mail, Phone, User,
   ToggleLeft, ToggleRight, Archive,
-  Search, Calendar, Info, Plus, ShieldAlert
+  Search, Calendar, Info, Plus, ShieldAlert,
+  Download, Trash2, FileJson
 } from 'lucide-react';
 import { platformApi } from '../../services/platformApi';
 import { useToast } from '../../components/ui/Toast';
@@ -186,6 +187,55 @@ export default function PlatformWorkspaceDetail() {
           showToast('Kullanıcı şifresi başarıyla sıfırlandı.', 'success');
         } catch (error) {
           showToast('Şifre sıfırlanamadı.', 'error');
+        }
+      }
+    });
+  };
+
+  const handleExportWorkspace = async () => {
+    try {
+      const data = await platformApi.exportWorkspace(Number(id));
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `operio-workspace-${workspace.slug}-backup-${format(new Date(), 'yyyy-MM-dd')}.json`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      showToast('İşletme verileri başarıyla dışa aktarıldı.', 'success');
+    } catch (error) {
+      showToast('Dışa aktarma sırasında hata oluştu.', 'error');
+    }
+  };
+
+  const handleHardDelete = async () => {
+    if (workspace.status !== 'archived') {
+      showToast('Sadece arşivlenmiş işletmeler kalıcı olarak silinebilir.', 'warning');
+      return;
+    }
+
+    setConfirmState({
+      isOpen: true,
+      title: 'DİKKAT: İşletmeyi Kalıcı Olarak Sil',
+      description: `Bu işlem GERİ ALINAMAZ. '${workspace.name}' işletmesine ait tüm veriler (müşteriler, işler, teklifler, finansal kayıtlar vb.) kalıcı olarak silinecektir. Lütfen işletme kısa adını (slug) yazarak onaylayın: ${workspace.slug}`,
+      variant: 'danger',
+      action: async () => {
+        const input = window.prompt(`Silme işlemini onaylamak için işletme slug'ını (${workspace.slug}) giriniz:`);
+        if (input !== workspace.slug) {
+          showToast('Slug eşleşmedi, işlem iptal edildi.', 'error');
+          return;
+        }
+
+        const backupInput = window.confirm('İşletme yedeğini aldığınızı ve bu işlemin geri alınamaz olduğunu onaylıyor musunuz?');
+        if (!backupInput) return;
+
+        try {
+          await platformApi.hardDeleteWorkspace(Number(id), workspace.slug, true);
+          showToast('İşletme kalıcı olarak silindi.', 'success');
+          navigate('/platform/workspaces');
+        } catch (error: any) {
+          showToast(error.message || 'Silme işlemi başarısız.', 'error');
         }
       }
     });
@@ -741,6 +791,69 @@ export default function PlatformWorkspaceDetail() {
                 >
                   {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-4 h-4 mr-2" /> İşletmeyi Güncelle</>}
                 </Button>
+              </div>
+            </div>
+
+            <div className="mt-16 pt-12 border-t border-slate-100">
+              <div className="flex items-center gap-3 mb-8">
+                <div className="p-2 bg-red-50 rounded-xl text-red-600">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-800">Tehlikeli İşlemler</h3>
+                  <p className="text-sm text-slate-400 mt-1">Bu işlemler geri alınamaz. Lütfen dikkatli olun.</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="p-8 rounded-[32px] border border-slate-200 bg-slate-50/50 space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="font-bold text-slate-800">Verileri Yedekle</h4>
+                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                        İşletmeye ait tüm meta verileri (müşteriler, teklifler, finans vb.) JSON formatında indirir.
+                      </p>
+                    </div>
+                    <div className="p-3 bg-white rounded-2xl shadow-sm">
+                      <FileJson className="w-5 h-5 text-indigo-500" />
+                    </div>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    className="w-full rounded-xl border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-bold"
+                    onClick={handleExportWorkspace}
+                  >
+                    <Download className="w-4 h-4 mr-2" /> JSON Olarak Dışa Aktar
+                  </Button>
+                </div>
+
+                <div className={`p-8 rounded-[32px] border transition-all ${
+                  workspace.status === 'archived' ? 'border-red-200 bg-red-50/30' : 'border-slate-100 bg-slate-50/30 opacity-50'
+                } space-y-4`}>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="font-bold text-slate-800">İşletmeyi Kalıcı Olarak Sil</h4>
+                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                        İşletmeyi ve tüm verilerini sistemden kalıcı olarak temizler. Sadece arşivlenmiş işletmeler silinebilir.
+                      </p>
+                    </div>
+                    <div className="p-3 bg-white rounded-2xl shadow-sm text-red-500">
+                      <Trash2 className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    className={`w-full rounded-xl font-bold transition-all ${
+                      workspace.status === 'archived' 
+                        ? 'border-red-200 text-red-700 hover:bg-red-600 hover:text-white' 
+                        : 'border-slate-200 text-slate-400 cursor-not-allowed'
+                    }`}
+                    onClick={handleHardDelete}
+                    disabled={workspace.status !== 'archived'}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" /> İşletmeyi Tamamen Sil
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

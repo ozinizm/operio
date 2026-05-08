@@ -16,16 +16,17 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
   isPlatform = false
 }) => {
   const getLogoSrc = () => {
+    const base = import.meta.env.BASE_URL.replace(/\/$/, '') || '';
     switch (variant) {
       case 'white':
-        return '/brand/operio-logo-white.svg';
+        return `${base}/brand/operio-logo-white.svg`;
       case 'mark':
-        return '/brand/operio-mark.svg';
+        return `${base}/brand/operio-mark.svg`;
       case 'markWhite':
-        return '/brand/operio-mark-white.svg';
+        return `${base}/brand/operio-mark-white.svg`;
       case 'default':
       default:
-        return '/brand/operio-logo.svg';
+        return `${base}/brand/operio-logo.svg`;
     }
   };
 

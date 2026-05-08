@@ -4,16 +4,17 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from ..core.database import get_db
 from ..core.deps import get_current_super_admin
-from ..models.user import User
-from ..models.workspace import Workspace, WorkspaceMember
-from ..models.workspace_module import WorkspaceModule
-from ..models.activity import Activity
+from ..models import (
+    User, Workspace, WorkspaceMember, WorkspaceModule, Activity,
+    Customer, Job, Offer, Task, FinanceEntry, InventoryItem,
+    DeliveryService, RequestTicket, FileAsset, Notification, Comment
+)
 from ..schemas.workspace import Workspace as WorkspaceSchema, WorkspaceCreate, WorkspaceUpdate, PlatformWorkspaceCreate
-from ..schemas.user import User as UserSchema
 from ..core.security import get_password_hash
 from ..services.activity_service import log_audit_event
 from datetime import datetime
 from pydantic import BaseModel
+from fastapi.responses import JSONResponse
 
 # Standard module keys
 CORE_MODULES = ["dashboard", "customers", "jobs", "settings"]
@@ -396,3 +397,169 @@ def reset_user_password(
     )
     
     return {"message": "Şifre başarıyla sıfırlandı."}
+
+@router.get("/workspaces/{workspace_id}/export")
+def export_workspace_data(
+    workspace_id: int,
+    db: Session = Depends(get_db),
+    current_super_admin: User = Depends(get_current_super_admin),
+):
+    workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+
+    # Gather metadata
+    data = {
+        "export_metadata": {
+            "timestamp": datetime.now().isoformat(),
+            "exported_by": current_super_admin.email,
+            "version": "1.0"
+        },
+        "workspace": {
+            "id": workspace.id,
+            "name": workspace.name,
+            "slug": workspace.slug,
+            "sector": workspace.sector,
+            "status": workspace.status,
+            "plan": workspace.plan,
+            "created_at": workspace.created_at.isoformat() if workspace.created_at else None
+        },
+        "users": [
+            {
+                "id": m.user.id,
+                "email": m.user.email,
+                "full_name": m.user.full_name,
+                "role": m.role,
+                "is_active": m.is_active
+            }
+            for m in db.query(WorkspaceMember).filter(WorkspaceMember.workspace_id == workspace_id).all()
+        ],
+        "modules": [
+            {"key": m.module_key, "is_enabled": m.is_enabled}
+            for m in db.query(WorkspaceModule).filter(WorkspaceModule.workspace_id == workspace_id).all()
+        ],
+        "customers": [
+            {"id": c.id, "name": c.name, "email": c.email, "phone": c.phone}
+            for c in db.query(Customer).filter(Customer.workspace_id == workspace_id).all()
+        ],
+        "jobs": [
+            {"id": j.id, "title": j.title, "status": j.status}
+            for j in db.query(Job).filter(Job.workspace_id == workspace_id).all()
+        ],
+        "offers": [
+            {"id": o.id, "title": o.title, "status": o.status, "total_amount": float(o.total_amount) if o.total_amount else 0}
+            for o in db.query(Offer).filter(Offer.workspace_id == workspace_id).all()
+        ],
+        "tasks": [
+            {"id": t.id, "title": t.title, "status": t.status}
+            for t in db.query(Task).filter(Task.workspace_id == workspace_id).all()
+        ],
+        "finance_entries": [
+            {"id": f.id, "type": f.type, "amount": float(f.amount) if f.amount else 0, "category": f.category}
+            for f in db.query(FinanceEntry).filter(FinanceEntry.workspace_id == workspace_id).all()
+        ],
+        "inventory": [
+            {"id": i.id, "name": i.name, "sku": i.sku, "quantity": i.quantity}
+            for i in db.query(InventoryItem).filter(InventoryItem.workspace_id == workspace_id).all()
+        ],
+        "delivery_services": [
+            {"id": d.id, "title": d.title, "status": d.status}
+            for d in db.query(DeliveryService).filter(DeliveryService.workspace_id == workspace_id).all()
+        ],
+        "request_tickets": [
+            {"id": r.id, "subject": r.subject, "status": r.status}
+            for r in db.query(RequestTicket).filter(RequestTicket.workspace_id == workspace_id).all()
+        ],
+        "file_metadata": [
+            {"id": f.id, "name": f.file_name, "size": f.file_size}
+            for f in db.query(FileAsset).filter(FileAsset.workspace_id == workspace_id).all()
+        ],
+        "audit_logs_count": db.query(Activity).filter(Activity.workspace_id == workspace_id).count()
+    }
+
+    log_audit_event(
+        db=db,
+        action="platform.workspace_exported",
+        entity_type="workspace",
+        entity_id=workspace.id,
+        workspace_id=workspace.id,
+        actor_user=current_super_admin,
+        description=f"İşletme verileri dışa aktarıldı (Metadata): {workspace.name}"
+    )
+    db.commit()
+
+    filename = f"operio-workspace-{workspace.slug}-backup-{datetime.now().strftime('%Y-%m-%d')}.json"
+    return JSONResponse(
+        content=data,
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+class HardDeleteRequest(BaseModel):
+    confirm_slug: str
+    backup_confirmed: bool
+
+@router.delete("/workspaces/{workspace_id}/hard-delete")
+def hard_delete_workspace(
+    workspace_id: int,
+    data: HardDeleteRequest,
+    db: Session = Depends(get_db),
+    current_super_admin: User = Depends(get_current_super_admin),
+):
+    workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+
+    # Safeguards
+    if workspace.status != "archived":
+        raise HTTPException(status_code=400, detail="Sadece arşivlenmiş işletmeler kalıcı olarak silinebilir.")
+    
+    if data.confirm_slug != workspace.slug:
+        raise HTTPException(status_code=400, detail="İşletme kısa adı (slug) eşleşmiyor.")
+    
+    if not data.backup_confirmed:
+        raise HTTPException(status_code=400, detail="Lütfen yedeği aldığınızı onaylayın.")
+
+    try:
+        # Log before deletion (while workspace exists)
+        log_audit_event(
+            db=db,
+            action="platform.workspace_hard_delete_requested",
+            entity_type="workspace",
+            entity_id=workspace.id,
+            workspace_id=workspace.id,
+            actor_user=current_super_admin,
+            description=f"İşletme kalıcı silme işlemi başlatıldı: {workspace.name} ({workspace.slug})"
+        )
+        db.flush()
+
+        # Delete all related records in order
+        # Note: If cascade is set in models, this might be simpler, but let's be explicit
+        models_to_clean = [
+            Activity, WorkspaceMember, WorkspaceModule, Customer, Job, Offer, Task,
+            FinanceEntry, InventoryItem, DeliveryService, RequestTicket, FileAsset,
+            Notification, Comment
+        ]
+        
+        for model in models_to_clean:
+            db.query(model).filter(model.workspace_id == workspace_id).delete(synchronize_session=False)
+
+        # Finally delete workspace
+        workspace_name = workspace.name
+        workspace_slug = workspace.slug
+        db.delete(workspace)
+        
+        # Log global audit (workspace_id will be null)
+        log_audit_event(
+            db=db,
+            action="platform.workspace_hard_deleted",
+            entity_type="platform",
+            entity_id=0,
+            actor_user=current_super_admin,
+            description=f"İşletme kalıcı olarak silindi: {workspace_name} ({workspace_slug})"
+        )
+
+        db.commit()
+        return {"message": f"İşletme '{workspace_name}' başarıyla kalıcı olarak silindi."}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Silme işlemi sırasında hata: {str(e)}")
