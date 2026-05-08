@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Lock, Mail, ChevronRight, Loader2 } from 'lucide-react';
 import { authApi } from '../services/authApi';
 import { getErrorMessage } from '../services/apiClient';
@@ -11,7 +11,6 @@ import { BrandLogo } from '../components/brand/BrandLogo';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { setAuth, isAuthenticated, isLoading, user } = useAuth();
   const { showToast } = useToast();
   const [email, setEmail] = useState('');
@@ -31,23 +30,22 @@ export default function LoginPage() {
   
   // Handle password change success message
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
+    // Only run this once on mount
+    const params = new URLSearchParams(window.location.search);
     if (params.get('passwordChanged') === '1') {
       showToast('Şifreniz başarıyla güncellendi. Güvenlik nedeniyle lütfen yeni şifrenizle tekrar giriş yapın.', 'success');
-      // Clean up URL
-      navigate('/login', { replace: true });
+      // Clean up URL without triggering re-render
+      window.history.replaceState({}, '', window.location.pathname);
     }
-  }, [location.search, navigate, showToast]);
+  }, []); // Empty deps to run only once
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Clear any previous session leftovers
+    // Clear only current auth session tokens, not system prefs
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    localStorage.removeItem('workspace');
-    localStorage.removeItem('role');
 
     try {
       const formData = new FormData();
@@ -64,14 +62,14 @@ export default function LoginPage() {
       // 3. Fetch user/workspace/role with the new token
       const meData = await authApi.me();
 
-      // 4. Commit all auth state synchronously — ProtectedRoute will see
-      //    isAuthenticated === true before navigate() causes a re-render
+      // 4. Commit all auth state synchronously
       setAuth(token, meData.user, meData.workspace, meData.role);
-
       showToast('Başarıyla giriş yapıldı', 'success');
       
-      // Super Admin goes to /platform, others go to /dashboard
-      if (meData.user.is_super_admin) {
+      // 5. Navigate based on status
+      if (meData.user.must_change_password) {
+        navigate('/change-password', { replace: true });
+      } else if (meData.user.is_super_admin) {
         navigate('/platform', { replace: true });
       } else {
         navigate('/dashboard', { replace: true });
@@ -79,6 +77,7 @@ export default function LoginPage() {
     } catch (error: any) {
       console.error('Login error:', error);
       localStorage.removeItem('token');
+      localStorage.removeItem('user');
       showToast(getErrorMessage(error), 'error');
     } finally {
       setIsSubmitting(false);

@@ -17,8 +17,17 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const lastToasts = React.useRef<{ [key: string]: number }>({});
 
   const showToast = (message: string, type: ToastType = 'success') => {
+    // Deduplication logic
+    const now = Date.now();
+    const key = `${type}:${message}`;
+    if (lastToasts.current[key] && now - lastToasts.current[key] < 2000) {
+      return;
+    }
+    lastToasts.current[key] = now;
+
     const id = Math.random().toString(36).substring(2, 9);
     setToasts((prev) => [...prev, { id, message, type }]);
     setTimeout(() => {

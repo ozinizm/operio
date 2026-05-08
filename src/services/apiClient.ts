@@ -44,9 +44,11 @@ apiClient.interceptors.response.use(
     const status = error.response?.status;
 
     if (status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
       if (window.location.pathname !== '/login') {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('workspace');
+        localStorage.removeItem('role');
         window.location.href = '/login';
       }
     }
