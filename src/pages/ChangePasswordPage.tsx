@@ -25,6 +25,11 @@ export default function ChangePasswordPage() {
       return;
     }
 
+    if (currentPassword === newPassword) {
+      showToast('Yeni şifre mevcut şifre ile aynı olamaz.', 'error');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await authApi.changePassword({

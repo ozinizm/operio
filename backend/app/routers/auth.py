@@ -56,6 +56,10 @@ def change_password(
     if data.new_password != data.new_password_confirm:
         raise HTTPException(status_code=400, detail="Yeni şifreler eşleşmiyor.")
     
+    # Check if new password is same as current password
+    if security.verify_password(data.new_password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Yeni şifre mevcut şifre ile aynı olamaz.")
+    
     # Password policy validation
     if len(data.new_password) < 8:
         raise HTTPException(status_code=400, detail="Şifre en az 8 karakter olmalıdır.")
