@@ -1,19 +1,17 @@
 import { Link, NavLink } from 'react-router-dom';
 import { 
   Globe, Activity, Settings, Plus, LayoutDashboard,
-  ShieldCheck, Database
+  Database
 } from 'lucide-react';
+import { BrandLogo } from '../brand/BrandLogo';
 
 export default function PlatformSidebar() {
 
   return (
     <aside className="hidden lg:flex flex-col w-72 bg-indigo-950 text-indigo-100 border-r border-indigo-900 shadow-2xl z-30 transition-all duration-300">
       <div className="h-20 flex items-center px-8 border-b border-indigo-900/50">
-        <Link to="/platform" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 bg-indigo-500 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20 transition-transform group-hover:scale-110">
-            <ShieldCheck className="w-6 h-6 text-white" />
-          </div>
-          <span className="text-xl font-jakarta font-extrabold text-white tracking-tighter uppercase">OPERIO PLATFORM</span>
+        <Link to="/platform" className="flex items-center group">
+          <BrandLogo variant="white" size="md" isPlatform={true} />
         </Link>
       </div>
 

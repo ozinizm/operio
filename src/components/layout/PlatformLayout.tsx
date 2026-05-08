@@ -7,6 +7,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../ui/Toast';
 import PlatformSidebar from './PlatformSidebar';
+import { BrandLogo } from '../brand/BrandLogo';
 
 export default function PlatformLayout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -31,7 +32,7 @@ export default function PlatformLayout() {
           <div className="fixed inset-0 bg-indigo-950/60 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
           <aside className="fixed inset-y-0 left-0 w-80 bg-indigo-950 shadow-2xl flex flex-col animate-in slide-in-from-left duration-300 text-white">
             <div className="h-20 flex items-center justify-between px-6 border-b border-indigo-900/50">
-              <span className="text-xl font-extrabold tracking-tighter">OPERIO PLATFORM</span>
+              <BrandLogo variant="white" size="md" isPlatform={true} />
               <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 hover:bg-indigo-900 rounded-xl transition-colors">
                 <X className="w-6 h-6" />
               </button>

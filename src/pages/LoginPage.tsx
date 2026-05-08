@@ -6,6 +6,7 @@ import { Lock, Mail, ChevronRight, Loader2 } from 'lucide-react';
 import { authApi } from '../services/authApi';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
+import { BrandLogo } from '../components/brand/BrandLogo';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -69,10 +70,8 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20 mb-6">
-            <span className="text-3xl font-jakarta font-bold">O</span>
-          </div>
+        <div className="text-center mb-10 flex flex-col items-center">
+          <BrandLogo size="xl" className="mb-6" showText={false} />
           <h1 className="text-3xl font-jakarta font-bold text-text-high">Operio</h1>
           <p className="text-text-body mt-2">Modüler İşletme Yönetim Platformu</p>
           <p className="text-[10px] font-bold text-primary uppercase mt-3 tracking-widest">Fikir Creative tarafından geliştirildi</p>

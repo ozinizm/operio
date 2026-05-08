@@ -11,6 +11,7 @@ import {
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '../ui/Toast';
 import { useAuth } from '../../context/AuthContext';
+import { BrandLogo } from '../brand/BrandLogo';
 import { useModules } from '../../context/ModuleContext';
 import { NotificationDropdown } from '../collaboration/NotificationDropdown';
 import { GlobalQuickCreateModal, type QuickCreateType } from '../shared/GlobalQuickCreateModal';
@@ -117,11 +118,8 @@ export default function AppLayout() {
         {/* Desktop Sidebar */}
       <aside className="hidden lg:flex flex-col w-72 bg-white border-r border-border shadow-xl z-30 transition-all duration-300">
         <div className="h-20 flex items-center px-8 border-b border-border">
-          <Link to={user?.is_super_admin ? "/platform" : "/dashboard"} className="flex items-center gap-3 group">
-            <div className="w-10 h-10 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20 transition-transform group-hover:scale-110">
-              <Package className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-2xl font-jakarta font-bold text-text-high tracking-tight">OPERİO</span>
+          <Link to={user?.is_super_admin ? "/platform" : "/dashboard"} className="flex items-center group">
+            <BrandLogo size="md" />
           </Link>
         </div>
         <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1 no-scrollbar">
@@ -183,7 +181,7 @@ export default function AppLayout() {
           <div className="fixed inset-0 bg-text-high/40 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
           <aside className="fixed inset-y-0 left-0 w-80 bg-white shadow-2xl flex flex-col animate-in slide-in-from-left duration-300">
             <div className="h-20 flex items-center justify-between px-6 border-b border-border">
-              <span className="text-2xl font-jakarta font-bold text-text-high tracking-tight">OPERİO</span>
+              <BrandLogo size="md" />
               <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 hover:bg-surface-dim rounded-xl transition-colors">
                 <X className="w-6 h-6 text-text-body" />
               </button>
