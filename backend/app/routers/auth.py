@@ -87,7 +87,7 @@ def change_password(
         description="Kullanıcı şifresini güncelledi."
     )
     
-    return {"message": "Şifre başarıyla değiştirildi."}
+    return {"message": "Şifreniz başarıyla güncellendi. Lütfen tekrar giriş yapın."}
 
 @router.post("/register", response_model=UserSchema)
 def register(

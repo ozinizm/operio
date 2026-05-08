@@ -40,7 +40,11 @@ export default function LoginPage() {
     // Only run this once on mount
     const params = new URLSearchParams(window.location.search);
     if (params.get('passwordChanged') === '1') {
-      showToast('Şifreniz başarıyla güncellendi. Güvenlik nedeniyle lütfen yeni şifrenizle tekrar giriş yapın.', 'success');
+      // Small timeout to ensure toast system is ready
+      setTimeout(() => {
+        showToast('Şifreniz başarıyla güncellendi. Güvenlik nedeniyle lütfen yeni şifrenizle tekrar giriş yapın.', 'success');
+      }, 300);
+      
       // Clean up URL without triggering re-render
       window.history.replaceState({}, '', window.location.pathname);
     }

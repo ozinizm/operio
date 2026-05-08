@@ -9,6 +9,7 @@ interface AuthContextType {
   isLoading: boolean;
   setAuth: (token: string, user: any, workspace: any, role: string) => void;
   logout: () => void;
+  clearAuth: () => void;
   refreshUser: () => Promise<void>;
 }
 
@@ -66,18 +67,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(false);
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('workspace');
-    localStorage.removeItem('role');
-    localStorage.removeItem('operio_platform_manager_mode');
-    localStorage.removeItem('operio_active_workspace_id');
-    localStorage.removeItem('operio_active_workspace_name');
-    localStorage.removeItem('operio_active_workspace_slug');
+  const clearAuth = () => {
+    // 1. Define all keys to clear
+    const keysToRemove = [
+      'token', 'access_token', 'user', 'workspace', 'role',
+      'operio_platform_manager_mode', 
+      'operio_active_workspace_id',
+      'operio_active_workspace_name', 
+      'operio_active_workspace_slug',
+      'active_workspace_id',
+      'platform_manager_context',
+      'platformWorkspaceContext',
+      'enabledModules',
+      'sidebarModules'
+    ];
+    
+    // 2. Clear localStorage
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+    
+    // 3. Reset React State
     setUser(null);
     setWorkspace(null);
     setRole(null);
+  };
+
+  const logout = () => {
+    clearAuth();
     window.location.href = '/login';
   };
 
@@ -91,6 +106,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         setAuth,
         logout,
+        clearAuth,
         refreshUser: fetchUser,
       }}
     >

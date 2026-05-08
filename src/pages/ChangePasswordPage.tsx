@@ -6,10 +6,12 @@ import { Input } from '../components/ui/Input';
 import { authApi } from '../services/authApi';
 import { useToast } from '../components/ui/Toast';
 import { BrandLogo } from '../components/brand/BrandLogo';
+import { useAuth } from '../context/AuthContext';
 
 export default function ChangePasswordPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { clearAuth } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
@@ -36,15 +38,25 @@ export default function ChangePasswordPage() {
         new_password_confirm: newPasswordConfirm
       });
       
-      // Full logout and cleanup
-      localStorage.clear(); // Clear all to be absolutely sure
+      // 1. Clear all auth state via central context function
+      clearAuth();
       
       showToast('Şifreniz başarıyla güncellendi.', 'success');
       
-      // Redirect to login with success flag
+      // 2. Redirect with multiple layers for robustness
+      const loginUrl = '/login?passwordChanged=1';
+      
+      // Try React Router navigate first
+      navigate(loginUrl, { replace: true });
+      
+      // Safety fallback: Force absolute redirect after a small delay 
+      // if for some reason React Router didn't trigger
       setTimeout(() => {
-        navigate('/login?passwordChanged=1', { replace: true });
-      }, 100);
+        if (window.location.pathname !== '/login') {
+          console.log('React Router navigate failed or was delayed, using window.location.replace fallback');
+          window.location.replace(loginUrl);
+        }
+      }, 500);
     } catch (error: any) {
       showToast(error.message || 'Şifre değiştirilemedi.', 'error');
     } finally {
