@@ -1,6 +1,6 @@
 from datetime import timedelta
 from typing import Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from ..core import security
@@ -105,13 +105,43 @@ def register(
 
 @router.get("/me", response_model=AuthMeResponse)
 def read_user_me(
+    request: Request,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-    workspace: Workspace = Depends(get_current_workspace),
-    member: WorkspaceMember = Depends(get_current_workspace_member)
+    db: Session = Depends(get_db)
 ) -> Any:
+    # 1. Start with defaults
+    workspace = None
+    role = None
+    
+    # 2. Check for Platform Manager Header (X-Active-Workspace-Id)
+    active_workspace_id = request.headers.get("X-Active-Workspace-Id")
+    
+    if current_user.is_super_admin:
+        role = "admin" # Default role for super admin
+        
+        if active_workspace_id:
+            try:
+                ws_id = int(active_workspace_id)
+                workspace = db.query(Workspace).filter(Workspace.id == ws_id).first()
+            except (ValueError, TypeError):
+                pass # Ignore invalid header for /me
+    
+    # 3. If no workspace yet (either normal user or super admin without header)
+    if not workspace:
+        member = db.query(WorkspaceMember).filter(
+            WorkspaceMember.user_id == current_user.id,
+            WorkspaceMember.is_active == True
+        ).first()
+        
+        if member:
+            workspace = db.query(Workspace).filter(Workspace.id == member.workspace_id).first()
+            role = member.role
+        elif not current_user.is_super_admin:
+            # ONLY raise error for non-super admins
+            raise HTTPException(status_code=404, detail="No active workspace found for user")
+
     return AuthMeResponse(
         user=UserResponse.model_validate(current_user),
-        workspace=WorkspaceResponse.model_validate(workspace),
-        role=member.role,
+        workspace=WorkspaceResponse.model_validate(workspace) if workspace else None,
+        role=role,
     )

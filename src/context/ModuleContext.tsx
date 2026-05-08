@@ -24,10 +24,17 @@ export const ModuleProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (!user) return;
     
     const isPlatformManager = localStorage.getItem('operio_platform_manager_mode') === 'true';
+    const activeWorkspaceId = localStorage.getItem('operio_active_workspace_id');
     const isPlatformArea = window.location.pathname.startsWith('/platform');
     
     // Skip if Super Admin is in platform area AND not in manager mode
     if (user.is_super_admin && isPlatformArea && !isPlatformManager) {
+      setLoading(false);
+      return;
+    }
+
+    // Skip if Super Admin is in platform manager mode but no workspace ID is present yet
+    if (user.is_super_admin && isPlatformManager && !activeWorkspaceId) {
       setLoading(false);
       return;
     }

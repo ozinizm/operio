@@ -32,9 +32,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(data.user);
       setWorkspace(data.workspace);
       setRole(data.role);
+      
+      // Sync to localStorage for interceptors
+      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('workspace', JSON.stringify(data.workspace));
+      if (data.role) localStorage.setItem('role', data.role);
     } catch (error) {
       console.error('Auth check failed:', error);
-      localStorage.removeItem('token');
+      // Don't remove token here immediately on random error, 
+      // let response interceptor handle 401 specifically
     } finally {
       setIsLoading(false);
     }
