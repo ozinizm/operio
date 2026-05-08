@@ -17,7 +17,6 @@ import ComplaintsPage from '../pages/ComplaintsPage';
 import FinancePage from '../pages/FinancePage';
 import ReportsPage from '../pages/ReportsPage';
 import FilesPage from '../pages/FilesPage';
-import ModulesPage from '../pages/ModulesPage';
 import SettingsPage from '../pages/SettingsPage';
 import NotificationsPage from '../pages/NotificationsPage';
 import InventoryPage from '../pages/InventoryPage';
@@ -69,7 +68,11 @@ export default function AppRoutes() {
         
         <Route path="jobs" element={<JobsPage />} />
         <Route path="jobs/:id" element={<JobDetailPage />} />
-        <Route path="tasks" element={<TasksPage />} />
+        <Route path="tasks" element={
+          <ModuleRouteGuard moduleKey="tasks">
+            <TasksPage />
+          </ModuleRouteGuard>
+        } />
         
         <Route path="operations" element={
           <ProtectedRoute requiredRoles={['owner', 'manager', 'staff']}>
@@ -133,11 +136,8 @@ export default function AppRoutes() {
           </ProtectedRoute>
         } />
         
-        <Route path="modules" element={
-          <ProtectedRoute requiredRoles={['owner']}>
-            <ModulesPage />
-          </ProtectedRoute>
-        } />
+        {/* Modules page is hidden for customers - redirecting to dashboard */}
+        <Route path="modules" element={<Navigate to="/dashboard" replace />} />
         
         <Route path="settings" element={
           <ProtectedRoute requiredRoles={['owner']}>

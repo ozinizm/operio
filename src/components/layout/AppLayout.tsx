@@ -133,9 +133,13 @@ export default function AppLayout() {
                 if (seenRoutes.has(item.route)) return false;
                 
                 // Only show if module is enabled
-                // For core modules, item.key might not be provided, so we check if key is in core list
                 const coreKeys = ['dashboard', 'customers', 'jobs', 'settings'];
                 if (item.key && !coreKeys.includes(item.key) && !isModuleEnabled(item.key)) {
+                  return false;
+                }
+
+                // Hide modules page from customer panel
+                if (item.key === 'modules') {
                   return false;
                 }
                 
@@ -163,27 +167,12 @@ export default function AppLayout() {
                 );
               });
           })()}
-          
-          {/* Fallback for Modüller if not in dynamic list */}
-          {role === 'owner' && !sidebarModules.some(m => m.route === '/modules') && (
-            <NavLink
-              to="/modules"
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 group ${
-                  isActive ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-text-body hover:bg-surface-dim'
-                }`
-              }
-            >
-              <Package className="w-5 h-5" />
-              <span className="text-sm font-semibold">Modüller</span>
-            </NavLink>
-          )}
 
         </nav>
         <div className="p-4 border-t border-border">
           <div className="bg-primary/5 rounded-2xl p-4 border border-primary/10">
             <p className="text-xs text-text-body font-bold uppercase opacity-60 mb-2">Çalışma Alanı</p>
-            <p className="text-sm font-jakarta font-bold text-text-high truncate">{workspace?.name || 'Operio Workspace'}</p>
+            <p className="text-sm font-jakarta font-bold text-text-high truncate">{isPlatformManager ? activeWorkspaceName : (workspace?.name || 'Operio Workspace')}</p>
           </div>
         </div>
       </aside>
@@ -238,12 +227,6 @@ export default function AppLayout() {
                     );
                   });
               })()}
-              {role === 'owner' && !sidebarModules.some(m => m.route === '/modules') && (
-                <NavLink to="/modules" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-text-body hover:bg-surface-dim'}`}>
-                  <Package className="w-5 h-5" />
-                  <span className="font-semibold">Modüller</span>
-                </NavLink>
-              )}
             </nav>
           </aside>
         </div>

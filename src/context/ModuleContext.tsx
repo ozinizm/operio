@@ -72,7 +72,7 @@ export const ModuleProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const isModuleEnabled = (key: string) => {
     // Core modules are always enabled in frontend logic for safety
-    const coreModules = ['dashboard', 'customers', 'jobs', 'tasks', 'settings', 'modules'];
+    const coreModules = ['dashboard', 'customers', 'jobs', 'settings'];
     if (coreModules.includes(key)) return true;
     return enabledModules.includes(key);
   };

@@ -28,16 +28,13 @@ def list_modules(
     for key, definition in MODULE_REGISTRY.items():
         db_m = settings_map.get(key)
         
-        is_enabled = definition.is_available
         if db_m:
             is_enabled = db_m.is_enabled
-        elif definition.is_core:
-            is_enabled = True
-        elif not definition.is_available:
-            is_enabled = False
         else:
-            # Respect registry status (active/passive) for default
-            is_enabled = definition.status == 'active'
+            # Default behavior for non-existent DB record:
+            # Core modules are always enabled by default
+            # Other modules are disabled by default
+            is_enabled = definition.is_core
             
         module_dict = definition.to_dict()
         module_dict["is_enabled"] = is_enabled
@@ -50,33 +47,41 @@ def get_enabled_modules(
     db: Session = Depends(get_db),
     workspace: Workspace = Depends(get_current_workspace)
 ) -> List[str]:
+    # Fetch all module settings for this workspace
     db_modules = db.query(WorkspaceModule).filter(
-        WorkspaceModule.workspace_id == workspace.id,
-        WorkspaceModule.is_enabled == False
+        WorkspaceModule.workspace_id == workspace.id
     ).all()
     
-    disabled_keys = {m.module_key for m in db_modules}
+    # Create a map of DB overrides
+    db_overrides = {m.module_key: m.is_enabled for m in db_modules}
     
-    return [
-        key for key, m in MODULE_REGISTRY.items() 
-        if key not in disabled_keys and m.is_available
-    ]
+    enabled_keys = []
+    for key, definition in MODULE_REGISTRY.items():
+        if not definition.is_available:
+            continue
+            
+        # Check DB first
+        if key in db_overrides:
+            if db_overrides[key]:
+                enabled_keys.append(key)
+        # If not in DB, use core status
+        elif definition.is_core:
+            enabled_keys.append(key)
+            
+    return enabled_keys
 
 @router.get("/sidebar")
 def get_sidebar_modules(
     db: Session = Depends(get_db),
     workspace: Workspace = Depends(get_current_workspace)
 ) -> List[Dict[str, Any]]:
-    db_modules = db.query(WorkspaceModule).filter(
-        WorkspaceModule.workspace_id == workspace.id,
-        WorkspaceModule.is_enabled == False
-    ).all()
-    
-    disabled_keys = {m.module_key for m in db_modules}
+    # Reuse get_enabled_modules logic
+    enabled_keys = get_enabled_modules(db, workspace)
+    enabled_set = set(enabled_keys)
     
     enabled_defs = [
         m for key, m in MODULE_REGISTRY.items() 
-        if key not in disabled_keys and m.is_available
+        if key in enabled_set
     ]
     
     # Sort by sidebar_order

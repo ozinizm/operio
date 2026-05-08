@@ -95,8 +95,8 @@ MODULE_REGISTRY: Dict[str, ModuleDefinition] = {
         sidebar_label="Görevler",
         sidebar_order=40,
         icon="CheckSquare",
-        is_core=True,
-        can_disable=False,
+        is_core=False,
+        can_disable=True,
         related_quick_create_types=["task"]
     ),
     "settings": ModuleDefinition(
@@ -215,7 +215,8 @@ MODULE_REGISTRY: Dict[str, ModuleDefinition] = {
         sidebar_label="Bildirimler",
         sidebar_order=120,
         icon="Bell",
-        status="active"
+        status="active",
+        is_core=False
     ),
     "inventory": ModuleDefinition(
         key="inventory",

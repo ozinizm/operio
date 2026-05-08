@@ -51,6 +51,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    */
   const setAuth = (token: string, userData: any, workspaceData: any, roleData: string) => {
     localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('workspace', JSON.stringify(workspaceData));
+    localStorage.setItem('role', roleData);
     setUser(userData);
     setWorkspace(workspaceData);
     setRole(roleData);
@@ -59,6 +62,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('workspace');
+    localStorage.removeItem('role');
+    localStorage.removeItem('operio_platform_manager_mode');
+    localStorage.removeItem('operio_active_workspace_id');
+    localStorage.removeItem('operio_active_workspace_name');
+    localStorage.removeItem('operio_active_workspace_slug');
     setUser(null);
     setWorkspace(null);
     setRole(null);

@@ -1,8 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useModules } from '../../context/ModuleContext';
-import { useAuth } from '../../context/AuthContext';
-import { ShieldAlert, ArrowRight } from 'lucide-react';
+import { ShieldAlert } from 'lucide-react';
 import { Button } from '../ui/Button';
 
 interface ModuleRouteGuardProps {
@@ -12,7 +11,6 @@ interface ModuleRouteGuardProps {
 
 export const ModuleRouteGuard: React.FC<ModuleRouteGuardProps> = ({ moduleKey, children }) => {
   const { isModuleEnabled, loading } = useModules();
-  const { role } = useAuth();
 
   if (loading) return null;
 
@@ -33,18 +31,10 @@ export const ModuleRouteGuard: React.FC<ModuleRouteGuardProps> = ({ moduleKey, c
             </p>
           </div>
           
-          {(role === 'admin' || role === 'owner') && (
-            <div className="pt-4">
-              <Link to="/modules">
-                <Button className="w-full">
-                  Modüllere Git <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-            </div>
-          )}
-          
-          <Link to="/dashboard" className="block text-sm font-bold text-primary hover:underline pt-2">
-            Panale Geri Dön
+          <Link to="/dashboard" className="block w-full">
+            <Button variant="outline" className="w-full">
+              Panale Geri Dön
+            </Button>
           </Link>
         </div>
       </div>

@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from ..core import security
 from ..core.database import get_db
-from ..core.deps import get_current_user, get_current_workspace
+from ..core.deps import get_current_user, get_current_workspace, get_current_workspace_member
 from ..models.user import User
 from ..models.workspace import Workspace, WorkspaceMember
 from ..schemas.auth import Token, Register, AuthMeResponse, UserResponse, WorkspaceResponse
@@ -106,20 +106,12 @@ def register(
 @router.get("/me", response_model=AuthMeResponse)
 def read_user_me(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    workspace: Workspace = Depends(get_current_workspace),
+    member: WorkspaceMember = Depends(get_current_workspace_member)
 ) -> Any:
-    # Safely try to get the workspace
-    workspace = None
-    member = db.query(WorkspaceMember).filter(
-        WorkspaceMember.user_id == current_user.id,
-        WorkspaceMember.is_active == True
-    ).first()
-    
-    if member:
-        workspace = db.query(Workspace).filter(Workspace.id == member.workspace_id).first()
-
     return AuthMeResponse(
         user=UserResponse.model_validate(current_user),
-        workspace=WorkspaceResponse.model_validate(workspace) if workspace else None,
-        role=member.role if member else ("admin" if current_user.is_super_admin else None),
+        workspace=WorkspaceResponse.model_validate(workspace),
+        role=member.role,
     )
