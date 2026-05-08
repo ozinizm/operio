@@ -77,5 +77,13 @@ export const platformApi = {
       headers: getAuthHeader()
     });
     return response.data;
+  },
+  resetUserPassword: async (workspaceId: number, userId: number, temporaryPassword: string) => {
+    const response = await axios.post(`${API_URL}/platform/workspaces/${workspaceId}/users/${userId}/reset-password`, {
+      temporary_password: temporaryPassword
+    }, {
+      headers: getAuthHeader()
+    });
+    return response.data;
   }
 };

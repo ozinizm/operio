@@ -7,6 +7,9 @@ class UserBase(BaseModel):
     full_name: Optional[str] = None
     is_active: Optional[bool] = True
     is_super_admin: Optional[bool] = False
+    must_change_password: Optional[bool] = False
+    password_changed_at: Optional[datetime] = None
+    last_login_at: Optional[datetime] = None
 
 class UserCreate(UserBase):
     email: EmailStr

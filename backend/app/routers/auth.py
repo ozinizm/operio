@@ -8,11 +8,12 @@ from ..core.database import get_db
 from ..core.deps import get_current_user, get_current_workspace, get_current_workspace_member
 from ..models.user import User
 from ..models.workspace import Workspace, WorkspaceMember
-from ..schemas.auth import Token, Register, AuthMeResponse, UserResponse, WorkspaceResponse
+from ..schemas.auth import Token, Register, AuthMeResponse, UserResponse, WorkspaceResponse, ChangePassword
 from ..schemas.user import User as UserSchema
 from ..schemas.workspace import Workspace as WorkspaceSchema
 from ..services.activity_service import log_audit_event
 from datetime import datetime
+import re
 
 router = APIRouter()
 
@@ -31,7 +32,10 @@ def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Inactive user",
         )
-    
+    # Update last login
+    user.last_login_at = datetime.now()
+    db.commit()
+
     access_token_expires = timedelta(minutes=security.settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     return {
         "access_token": security.create_access_token(
@@ -39,6 +43,47 @@ def login(
         ),
         "token_type": "bearer",
     }
+
+@router.post("/change-password")
+def change_password(
+    data: ChangePassword,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if not security.verify_password(data.current_password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Mevcut şifre hatalı.")
+    
+    if data.new_password != data.new_password_confirm:
+        raise HTTPException(status_code=400, detail="Yeni şifreler eşleşmiyor.")
+    
+    # Password policy validation
+    if len(data.new_password) < 8:
+        raise HTTPException(status_code=400, detail="Şifre en az 8 karakter olmalıdır.")
+    if not re.search("[a-z]", data.new_password):
+        raise HTTPException(status_code=400, detail="Şifre en az bir küçük harf içermelidir.")
+    if not re.search("[A-Z]", data.new_password):
+        raise HTTPException(status_code=400, detail="Şifre en az bir büyük harf içermelidir.")
+    if not re.search("[0-9]", data.new_password):
+        raise HTTPException(status_code=400, detail="Şifre en az bir rakam içermelidir.")
+    if not re.search("[!@#$%^&*(),.?\":{}|<>]", data.new_password):
+        raise HTTPException(status_code=400, detail="Şifre en az bir özel karakter içermelidir.")
+        
+    current_user.password_hash = security.get_password_hash(data.new_password)
+    current_user.must_change_password = False
+    current_user.password_changed_at = datetime.now()
+    db.commit()
+    
+    # Log Audit
+    log_audit_event(
+        db=db,
+        action="user.password_changed",
+        entity_type="user",
+        entity_id=current_user.id,
+        actor_user=current_user,
+        description="Kullanıcı şifresini güncelledi."
+    )
+    
+    return {"message": "Şifre başarıyla değiştirildi."}
 
 @router.post("/register", response_model=UserSchema)
 def register(

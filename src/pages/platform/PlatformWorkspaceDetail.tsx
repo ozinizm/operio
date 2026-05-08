@@ -6,7 +6,7 @@ import {
   AlertTriangle, Save, Loader2, UserPlus,
   Layers, ShieldCheck, Mail, Phone, User,
   ToggleLeft, ToggleRight, Archive,
-  Search, Calendar, Info, Plus
+  Search, Calendar, Info, Plus, ShieldAlert
 } from 'lucide-react';
 import { platformApi } from '../../services/platformApi';
 import { useToast } from '../../components/ui/Toast';
@@ -168,6 +168,24 @@ export default function PlatformWorkspaceDetail() {
           fetchData();
         } catch (error) {
           showToast('İşlem başarısız.', 'error');
+        }
+      }
+    });
+  };
+
+  const handleResetPassword = async (member: any) => {
+    const tempPassword = Math.random().toString(36).slice(-8);
+    setConfirmState({
+      isOpen: true,
+      title: 'Şifre Sıfırla',
+      description: `${member.full_name} (${member.email}) kullanıcısı için geçici şifre oluşturulacaktır: ${tempPassword}. Kullanıcı bir sonraki girişinde şifresini değiştirmeye zorlanacaktır. Onaylıyor musunuz?`,
+      variant: 'warning',
+      action: async () => {
+        try {
+          await platformApi.resetUserPassword(Number(id), member.user_id, tempPassword);
+          showToast('Kullanıcı şifresi başarıyla sıfırlandı.', 'success');
+        } catch (error) {
+          showToast('Şifre sıfırlanamadı.', 'error');
         }
       }
     });
@@ -458,7 +476,15 @@ export default function PlatformWorkspaceDetail() {
                         <td className="py-4 px-4 text-sm text-slate-400">
                           {format(new Date(member.created_at), 'd MMM yyyy', { locale: tr })}
                         </td>
-                        <td className="py-4 px-4 text-right">
+                        <td className="py-4 px-4 text-right flex items-center justify-end gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-xs text-amber-600 font-bold hover:bg-amber-50"
+                            onClick={() => handleResetPassword(member)}
+                          >
+                            <ShieldAlert className="w-3.5 h-3.5 mr-1.5" /> Şifre Sıfırla
+                          </Button>
                           <Button variant="ghost" size="sm" className="text-xs text-indigo-600 font-bold" disabled>Düzenle</Button>
                         </td>
                       </tr>

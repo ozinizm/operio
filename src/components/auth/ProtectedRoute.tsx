@@ -28,6 +28,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRoles
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // Mandatory Password Change Check
+  if (user?.must_change_password && location.pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace />;
+  }
+
   // Super Admin Check
   if (requiredSuperAdmin && !user?.is_super_admin) {
     return (

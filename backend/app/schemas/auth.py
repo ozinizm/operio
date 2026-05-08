@@ -30,6 +30,7 @@ class UserResponse(BaseModel):
     full_name: Optional[str] = None
     is_active: bool = True
     is_super_admin: bool = False
+    must_change_password: bool = False
     created_at: Optional[datetime] = None
 
 class WorkspaceResponse(BaseModel):
@@ -45,3 +46,8 @@ class AuthMeResponse(BaseModel):
     user: UserResponse
     workspace: Optional[WorkspaceResponse] = None
     role: Optional[str] = None
+
+class ChangePassword(BaseModel):
+    current_password: str
+    new_password: str
+    new_password_confirm: str

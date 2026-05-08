@@ -4,6 +4,7 @@ import PlatformLayout from '../components/layout/PlatformLayout';
 import ProtectedRoute from '../components/auth/ProtectedRoute';
 import { ModuleRouteGuard } from '../components/auth/ModuleRouteGuard';
 import LoginPage from '../pages/LoginPage';
+import ChangePasswordPage from '../pages/ChangePasswordPage';
 import DashboardPage from '../pages/DashboardPage';
 import CustomersPage from '../pages/CustomersPage';
 import CustomerDetailPage from '../pages/CustomerDetailPage';
@@ -32,6 +33,11 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/change-password" element={
+        <ProtectedRoute>
+          <ChangePasswordPage />
+        </ProtectedRoute>
+      } />
       
       <Route path="/" element={
         <ProtectedRoute>

@@ -13,6 +13,7 @@ from ..schemas.user import User as UserSchema
 from ..core.security import get_password_hash
 from ..services.activity_service import log_audit_event
 from datetime import datetime
+from pydantic import BaseModel
 
 # Standard module keys
 CORE_MODULES = ["dashboard", "customers", "jobs", "settings"]
@@ -69,7 +70,8 @@ def create_workspace_full(
             user = User(
                 email=workspace_in.owner_email,
                 full_name=workspace_in.owner_name,
-                password_hash=get_password_hash(workspace_in.owner_password)
+                password_hash=get_password_hash(workspace_in.owner_password),
+                must_change_password=True
             )
             db.add(user)
             db.flush()
@@ -354,3 +356,43 @@ def enter_workspace_context(
         "status": workspace.status,
         "message": "Workspace context ready"
     }
+
+class ResetPasswordRequest(BaseModel):
+    temporary_password: str
+
+@router.post("/workspaces/{workspace_id}/users/{user_id}/reset-password")
+def reset_user_password(
+    workspace_id: int,
+    user_id: int,
+    data: ResetPasswordRequest,
+    db: Session = Depends(get_db),
+    current_super_admin: User = Depends(get_current_super_admin),
+):
+    # Verify user belongs to workspace
+    member = db.query(WorkspaceMember).filter(
+        WorkspaceMember.workspace_id == workspace_id,
+        WorkspaceMember.user_id == user_id
+    ).first()
+    
+    if not member:
+        raise HTTPException(status_code=404, detail="Kullanıcı bu işletmeye ait değil.")
+        
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı.")
+        
+    user.password_hash = get_password_hash(data.temporary_password)
+    user.must_change_password = True
+    db.commit()
+    
+    log_audit_event(
+        db=db,
+        action="user.password_reset",
+        entity_type="user",
+        entity_id=user.id,
+        workspace_id=workspace_id,
+        actor_user=current_super_admin,
+        description=f"Kullanıcı şifresi sıfırlandı (Platform): {user.email}"
+    )
+    
+    return {"message": "Şifre başarıyla sıfırlandı."}
