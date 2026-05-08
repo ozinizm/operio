@@ -4,13 +4,11 @@ import { Lock, ChevronRight, Loader2, ShieldCheck, CheckCircle2 } from 'lucide-r
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { authApi } from '../services/authApi';
-import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import { BrandLogo } from '../components/brand/BrandLogo';
 
 export default function ChangePasswordPage() {
   const navigate = useNavigate();
-  const { user, refreshUser } = useAuth();
   const { showToast } = useToast();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -38,17 +36,12 @@ export default function ChangePasswordPage() {
         new_password_confirm: newPasswordConfirm
       });
       
-      showToast('Şifreniz başarıyla güncellendi.', 'success');
-      
-      // Refresh user context to update must_change_password flag
-      await refreshUser();
-      
-      // Redirect based on role
-      if (user?.is_super_admin) {
-        navigate('/platform');
-      } else {
-        navigate('/dashboard');
-      }
+      // Logout and redirect to login with success message
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('workspace');
+      localStorage.removeItem('role');
+      navigate('/login?passwordChanged=1', { replace: true });
     } catch (error: any) {
       showToast(error.message || 'Şifre değiştirilemedi.', 'error');
     } finally {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Lock, Mail, ChevronRight, Loader2 } from 'lucide-react';
 import { authApi } from '../services/authApi';
 import { getErrorMessage } from '../services/apiClient';
@@ -11,6 +11,7 @@ import { BrandLogo } from '../components/brand/BrandLogo';
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { setAuth, isAuthenticated, isLoading, user } = useAuth();
   const { showToast } = useToast();
   const [email, setEmail] = useState('');
@@ -27,6 +28,16 @@ export default function LoginPage() {
       }
     }
   }, [isAuthenticated, isLoading, navigate, user]);
+  
+  // Handle password change success message
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('passwordChanged') === '1') {
+      showToast('Şifreniz başarıyla güncellendi. Güvenlik nedeniyle lütfen yeni şifrenizle tekrar giriş yapın.', 'success');
+      // Clean up URL
+      navigate('/login', { replace: true });
+    }
+  }, [location.search, navigate, showToast]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

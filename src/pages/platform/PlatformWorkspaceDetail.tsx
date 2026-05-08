@@ -16,6 +16,7 @@ import { Input } from '../../components/ui/Input';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
+import { WorkspaceHardDeleteModal } from '../../components/platform/WorkspaceHardDeleteModal';
 
 export default function PlatformWorkspaceDetail() {
   const { id } = useParams();
@@ -50,6 +51,9 @@ export default function PlatformWorkspaceDetail() {
     action: () => {},
     variant: 'danger' as 'danger' | 'warning' | 'default'
   });
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -203,7 +207,7 @@ export default function PlatformWorkspaceDetail() {
       document.body.appendChild(link);
       link.click();
       link.parentNode?.removeChild(link);
-      showToast('İşletme verileri başarıyla dışa aktarıldı.', 'success');
+      showToast('Yedek dosyası başarıyla indirildi. Kalıcı silme işleminden önce bu dosyayı güvenli bir yerde saklayın.', 'success');
     } catch (error) {
       showToast('Dışa aktarma sırasında hata oluştu.', 'error');
     }
@@ -214,31 +218,21 @@ export default function PlatformWorkspaceDetail() {
       showToast('Sadece arşivlenmiş işletmeler kalıcı olarak silinebilir.', 'warning');
       return;
     }
+    setIsDeleteModalOpen(true);
+  };
 
-    setConfirmState({
-      isOpen: true,
-      title: 'DİKKAT: İşletmeyi Kalıcı Olarak Sil',
-      description: `Bu işlem GERİ ALINAMAZ. '${workspace.name}' işletmesine ait tüm veriler (müşteriler, işler, teklifler, finansal kayıtlar vb.) kalıcı olarak silinecektir. Lütfen işletme kısa adını (slug) yazarak onaylayın: ${workspace.slug}`,
-      variant: 'danger',
-      action: async () => {
-        const input = window.prompt(`Silme işlemini onaylamak için işletme slug'ını (${workspace.slug}) giriniz:`);
-        if (input !== workspace.slug) {
-          showToast('Slug eşleşmedi, işlem iptal edildi.', 'error');
-          return;
-        }
-
-        const backupInput = window.confirm('İşletme yedeğini aldığınızı ve bu işlemin geri alınamaz olduğunu onaylıyor musunuz?');
-        if (!backupInput) return;
-
-        try {
-          await platformApi.hardDeleteWorkspace(Number(id), workspace.slug, true);
-          showToast('İşletme kalıcı olarak silindi.', 'success');
-          navigate('/platform/workspaces');
-        } catch (error: any) {
-          showToast(error.message || 'Silme işlemi başarısız.', 'error');
-        }
-      }
-    });
+  const confirmHardDelete = async (confirmSlug: string, backupConfirmed: boolean) => {
+    setIsDeleting(true);
+    try {
+      await platformApi.hardDeleteWorkspace(Number(id), confirmSlug, backupConfirmed);
+      showToast('İşletme kalıcı olarak silindi.', 'success');
+      setIsDeleteModalOpen(false);
+      navigate('/platform/workspaces');
+    } catch (error: any) {
+      showToast(error.message || 'Silme işlemi başarısız.', 'error');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -868,6 +862,16 @@ export default function PlatformWorkspaceDetail() {
           await confirmState.action();
           setConfirmState(prev => ({ ...prev, isOpen: false }));
         }}
+      />
+
+      <WorkspaceHardDeleteModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmHardDelete}
+        workspaceName={workspace.name}
+        workspaceSlug={workspace.slug}
+        workspaceStatus={workspace.status}
+        isDeleting={isDeleting}
       />
     </div>
   );

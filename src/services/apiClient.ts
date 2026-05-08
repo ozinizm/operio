@@ -69,7 +69,10 @@ export const getErrorMessage = (error: any): string => {
     const status = error.response.status;
     const detail = error.response.data?.detail;
     
-    if (status === 401) return 'Oturum süreniz doldu. Lütfen tekrar giriş yapın.';
+    if (status === 401) {
+      if (window.location.pathname === '/login') return 'E-posta veya şifre hatalı.';
+      return 'Oturum süreniz doldu. Lütfen tekrar giriş yapın.';
+    }
     if (status === 403) return 'Bu işlem için yetkiniz bulunmuyor.';
     if (status === 404) return 'Aranan kayıt bulunamadı.';
     if (status === 500) return 'Sunucu hatası oluştu. Lütfen tekrar deneyin.';

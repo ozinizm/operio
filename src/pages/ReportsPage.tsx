@@ -10,8 +10,10 @@ import {
 import { reportsApi } from '../services/reportsApi';
 import { LoadingState, ErrorState } from '../components/ui/States';
 import { formatCurrency } from '../utils/formatters';
+import { useToast } from '../components/ui/Toast';
 
 export default function ReportsPage() {
+  const { showToast } = useToast();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +83,7 @@ export default function ReportsPage() {
           <p className="text-sm text-text-body mt-1">Operasyonel ve finansal verimlilik analizleri.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => window.alert('Filtreleme yakında eklenecek.')}><Calendar className="w-4 h-4 mr-2" /> Bu Ay</Button>
+          <Button variant="outline" onClick={() => showToast('Filtreleme yakında eklenecek.', 'info')}><Calendar className="w-4 h-4 mr-2" /> Bu Ay</Button>
           <Button onClick={handleExport} className="shadow-lg shadow-primary/20"><Download className="w-4 h-4 mr-2" /> Özeti Dışa Aktar</Button>
         </div>
       </div>
