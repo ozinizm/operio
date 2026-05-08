@@ -24,18 +24,25 @@ Update the Render environment variables:
 
 ### Phase 3: Manual Deployment
 1. Push the production-ready code to `main`.
-2. Trigger a **Manual Deploy** in Render.
+2. Ensure the **Start Command** on Render is updated (see below).
+3. Trigger a **Manual Deploy** in Render.
 
-### Phase 4: Database Schema Migration
-Once the backend is live (but likely showing errors because tables don't exist):
-1. Connect to the Render Shell or use a one-off job.
-2. Run: `alembic upgrade head`
-   *This will create the production schema based on the migration history.*
+### Phase 4: Automated Database Initialization
+The backend now includes a script `scripts/init_production_db.py` that automatically:
+1. Detects if the PostgreSQL database is empty.
+2. Creates the full schema if no tables exist.
+3. Stamps the Alembic version to `head` to avoid migration conflicts.
 
-### Phase 5: Production Bootstrap
-1. Connect to the Render Shell.
-2. Run: `python backend/scripts/bootstrap_production.py`
-   *This will create the initial Super Admin user defined in the environment variables.*
+This script runs before the application starts, ensuring the database is always in a valid state without manual intervention.
+
+### Phase 5: Start Command (Render)
+Use the following combined Start Command in Render to ensure proper initialization on every deploy:
+
+```bash
+cd backend && python scripts/init_production_db.py && python scripts/bootstrap_production.py && python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+
+*Note: `alembic upgrade head` is no longer needed in the start command for fresh DBs, as `init_production_db.py` handles the initial schema and stamping. Future migrations should be handled carefully via Alembic.*
 
 ### Phase 6: Verification
 1. Access the production URL.
@@ -49,6 +56,7 @@ If critical errors occur:
 3. Revert code commit if the issue is logic-related.
 
 ## 5. Security Notes
-- `APP_ENV=production` disables automatic table creation (`Base.metadata.create_all`) and demo seeding.
+- `APP_ENV=production` is required for the init script to run.
 - Always use `psycopg2-binary` as the driver.
 - Ensure `JWT_SECRET_KEY` is regenerated and unique for production.
+- `init_production_db.py` is safe to run on existing databases (it skips if tables are found).
