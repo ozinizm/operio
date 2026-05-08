@@ -43,5 +43,5 @@ class WorkspaceResponse(BaseModel):
 
 class AuthMeResponse(BaseModel):
     user: UserResponse
-    workspace: WorkspaceResponse
+    workspace: Optional[WorkspaceResponse] = None
     role: Optional[str] = None

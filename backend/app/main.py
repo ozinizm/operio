@@ -31,9 +31,8 @@ app.add_middleware(
 )
 
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
-# Include Routers
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(customers.router, prefix="/api/customers", tags=["customers"])
@@ -52,6 +51,10 @@ app.include_router(modules.router, prefix="/api/modules", tags=["modules"])
 app.include_router(inventory.router, prefix="/api/inventory", tags=["inventory"])
 app.include_router(imports.router, prefix="/api/imports", tags=["imports"])
 app.include_router(platform.router, prefix="/api/platform", tags=["platform"])
+
+@app.get("/api/docs", include_in_schema=False)
+def api_docs_redirect():
+    return RedirectResponse(url="/docs")
 
 @app.get("/api/health")
 def health_check():
@@ -87,9 +90,13 @@ if settings.APP_ENV == "production":
         # Exception handler for SPA fallback
         @app.exception_handler(404)
         async def spa_fallback(request, exc):
-            # If the path starts with /api, return 404
+            # If the path starts with /api, return 404 with detail
             if request.url.path.startswith("/api"):
-                return JSONResponse(status_code=404, content={"detail": "API route not found"})
+                detail = getattr(exc, "detail", "API route not found")
+                # If it's the generic FastAPI "Not Found", use our custom message
+                if detail == "Not Found":
+                    detail = "API route not found"
+                return JSONResponse(status_code=404, content={"detail": detail})
             
             # For all other routes, serve index.html
             index_path = os.path.join(settings.FRONTEND_DIST_DIR, "index.html")
