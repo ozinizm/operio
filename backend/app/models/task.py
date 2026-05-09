@@ -14,6 +14,7 @@ class Task(Base):
     status = Column(String, default="todo") # todo, in_progress, review, completed, overdue
     priority = Column(String, default="normal") # low, normal, high, critical
     assignee_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    creator_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     due_date = Column(DateTime, nullable=True)
     is_deleted = Column(Boolean, default=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
@@ -25,4 +26,5 @@ class Task(Base):
     customer = relationship("Customer", back_populates="tasks")
     job = relationship("Job", back_populates="tasks")
     assignee = relationship("User", foreign_keys=[assignee_user_id])
+    creator = relationship("User", foreign_keys=[creator_id])
     deleted_by_user = relationship("User", foreign_keys=[deleted_by_user_id])

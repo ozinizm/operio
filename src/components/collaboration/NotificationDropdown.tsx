@@ -71,6 +71,7 @@ export function NotificationDropdown() {
     switch (type) {
       case 'comment_added': return <MessageSquare className="w-4 h-4 text-blue-500" />;
       case 'task_assigned': return <CheckSquare className="w-4 h-4 text-emerald-500" />;
+      case 'task_status_changed': return <CheckCircle2 className="w-4 h-4 text-blue-500" />;
       case 'task_overdue': return <AlertCircle className="w-4 h-4 text-red-500" />;
       case 'job_status_changed': return <Briefcase className="w-4 h-4 text-amber-500" />;
       case 'offer_converted': return <FileText className="w-4 h-4 text-indigo-500" />;

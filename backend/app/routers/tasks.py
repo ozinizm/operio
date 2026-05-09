@@ -8,7 +8,8 @@ from ..models.workspace import Workspace
 from ..models.task import Task as TaskModel
 from ..schemas.task import Task, TaskCreate, TaskUpdate
 from ..services.activity_service import create_activity
-from ..services.notification_service import create_notification, add_watcher
+from ..services.notification_service import add_watcher
+from ..services.task_notification_service import notify_task_assigned, notify_task_status_changed
 from datetime import datetime
 
 router = APIRouter()
@@ -47,7 +48,8 @@ def create_task(
 ) -> Any:
     task = TaskModel(
         **task_in.dict(),
-        workspace_id=workspace.id
+        workspace_id=workspace.id,
+        creator_id=user.id
     )
     db.add(task)
     db.commit()
@@ -59,14 +61,7 @@ def create_task(
     )
     
     if task.assignee_user_id:
-        create_notification(
-            db, workspace.id, task.assignee_user_id, "task_assigned",
-            "Yeni Görev Atandı",
-            f"'{task.title}' görevi size atandı.",
-            actor_user_id=user.id,
-            entity_type="task",
-            entity_id=task.id
-        )
+        notify_task_assigned(db, workspace.id, user.id, task)
         # Auto-watch for assignee
         add_watcher(db, workspace.id, task.assignee_user_id, "task", task.id)
     
@@ -100,17 +95,13 @@ def update_task(
     db.commit()
     db.refresh(task)
     
-    # Notification for new assignee
+    # Notifications
     if task.assignee_user_id and task.assignee_user_id != old_assignee_id:
-        create_notification(
-            db, workspace.id, task.assignee_user_id, "task_assigned",
-            "Yeni Görev Atandı",
-            f"'{task.title}' görevi size atandı.",
-            actor_user_id=user.id,
-            entity_type="task",
-            entity_id=task.id
-        )
+        notify_task_assigned(db, workspace.id, user.id, task)
         add_watcher(db, workspace.id, task.assignee_user_id, "task", task.id)
+        
+    if task.status != old_status:
+        notify_task_status_changed(db, workspace.id, user.id, task, old_status)
         
     if task.status == "completed" and old_status != "completed":
         create_activity(
