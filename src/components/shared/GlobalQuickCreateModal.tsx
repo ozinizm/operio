@@ -17,6 +17,7 @@ export type QuickCreateType = 'customer' | 'offer' | 'job' | 'task' | 'finance' 
 interface GlobalQuickCreateModalProps {
   type: QuickCreateType;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
 const TITLES: Record<string, string> = {
@@ -30,7 +31,7 @@ const TITLES: Record<string, string> = {
   inventory_item: 'Yeni Stok Kalemi',
 };
 
-export function GlobalQuickCreateModal({ type, onClose }: GlobalQuickCreateModalProps) {
+export function GlobalQuickCreateModal({ type, onClose, onSuccess }: GlobalQuickCreateModalProps) {
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [customers, setCustomers] = useState<any[]>([]);
@@ -58,52 +59,51 @@ export function GlobalQuickCreateModal({ type, onClose }: GlobalQuickCreateModal
       if (type === 'customer') {
         if (!form.name) { showToast('Müşteri adı zorunludur.', 'error'); return; }
         created = await customersApi.create({ name: form.name, sector: form.sector, contact_person: form.contact_person, phone: form.phone, email: form.email, status: 'active' });
-        showToast('Müşteri oluşturuldu.', 'success');
-        onClose();
-        navigate(`/customers/${created.id}`);
       } else if (type === 'job') {
         if (!form.title || !form.customer_id) { showToast('Başlık ve müşteri zorunludur.', 'error'); return; }
         created = await jobsApi.create({ title: form.title, customer_id: parseInt(form.customer_id), job_type: form.job_type || 'general', priority: form.priority || 'normal', description: form.description });
-        showToast('İş oluşturuldu.', 'success');
-        onClose();
-        navigate(`/jobs/${created.id}`);
       } else if (type === 'task') {
         if (!form.title) { showToast('Görev başlığı zorunludur.', 'error'); return; }
-        await tasksApi.create({ title: form.title, priority: form.priority || 'normal', status: 'todo', customer_id: form.customer_id ? parseInt(form.customer_id) : null, due_date: form.due_date || null });
-        showToast('Görev oluşturuldu.', 'success');
-        onClose();
-        navigate('/tasks');
+        created = await tasksApi.create({ title: form.title, priority: form.priority || 'normal', status: 'todo', customer_id: form.customer_id ? parseInt(form.customer_id) : null, due_date: form.due_date || null });
       } else if (type === 'finance') {
         if (!form.title || !form.amount) { showToast('Başlık ve tutar zorunludur.', 'error'); return; }
-        await financeApi.createEntry({ title: form.title, type: form.fin_type || 'income', amount: parseFloat(form.amount), status: 'pending', category: form.category || '', customer_id: form.customer_id ? parseInt(form.customer_id) : null });
-        showToast('Finans kaydı oluşturuldu.', 'success');
-        onClose();
-        navigate('/finance');
+        created = await financeApi.createEntry({ title: form.title, type: form.fin_type || 'income', amount: parseFloat(form.amount), status: 'pending', category: form.category || '', customer_id: form.customer_id ? parseInt(form.customer_id) : null });
       } else if (type === 'offer') {
         if (!form.title || !form.customer_id) { showToast('Başlık ve müşteri zorunludur.', 'error'); return; }
-        await offersApi.create({ title: form.title, customer_id: parseInt(form.customer_id), amount: parseFloat(form.amount || '0'), status: 'draft', description: form.description });
-        showToast('Teklif oluşturuldu.', 'success');
-        onClose();
-        navigate('/offers');
+        created = await offersApi.create({ title: form.title, customer_id: parseInt(form.customer_id), amount: parseFloat(form.amount || '0'), status: 'draft', description: form.description });
       } else if (type === 'delivery_service') {
         if (!form.title || !form.customer_id) { showToast('Başlık ve müşteri zorunludur.', 'error'); return; }
-        await deliveryServiceApi.create({ title: form.title, customer_id: parseInt(form.customer_id), type: form.del_type || 'delivery', scheduled_at: form.scheduled_at || new Date().toISOString(), notes: form.notes });
-        showToast('Teslimat/Servis kaydı oluşturuldu.', 'success');
-        onClose();
-        navigate('/delivery-service');
+        created = await deliveryServiceApi.create({ title: form.title, customer_id: parseInt(form.customer_id), type: (form.del_type || 'delivery') as any, scheduled_at: form.scheduled_at || new Date().toISOString(), notes: form.notes });
       } else if (type === 'request_ticket') {
         if (!form.title || !form.customer_id) { showToast('Başlık ve müşteri zorunludur.', 'error'); return; }
-        await requestsApi.create({ title: form.title, customer_id: parseInt(form.customer_id), priority: (form.priority || 'normal') as any, type: (form.req_type || 'complaint') as any, description: form.description });
-        showToast('Şikayet/Talep oluşturuldu.', 'success');
-        onClose();
-        navigate('/complaints');
+        created = await requestsApi.create({ title: form.title, customer_id: parseInt(form.customer_id), priority: (form.priority || 'normal') as any, type: (form.req_type || 'complaint') as any, description: form.description });
       } else if (type === 'inventory_item') {
         if (!form.name || !form.unit) { showToast('Ad ve birim zorunludur.', 'error'); return; }
-        await inventoryApi.create({ ...form, quantity: parseFloat(form.quantity || '0'), min_quantity: parseFloat(form.min_quantity || '0') });
-        showToast('Stok kalemi oluşturuldu.', 'success');
-        onClose();
-        navigate('/inventory');
+        created = await inventoryApi.create({ ...form, quantity: parseFloat(form.quantity || '0'), min_quantity: parseFloat(form.min_quantity || '0') });
       }
+
+      if (type) {
+        showToast(`${TITLES[type]} oluşturuldu.`, 'success');
+      }
+      if (onSuccess) onSuccess();
+      
+      // Dispatch global event for other components to refresh
+      window.dispatchEvent(new CustomEvent('operio:resource-created', { 
+        detail: { type, created } 
+      }));
+
+      onClose();
+      
+      // Navigation logic
+      if (type === 'customer') navigate(`/customers/${created.id}`);
+      else if (type === 'job') navigate(`/jobs/${created.id}`);
+      else if (type === 'task') navigate('/tasks');
+      else if (type === 'finance') navigate('/finance');
+      else if (type === 'offer') navigate('/offers');
+      else if (type === 'delivery_service') navigate('/delivery-service');
+      else if (type === 'request_ticket') navigate('/complaints');
+      else if (type === 'inventory_item') navigate('/inventory');
+
     } catch (err: any) {
       showToast(err.response?.data?.detail || 'İşlem başarısız.', 'error');
     } finally {

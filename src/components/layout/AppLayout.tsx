@@ -267,37 +267,43 @@ export default function AppLayout() {
                   <div className="px-4 py-2 border-b border-border mb-2">
                     <p className="text-[10px] font-bold text-text-body uppercase tracking-wider">Hızlı İşlemler</p>
                   </div>
-                  <button onClick={() => handleQuickAction('customer')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left">
-                    <Users className="w-4 h-4 text-blue-500" /> Yeni Müşteri
-                  </button>
+                  {isModuleEnabled('customers') && (
+                    <button onClick={() => handleQuickAction('customer')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left transition-colors">
+                      <Users className="w-4 h-4 text-blue-500" /> Yeni Müşteri
+                    </button>
+                  )}
                   {isModuleEnabled('offers') && (
-                    <button onClick={() => handleQuickAction('offer')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left">
+                    <button onClick={() => handleQuickAction('offer')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left transition-colors">
                       <FileText className="w-4 h-4 text-indigo-500" /> Yeni Teklif
                     </button>
                   )}
-                  <button onClick={() => handleQuickAction('job')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left">
-                    <Briefcase className="w-4 h-4 text-amber-500" /> Yeni İş / Sipariş
-                  </button>
-                  <button onClick={() => handleQuickAction('task')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left">
-                    <CheckSquare className="w-4 h-4 text-emerald-500" /> Yeni Görev
-                  </button>
+                  {isModuleEnabled('jobs') && (
+                    <button onClick={() => handleQuickAction('job')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left transition-colors">
+                      <Briefcase className="w-4 h-4 text-amber-500" /> Yeni İş / Sipariş
+                    </button>
+                  )}
+                  {isModuleEnabled('tasks') && (
+                    <button onClick={() => handleQuickAction('task')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left transition-colors">
+                      <CheckSquare className="w-4 h-4 text-emerald-500" /> Yeni Görev
+                    </button>
+                  )}
                   {isModuleEnabled('inventory') && (
-                    <button onClick={() => handleQuickAction('inventory_item')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left">
-                      <Package className="w-4 h-4 text-emerald-500" /> Yeni Stok Kalemi
+                    <button onClick={() => handleQuickAction('inventory_item')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left transition-colors">
+                      <Package className="w-4 h-4 text-emerald-600" /> Yeni Stok Kalemi
                     </button>
                   )}
                   {isModuleEnabled('finance') && (
-                    <button onClick={() => handleQuickAction('finance')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left">
+                    <button onClick={() => handleQuickAction('finance')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left transition-colors">
                       <DollarSign className="w-4 h-4 text-teal-500" /> Yeni Finans Kaydı
                     </button>
                   )}
                   {isModuleEnabled('delivery_service') && (
-                    <button onClick={() => handleQuickAction('delivery_service' as any)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left">
+                    <button onClick={() => handleQuickAction('delivery_service')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left transition-colors">
                       <Truck className="w-4 h-4 text-orange-500" /> Yeni Teslimat / Servis
                     </button>
                   )}
                   {isModuleEnabled('complaints_requests') && (
-                    <button onClick={() => handleQuickAction('request_ticket' as any)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left">
+                    <button onClick={() => handleQuickAction('request_ticket')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left transition-colors">
                       <MessageCircle className="w-4 h-4 text-red-500" /> Yeni Şikayet / Talep
                     </button>
                   )}

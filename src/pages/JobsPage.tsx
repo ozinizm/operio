@@ -55,6 +55,15 @@ export default function JobsPage() {
 
   useEffect(() => {
     fetchJobs();
+
+    const handleResourceCreated = (e: any) => {
+      if (e.detail?.type === 'job') {
+        fetchJobs();
+      }
+    };
+
+    window.addEventListener('operio:resource-created', handleResourceCreated);
+    return () => window.removeEventListener('operio:resource-created', handleResourceCreated);
   }, []);
 
   const openStatusModal = (job: any) => {
@@ -299,7 +308,11 @@ export default function JobsPage() {
       </div>
     </Modal>
 
-    <GlobalQuickCreateModal type={quickCreateType} onClose={() => setQuickCreateType(null)} />
+    <GlobalQuickCreateModal 
+      type={quickCreateType} 
+      onClose={() => setQuickCreateType(null)} 
+      onSuccess={fetchJobs}
+    />
     <ConfirmDialog {...confirmProps} />
     </>
   );

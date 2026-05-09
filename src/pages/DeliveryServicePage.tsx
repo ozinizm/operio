@@ -41,6 +41,15 @@ export default function DeliveryServicePage() {
 
   useEffect(() => {
     fetchItems();
+
+    const handleResourceCreated = (e: any) => {
+      if (e.detail?.type === 'delivery_service') {
+        fetchItems();
+      }
+    };
+
+    window.addEventListener('operio:resource-created', handleResourceCreated);
+    return () => window.removeEventListener('operio:resource-created', handleResourceCreated);
   }, [filters.status, filters.type]);
 
   const fetchItems = async () => {

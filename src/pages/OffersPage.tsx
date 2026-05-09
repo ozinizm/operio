@@ -37,6 +37,15 @@ export default function OffersPage() {
   useEffect(() => {
     fetchOffers();
     fetchCustomers();
+
+    const handleResourceCreated = (e: any) => {
+      if (e.detail?.type === 'offer') {
+        fetchOffers();
+      }
+    };
+
+    window.addEventListener('operio:resource-created', handleResourceCreated);
+    return () => window.removeEventListener('operio:resource-created', handleResourceCreated);
   }, []);
 
   const fetchCustomers = async () => {
@@ -348,7 +357,11 @@ export default function OffersPage() {
     </Modal>
 
     {/* Quick Create */}
-    <GlobalQuickCreateModal type={quickCreateType} onClose={() => setQuickCreateType(null)} />
+    <GlobalQuickCreateModal 
+      type={quickCreateType} 
+      onClose={() => setQuickCreateType(null)} 
+      onSuccess={fetchOffers}
+    />
     <ConfirmDialog {...confirmProps} />
     </>
   );

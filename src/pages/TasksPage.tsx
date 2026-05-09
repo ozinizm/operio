@@ -59,6 +59,15 @@ export default function TasksPage() {
 
   useEffect(() => {
     fetchTasks();
+
+    const handleResourceCreated = (e: any) => {
+      if (e.detail?.type === 'task') {
+        fetchTasks();
+      }
+    };
+
+    window.addEventListener('operio:resource-created', handleResourceCreated);
+    return () => window.removeEventListener('operio:resource-created', handleResourceCreated);
   }, []);
 
   const handleToggleComplete = async (task: any) => {
@@ -280,7 +289,11 @@ export default function TasksPage() {
       </form>
     </Modal>
 
-    <GlobalQuickCreateModal type={quickCreateType} onClose={() => setQuickCreateType(null)} />
+    <GlobalQuickCreateModal 
+      type={quickCreateType} 
+      onClose={() => setQuickCreateType(null)} 
+      onSuccess={fetchTasks}
+    />
     <ConfirmDialog {...confirmProps} />
     </>
   );

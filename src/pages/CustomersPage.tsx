@@ -39,6 +39,15 @@ export default function CustomersPage() {
 
   useEffect(() => {
     fetchCustomers();
+
+    const handleResourceCreated = (e: any) => {
+      if (e.detail?.type === 'customer') {
+        fetchCustomers();
+      }
+    };
+
+    window.addEventListener('operio:resource-created', handleResourceCreated);
+    return () => window.removeEventListener('operio:resource-created', handleResourceCreated);
   }, []);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -48,3 +48,10 @@ class SupportRequestSchema(BaseModel):
 class SupportRequestUpdate(BaseModel):
     status: Optional[str] = None
     note: Optional[str] = None
+
+class PlatformUserCreate(BaseModel):
+    full_name: str
+    email: EmailStr
+    password: str
+    role: str = "staff"
+    is_active: bool = True

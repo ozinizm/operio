@@ -18,6 +18,7 @@ import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { WorkspaceHardDeleteModal } from '../../components/platform/WorkspaceHardDeleteModal';
 import { UserPasswordResetModal } from '../../components/platform/UserPasswordResetModal';
+import { PlatformUserCreateModal } from '../../components/platform/PlatformUserCreateModal';
 
 export default function PlatformWorkspaceDetail() {
   const { id } = useParams();
@@ -64,6 +65,8 @@ export default function PlatformWorkspaceDetail() {
     isOpen: false,
     member: null
   });
+
+  const [isUserCreateModalOpen, setIsUserCreateModalOpen] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -207,6 +210,18 @@ export default function PlatformWorkspaceDetail() {
     } catch (error) {
       showToast('Şifre sıfırlanamadı.', 'error');
       throw error; // Rethrow to let modal handle loading state
+    }
+  };
+
+  const handleCreateUser = async (userData: any) => {
+    try {
+      await platformApi.createWorkspaceUser(Number(id), userData);
+      showToast('Kullanıcı başarıyla oluşturuldu.', 'success');
+      fetchMembers(); // Refresh list
+    } catch (error: any) {
+      const message = error.response?.data?.detail || 'Kullanıcı oluşturulamadı.';
+      showToast(message, 'error');
+      throw new Error(message);
     }
   };
 
@@ -487,7 +502,11 @@ export default function PlatformWorkspaceDetail() {
                 <h3 className="text-xl font-bold text-slate-800">İşletme Kullanıcıları</h3>
                 <p className="text-sm text-slate-400 mt-1">Bu işletmeye tanımlı personeller ve yetkileri.</p>
               </div>
-              <Button size="sm" className="gap-2 rounded-xl bg-indigo-600" disabled>
+              <Button 
+                size="sm" 
+                className="gap-2 rounded-xl bg-indigo-600" 
+                onClick={() => setIsUserCreateModalOpen(true)}
+              >
                 <UserPlus className="w-4 h-4" /> Yeni Kullanıcı
               </Button>
             </div>
@@ -894,6 +913,12 @@ export default function PlatformWorkspaceDetail() {
         onConfirm={confirmResetPassword}
         userName={resetPasswordModal.member?.full_name || ''}
         userEmail={resetPasswordModal.member?.email || ''}
+      />
+
+      <PlatformUserCreateModal
+        isOpen={isUserCreateModalOpen}
+        onClose={() => setIsUserCreateModalOpen(false)}
+        onConfirm={handleCreateUser}
       />
     </div>
   );

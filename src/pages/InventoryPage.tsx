@@ -46,6 +46,15 @@ export default function InventoryPage() {
 
   useEffect(() => {
     fetchData();
+
+    const handleResourceCreated = (e: any) => {
+      if (e.detail?.type === 'inventory_item') {
+        fetchData();
+      }
+    };
+
+    window.addEventListener('operio:resource-created', handleResourceCreated);
+    return () => window.removeEventListener('operio:resource-created', handleResourceCreated);
   }, []);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {

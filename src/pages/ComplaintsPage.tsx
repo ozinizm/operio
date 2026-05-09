@@ -40,6 +40,15 @@ export default function ComplaintsPage() {
 
   useEffect(() => {
     fetchItems();
+
+    const handleResourceCreated = (e: any) => {
+      if (e.detail?.type === 'request_ticket') {
+        fetchItems();
+      }
+    };
+
+    window.addEventListener('operio:resource-created', handleResourceCreated);
+    return () => window.removeEventListener('operio:resource-created', handleResourceCreated);
   }, [filters.status, filters.priority, filters.type]);
 
   const fetchItems = async () => {

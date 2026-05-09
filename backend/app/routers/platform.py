@@ -11,7 +11,7 @@ from ..models import (
     PlatformSetting, SupportRequest
 )
 from ..schemas.workspace import Workspace as WorkspaceSchema, WorkspaceCreate, WorkspaceUpdate, PlatformWorkspaceCreate
-from ..schemas.platform import PlatformSettingSchema, PlatformSettingUpdate, SupportRequestSchema, SupportRequestUpdate
+from ..schemas.platform import PlatformSettingSchema, PlatformSettingUpdate, SupportRequestSchema, SupportRequestUpdate, PlatformUserCreate
 from ..core.security import get_password_hash
 from ..services.activity_service import log_audit_event
 from ..services.email_service import send_email, send_email_background
@@ -238,6 +238,73 @@ def read_workspace_members(
                 "created_at": m.created_at
             })
     return result
+
+@router.post("/workspaces/{workspace_id}/users")
+def create_workspace_user(
+    workspace_id: int,
+    user_in: PlatformUserCreate,
+    db: Session = Depends(get_db),
+    current_super_admin: User = Depends(get_current_super_admin),
+) -> Any:
+    # 1. Check workspace
+    workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    
+    # 2. Check if user already exists
+    user = db.query(User).filter(User.email == user_in.email).first()
+    if user:
+        # Check if already a member
+        member = db.query(WorkspaceMember).filter(
+            WorkspaceMember.workspace_id == workspace_id,
+            WorkspaceMember.user_id == user.id
+        ).first()
+        if member:
+            raise HTTPException(status_code=400, detail="Kullanıcı zaten bu işletmeye kayıtlı.")
+    else:
+        # Create new user
+        user = User(
+            email=user_in.email,
+            full_name=user_in.full_name,
+            password_hash=get_password_hash(user_in.password),
+            must_change_password=True,
+            is_active=user_in.is_active
+        )
+        db.add(user)
+        db.flush()
+    
+    # 3. Create membership
+    member = WorkspaceMember(
+        workspace_id=workspace_id,
+        user_id=user.id,
+        role=user_in.role,
+        is_active=user_in.is_active
+    )
+    db.add(member)
+    
+    # 4. Audit Log
+    log_audit_event(
+        db=db,
+        action="user.created",
+        entity_type="user",
+        entity_id=user.id,
+        workspace_id=workspace_id,
+        actor_user=current_super_admin,
+        description=f"İşletmeye yeni kullanıcı eklendi (Platform): {user.email} (Rol: {user_in.role})"
+    )
+    
+    db.commit()
+    
+    return {
+        "id": member.id,
+        "user_id": user.id,
+        "full_name": user.full_name,
+        "email": user.email,
+        "role": member.role,
+        "is_active": member.is_active,
+        "created_at": member.created_at
+    }
+
 
 @router.get("/workspaces/{workspace_id}/modules", response_model=List[Any])
 def read_workspace_modules(
