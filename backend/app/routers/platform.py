@@ -1,5 +1,5 @@
 from typing import Any, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from ..core.database import get_db
@@ -14,7 +14,7 @@ from ..schemas.workspace import Workspace as WorkspaceSchema, WorkspaceCreate, W
 from ..schemas.platform import PlatformSettingSchema, PlatformSettingUpdate, SupportRequestSchema, SupportRequestUpdate
 from ..core.security import get_password_hash
 from ..services.activity_service import log_audit_event
-from ..services.email_service import send_email
+from ..services.email_service import send_email, send_email_background
 from ..services import email_templates
 from ..models import EmailLog
 from datetime import datetime
@@ -50,6 +50,7 @@ def create_workspace_full(
     *,
     db: Session = Depends(get_db),
     current_super_admin: User = Depends(get_current_super_admin),
+    background_tasks: BackgroundTasks,
     workspace_in: PlatformWorkspaceCreate,
 ) -> Any:
     # 1. Check if slug or email exists
@@ -142,8 +143,8 @@ def create_workspace_full(
             email=user.email,
             temporary_password=workspace_in.owner_password
         )
-        send_email(
-            db=db,
+        background_tasks.add_task(
+            send_email_background,
             to=user.email,
             subject=tpl["subject"],
             html_body=tpl["html"],
@@ -397,6 +398,7 @@ def reset_user_password(
     workspace_id: int,
     user_id: int,
     data: ResetPasswordRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_super_admin: User = Depends(get_current_super_admin),
 ):
@@ -422,8 +424,8 @@ def reset_user_password(
         full_name=user.full_name,
         temporary_password=data.temporary_password
     )
-    send_email(
-        db=db,
+    background_tasks.add_task(
+        send_email_background,
         to=user.email,
         subject=tpl["subject"],
         html_body=tpl["html"],

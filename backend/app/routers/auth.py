@@ -1,6 +1,6 @@
 from datetime import timedelta
 from typing import Any
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from ..core import security
@@ -14,7 +14,7 @@ from ..schemas.platform import ForgotPasswordRequest
 from ..schemas.user import User as UserSchema
 from ..schemas.workspace import Workspace as WorkspaceSchema
 from ..services.activity_service import log_audit_event
-from ..services.email_service import send_email
+from ..services.email_service import send_email, send_email_background
 from ..services import email_templates
 from ..core.config import settings
 from datetime import datetime
@@ -164,6 +164,7 @@ def register(
 async def forgot_password(
     data: ForgotPasswordRequest,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     # Save request
@@ -177,11 +178,11 @@ async def forgot_password(
     db.add(new_request)
     db.commit()
     
-    # Send Notification Emails
+    # Send Notification Emails in Background
     # 1. To User
     user_tpl = email_templates.support_request_received_user_notice()
-    send_email(
-        db=db,
+    background_tasks.add_task(
+        send_email_background,
         to=data.email,
         subject=user_tpl["subject"],
         html_body=user_tpl["html"],
@@ -196,8 +197,8 @@ async def forgot_password(
             email=data.email,
             date_str=datetime.now().strftime("%Y-%m-%d %H:%M")
         )
-        send_email(
-            db=db,
+        background_tasks.add_task(
+            send_email_background,
             to=admin_email,
             subject=admin_tpl["subject"],
             html_body=admin_tpl["html"],
