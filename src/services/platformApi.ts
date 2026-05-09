@@ -130,5 +130,12 @@ export const platformApi = {
       headers: getAuthHeader()
     });
     return response.data;
+  },
+  getEmailLogs: async (params?: any) => {
+    const response = await axios.get(`${API_URL}/platform/email-logs`, {
+      params,
+      headers: getAuthHeader()
+    });
+    return response.data;
   }
 };

@@ -11,7 +11,7 @@ import { UserPasswordResetModal } from '../../components/platform/UserPasswordRe
 
 export default function PlatformSettings() {
   const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState<'settings' | 'requests'>('settings');
+  const [activeTab, setActiveTab] = useState<'settings' | 'requests' | 'logs'>('settings');
   const [settings, setSettings] = useState<any>({
     support_email: '',
     support_whatsapp: '',
@@ -22,6 +22,7 @@ export default function PlatformSettings() {
     platform_footer_text: ''
   });
   const [requests, setRequests] = useState<any[]>([]);
+  const [logs, setLogs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -46,9 +47,12 @@ export default function PlatformSettings() {
           settingsObj[s.key] = s.value;
         });
         setSettings((prev: any) => ({ ...prev, ...settingsObj }));
-      } else {
+      } else if (activeTab === 'requests') {
         const data = await platformApi.getSupportRequests();
         setRequests(data);
+      } else if (activeTab === 'logs') {
+        const data = await platformApi.getEmailLogs();
+        setLogs(data.items || []);
       }
     } catch (error) {
       console.error('Failed to fetch platform data:', error);
@@ -155,6 +159,16 @@ export default function PlatformSettings() {
           }`}
         >
           Şifre Yardım Talepleri
+        </button>
+        <button
+          onClick={() => setActiveTab('logs')}
+          className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+            activeTab === 'logs' 
+              ? 'bg-white text-slate-800 shadow-sm' 
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          E-posta Logları
         </button>
       </div>
 
@@ -276,7 +290,7 @@ export default function PlatformSettings() {
             </div>
           </div>
         </div>
-      ) : (
+      ) : activeTab === 'requests' ? (
         <div className="bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden min-h-[400px] flex flex-col">
           {isLoading ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-4 text-slate-400">
@@ -372,6 +386,92 @@ export default function PlatformSettings() {
                           </div>
                         ) : (
                           <span className="text-[11px] font-bold text-slate-300 italic">İşlem Tamamlandı</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden min-h-[400px] flex flex-col">
+          {isLoading ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-4 text-slate-400">
+              <Loader2 className="w-10 h-10 animate-spin" />
+              <p className="text-sm font-bold">Loglar yükleniyor...</p>
+            </div>
+          ) : logs.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-4 text-slate-400 p-12">
+              <div className="w-20 h-20 rounded-full bg-slate-50 flex items-center justify-center">
+                <Mail className="w-10 h-10 opacity-20" />
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-bold text-slate-600">Henüz e-posta logu bulunmuyor</p>
+                <p className="text-sm font-medium">Sistem tarafından gönderilen e-postalar burada listelenecektir.</p>
+              </div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Alıcı / Konu</th>
+                    <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Template / Key</th>
+                    <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Tarih</th>
+                    <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Durum</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {logs.map((log) => (
+                    <tr key={log.id} className="hover:bg-slate-50/50 transition-colors group">
+                      <td className="p-6">
+                        <div>
+                          <p className="text-sm font-bold text-slate-700">{log.recipient_email}</p>
+                          <p className="text-[11px] text-slate-500 font-medium truncate max-w-xs">{log.subject}</p>
+                        </div>
+                      </td>
+                      <td className="p-6">
+                        <span className="px-2 py-1 rounded-lg bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-tight border border-slate-200">
+                          {log.template_key || 'CUSTOM'}
+                        </span>
+                      </td>
+                      <td className="p-6">
+                        <p className="text-sm font-bold text-slate-600">
+                          {new Date(log.created_at).toLocaleDateString('tr-TR')}
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-medium">
+                          {new Date(log.created_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </td>
+                      <td className="p-6">
+                        {log.status === 'sent' && (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-tight bg-emerald-50 text-emerald-600 border border-emerald-100">
+                            GÖNDERİLDİ
+                          </span>
+                        )}
+                        {log.status === 'skipped' && (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-tight bg-slate-100 text-slate-500">
+                            ATLADI (SMTP KAPALI)
+                          </span>
+                        )}
+                        {log.status === 'failed' && (
+                          <div className="group relative inline-block">
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-tight bg-rose-50 text-rose-600 border border-rose-100 cursor-help">
+                              HATA OLUŞTU
+                            </span>
+                            {log.error_message && (
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                                {log.error_message}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {log.status === 'pending' && (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-tight bg-amber-50 text-amber-600 animate-pulse">
+                            BEKLİYOR
+                          </span>
                         )}
                       </td>
                     </tr>
