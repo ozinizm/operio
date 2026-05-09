@@ -62,65 +62,73 @@ export default function PlatformDashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {statCards.map((stat, index) => (
-          <div key={index} className={`bg-white p-8 rounded-[32px] border ${stat.border} shadow-sm hover:shadow-xl hover:shadow-indigo-100/50 transition-all group relative overflow-hidden`}>
-            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-indigo-50/50 to-transparent rounded-bl-full -mr-12 -mt-12 transition-transform group-hover:scale-150 duration-700" />
+          <div key={index} className={`bg-white p-8 rounded-[40px] border ${stat.border} shadow-sm hover:shadow-2xl hover:shadow-indigo-100/40 transition-all group relative overflow-hidden active:scale-[0.98]`}>
+            <div className={`absolute top-0 right-0 w-32 h-32 ${stat.bg} rounded-bl-full -mr-16 -mt-16 transition-transform group-hover:scale-110 duration-700 opacity-40`} />
             <div className="flex items-start justify-between relative z-10">
-              <div className={`p-4 rounded-2xl ${stat.bg} ${stat.color} shadow-sm`}>
+              <div className={`w-14 h-14 rounded-2xl ${stat.bg} ${stat.color} shadow-sm flex items-center justify-center border border-white`}>
                 <stat.icon className="w-6 h-6" />
               </div>
-              <div className="flex items-center gap-1 text-emerald-600 text-[10px] font-black bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100 uppercase tracking-tighter">
-                <ArrowUpRight className="w-3 h-3" />
-                <span>%0.0</span>
+              <div className="flex items-center gap-1.5 text-emerald-600 text-[10px] font-black bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-100 uppercase tracking-widest">
+                <ArrowUpRight className="w-3.5 h-3.5" />
+                <span>Stabil</span>
               </div>
             </div>
-            <div className="mt-6 relative z-10">
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{stat.label}</p>
-              <h3 className="text-4xl font-jakarta font-black text-slate-800 mt-1">{stat.value}</h3>
+            <div className="mt-8 relative z-10">
+              <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{stat.label}</p>
+              <h3 className="text-5xl font-jakarta font-black text-slate-900 mt-2 tracking-tighter">{stat.value}</h3>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-white p-10 rounded-[40px] border border-slate-200 shadow-xl shadow-slate-100/50">
-          <div className="flex items-center justify-between mb-10">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-20">
+        <div className="lg:col-span-2 bg-white p-10 rounded-[48px] border border-slate-100 shadow-xl shadow-slate-100/50">
+          <div className="flex items-center justify-between mb-12">
             <div>
-              <h2 className="text-2xl font-jakarta font-bold text-slate-800">Sektörel Dağılım</h2>
-              <p className="text-sm text-slate-400 font-medium mt-1">İşletmelerin faaliyet gösterdiği ana sektörler.</p>
+              <h2 className="text-2xl font-jakarta font-black text-slate-900 tracking-tight">Sektörel Dağılım Analizi</h2>
+              <p className="text-sm text-slate-400 font-medium mt-1">İşletmelerin faaliyet gösterdiği ana segmentler.</p>
             </div>
-            <div className="p-3 bg-slate-50 rounded-2xl text-slate-400">
-              <TrendingUp className="w-5 h-5" />
+            <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 border border-slate-100">
+              <TrendingUp className="w-6 h-6" />
             </div>
           </div>
           <div className="space-y-6">
-             <div className="flex flex-col items-center justify-center py-16 text-center">
-                <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mb-4">
-                  <Database className="w-8 h-8 text-indigo-300" />
+             <div className="flex flex-col items-center justify-center py-20 text-center">
+                <div className="w-24 h-24 bg-indigo-50/50 rounded-[32px] flex items-center justify-center mb-6 shadow-inner">
+                  <Database className="w-10 h-10 text-indigo-300" />
                 </div>
-                <p className="text-slate-500 font-bold">Veri Analizi Bekleniyor</p>
-                <p className="text-xs text-slate-400 max-w-xs mt-2">Platform genelindeki sektör verileri yeterli yoğunluğa ulaştığında burada grafiksel olarak gösterilecektir.</p>
+                <h4 className="text-lg font-bold text-slate-700">Veri Analizi Hazırlanıyor</h4>
+                <p className="text-xs text-slate-400 max-w-[280px] mt-2 leading-relaxed font-medium">
+                  Sektörel dağılım verileri yeterli örnekleme ulaştığında gerçek zamanlı grafikler burada aktif olacaktır.
+                </p>
              </div>
           </div>
         </div>
 
-        <div className="bg-indigo-900 p-10 rounded-[40px] shadow-2xl shadow-indigo-200 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-800/30 rounded-full -mr-32 -mt-32 blur-3xl" />
-          <div className="relative z-10">
-            <div className="flex items-center justify-between mb-10">
-              <h2 className="text-2xl font-jakarta font-bold text-white">Son Kurulumlar</h2>
-              <Activity className="w-5 h-5 text-indigo-300" />
-            </div>
-            <div className="space-y-6">
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mb-4 backdrop-blur-md">
-                  <ShieldCheck className="w-8 h-8 text-indigo-200" />
-                </div>
-                <p className="text-indigo-100 font-bold">Yeni Kurulum Yok</p>
-                <p className="text-xs text-indigo-300/70 mt-2">Son 24 saat içerisinde yeni bir işletme kurulumu gerçekleştirilmedi.</p>
+        <div className="bg-slate-900 p-10 rounded-[48px] shadow-2xl shadow-slate-200 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-primary/20 rounded-full -mr-40 -mt-40 blur-[100px] opacity-50" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/10 rounded-full -ml-32 -mb-32 blur-[80px] opacity-30" />
+          
+          <div className="relative z-10 h-full flex flex-col">
+            <div className="flex items-center justify-between mb-12">
+              <h2 className="text-2xl font-jakarta font-black text-white tracking-tight">Aktivite Akışı</h2>
+              <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-indigo-300 backdrop-blur-md">
+                <Activity className="w-5 h-5" />
               </div>
             </div>
-            <button className="w-full mt-8 py-4 bg-white text-indigo-900 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-indigo-50 transition-colors shadow-lg">
-               Sistem Raporu Al
+            
+            <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
+              <div className="w-20 h-20 bg-white/5 rounded-[32px] flex items-center justify-center mb-6 border border-white/10 backdrop-blur-sm">
+                <ShieldCheck className="w-10 h-10 text-indigo-400/50" />
+              </div>
+              <p className="text-white font-black text-sm uppercase tracking-widest">Sistem Stabil</p>
+              <p className="text-xs text-slate-400 mt-2 font-medium max-w-[200px] leading-relaxed">
+                Son 24 saat içerisinde herhangi bir kritik olay veya yeni kurulum kaydedilmedi.
+              </p>
+            </div>
+
+            <button className="w-full mt-12 py-5 bg-white text-slate-900 rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all shadow-xl active:scale-[0.98]">
+               Gelişmiş Sistem Raporu
             </button>
           </div>
         </div>

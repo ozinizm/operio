@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { 
   Plus, Search, Filter, Globe, 
-  Eye, Edit2, 
+  Eye, Loader2, Mail,
   CheckCircle2, Clock, AlertTriangle, ShieldOff
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -129,73 +129,97 @@ export default function PlatformWorkspaces() {
         </div>
 
         <div className="overflow-x-auto no-scrollbar">
-          <table className="w-full text-left">
+          <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/30">
-                <th className="px-8 py-5 text-[10px] font-bold text-indigo-400 uppercase tracking-widest">İşletme Adı</th>
-                <th className="px-8 py-5 text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Sektör</th>
-                <th className="px-8 py-5 text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Durum</th>
-                <th className="px-8 py-5 text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Yetkili</th>
-                <th className="px-8 py-5 text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Plan</th>
-                <th className="px-8 py-5 text-[10px] font-bold text-indigo-400 uppercase tracking-widest text-right">İşlemler</th>
+              <tr className="border-b border-slate-100 bg-slate-50/50">
+                <th className="px-8 py-5 text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">İşletme Adı</th>
+                <th className="px-8 py-5 text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">Sektör</th>
+                <th className="px-8 py-5 text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">Durum</th>
+                <th className="px-8 py-5 text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">Yetkili</th>
+                <th className="px-8 py-5 text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">Plan</th>
+                <th className="px-8 py-5 text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] text-right">İşlemler</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-8 py-20 text-center text-slate-400 font-medium italic">Yükleniyor...</td>
+                  <td colSpan={6} className="px-8 py-24 text-center">
+                    <div className="flex flex-col items-center gap-4">
+                      <Loader2 className="w-10 h-10 animate-spin text-indigo-600/30" />
+                      <p className="text-sm font-bold text-slate-400 italic">İşletmeler yükleniyor...</p>
+                    </div>
+                  </td>
                 </tr>
               ) : filteredWorkspaces.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-8 py-20 text-center text-slate-400 font-medium italic">İşletme bulunamadı.</td>
+                  <td colSpan={6} className="px-8 py-24 text-center">
+                    <div className="flex flex-col items-center gap-4 max-w-xs mx-auto">
+                      <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center text-slate-200">
+                        <Globe className="w-10 h-10" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-lg font-bold text-slate-600">İşletme Bulunamadı</p>
+                        <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                          Aradığınız kriterlere uygun bir işletme bulunamadı. Lütfen filtreleri kontrol edin.
+                        </p>
+                      </div>
+                      <button 
+                        onClick={() => { setSearchQuery(''); setStatusFilter('all'); }}
+                        className="mt-2 text-xs font-black text-indigo-600 uppercase tracking-widest hover:underline"
+                      >
+                        Filtreleri Temizle
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ) : (
                 filteredWorkspaces.map((w) => (
-                  <tr key={w.id} className="hover:bg-indigo-50/30 transition-colors group">
-                    <td className="px-8 py-5">
+                  <tr key={w.id} className="hover:bg-slate-50/80 transition-all group">
+                    <td className="px-8 py-6">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg font-bold shadow-sm border border-indigo-100 group-hover:scale-110 transition-transform">
+                        <div className="w-14 h-14 rounded-2xl bg-white border-2 border-slate-100 text-indigo-600 flex items-center justify-center text-xl font-black shadow-sm group-hover:border-indigo-200 group-hover:shadow-indigo-100 transition-all duration-500">
                           {w.name.charAt(0)}
                         </div>
                         <div>
-                          <p className="font-bold text-slate-800">{w.name}</p>
-                          <p className="text-xs text-slate-400 font-medium mt-0.5 tracking-tight italic">/{w.slug}</p>
+                          <p className="font-extrabold text-slate-800 group-hover:text-indigo-600 transition-colors">{w.name}</p>
+                          <p className="text-[10px] text-slate-400 font-black mt-1 tracking-widest uppercase italic bg-slate-50 w-fit px-1.5 py-0.5 rounded">/{w.slug}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-8 py-5 text-sm font-bold text-slate-600">{w.sector || '-'}</td>
-                    <td className="px-8 py-5">{getStatusBadge(w.status)}</td>
-                    <td className="px-8 py-5">
-                      <p className="text-sm font-bold text-slate-800">{w.primary_contact_name || '-'}</p>
-                      <p className="text-xs text-slate-400 font-medium">{w.primary_contact_email}</p>
-                    </td>
-                    <td className="px-8 py-5">
-                      <span className="uppercase text-[10px] font-black text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100 tracking-tighter">
-                        {w.plan}
+                    <td className="px-8 py-6">
+                      <span className="text-xs font-bold text-slate-500 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
+                        {w.sector || 'Belirtilmedi'}
                       </span>
                     </td>
-                    <td className="px-8 py-5 text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0">
+                    <td className="px-8 py-6">{getStatusBadge(w.status)}</td>
+                    <td className="px-8 py-6">
+                      <div className="space-y-1">
+                        <p className="text-sm font-extrabold text-slate-800">{w.primary_contact_name || '-'}</p>
+                        <p className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
+                          <Mail className="w-3 h-3" /> {w.primary_contact_email}
+                        </p>
+                      </div>
+                    </td>
+                    <td className="px-8 py-6">
+                      <span className="inline-flex items-center px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest bg-indigo-50 text-indigo-600 border border-indigo-100">
+                        {w.plan || 'STANDART'}
+                      </span>
+                    </td>
+                    <td className="px-8 py-6 text-right">
+                      <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-x-4 group-hover:translate-x-0">
                         <button 
                           onClick={() => navigate(`/platform/workspaces/${w.id}`)}
-                          className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-white hover:shadow-md rounded-xl transition-all" 
-                          title="Detay"
+                          className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-indigo-600 bg-white border border-slate-100 hover:border-indigo-200 shadow-sm hover:shadow-indigo-100 rounded-xl transition-all" 
+                          title="Görüntüle"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
                         <button 
-                          onClick={() => navigate(`/platform/workspaces/${w.id}`)}
-                          className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-white hover:shadow-md rounded-xl transition-all" 
-                          title="Düzenle"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button 
                           onClick={() => handleStatusChangeClick(w)}
-                          className={`p-2.5 rounded-xl transition-all ${
+                          className={`w-10 h-10 flex items-center justify-center border shadow-sm rounded-xl transition-all ${
                             w.status === 'suspended' 
-                              ? 'text-green-500 hover:bg-green-50 hover:shadow-md' 
-                              : 'text-red-400 hover:text-red-600 hover:bg-white hover:shadow-md'
+                              ? 'text-emerald-500 bg-white border-emerald-100 hover:bg-emerald-50 hover:shadow-emerald-100' 
+                              : 'text-rose-400 bg-white border-slate-100 hover:text-rose-600 hover:border-rose-100 hover:bg-rose-50 hover:shadow-rose-100'
                           }`}
                           title={w.status === 'suspended' ? 'Aktifleştir' : 'Askıya Al'}
                         >

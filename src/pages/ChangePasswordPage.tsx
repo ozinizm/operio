@@ -65,66 +65,100 @@ export default function ChangePasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-10 flex flex-col items-center">
-          <BrandLogo size="lg" className="mb-6" />
-          <h1 className="text-2xl font-jakarta font-bold text-slate-800">Şifre Değiştir</h1>
-          <p className="text-slate-500 mt-2 text-sm">Güvenliğiniz için geçici şifrenizi değiştirmeniz gerekiyor.</p>
+    <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-6 sm:p-10 relative overflow-hidden">
+      {/* Background Ornaments */}
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full -mr-64 -mt-64 blur-3xl" />
+      <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-indigo-500/5 rounded-full -ml-64 -mb-64 blur-3xl" />
+
+      <div className="w-full max-w-md relative z-10">
+        <div className="text-center mb-8 flex flex-col items-center">
+          <BrandLogo size="lg" className="mb-8 scale-110" />
+          
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-full text-xs font-black uppercase tracking-widest mb-6 border border-indigo-100 shadow-sm animate-in fade-in slide-in-from-top-4">
+            <Lock className="w-3.5 h-3.5" /> Güvenlik Protokolü
+          </div>
+
+          <h1 className="text-3xl font-jakarta font-black text-slate-900 tracking-tight mb-3">Hesabınızı Güvenceye Alın</h1>
+          <p className="text-slate-500 font-medium text-sm max-w-[280px] leading-relaxed mx-auto">
+            Sisteme ilk girişiniz olduğu için şifrenizi güncellemeniz gerekmektedir.
+          </p>
         </div>
 
-        <div className="bg-white border border-slate-200 p-8 rounded-[32px] shadow-xl shadow-slate-200/50">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <Input 
-              label="Mevcut Şifre" 
-              type="password" 
-              placeholder="••••••••" 
-              icon={<Lock className="w-4 h-4" />}
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              required
-              disabled={isSubmitting}
-            />
+        <div className="bg-white border border-slate-100 p-8 sm:p-10 rounded-[48px] shadow-2xl shadow-slate-200/50">
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="space-y-6">
+              <Input 
+                label="Mevcut (Geçici) Şifre" 
+                type="password" 
+                placeholder="Size iletilen şifreyi girin" 
+                icon={<Lock className="w-4 h-4" />}
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                required
+                disabled={isSubmitting}
+                className="bg-slate-50/50 border-slate-100"
+              />
 
-            <div className="h-px bg-slate-100 my-2" />
+              <div className="h-px bg-gradient-to-r from-transparent via-slate-100 to-transparent my-2" />
 
-            <Input 
-              label="Yeni Şifre" 
-              type="password" 
-              placeholder="••••••••" 
-              icon={<ShieldCheck className="w-4 h-4" />}
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-              disabled={isSubmitting}
-            />
+              <Input 
+                label="Yeni Güçlü Şifre" 
+                type="password" 
+                placeholder="••••••••" 
+                icon={<ShieldCheck className="w-4 h-4" />}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                disabled={isSubmitting}
+                className="bg-slate-50/50 border-slate-100"
+              />
 
-            <Input 
-              label="Yeni Şifre Tekrar" 
-              type="password" 
-              placeholder="••••••••" 
-              icon={<ShieldCheck className="w-4 h-4" />}
-              value={newPasswordConfirm}
-              onChange={(e) => setNewPasswordConfirm(e.target.value)}
-              required
-              disabled={isSubmitting}
-            />
+              <Input 
+                label="Yeni Şifre Tekrar" 
+                type="password" 
+                placeholder="••••••••" 
+                icon={<ShieldCheck className="w-4 h-4" />}
+                value={newPasswordConfirm}
+                onChange={(e) => setNewPasswordConfirm(e.target.value)}
+                required
+                disabled={isSubmitting}
+                className="bg-slate-50/50 border-slate-100"
+              />
+            </div>
 
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-2">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Şifre Gereksinimleri</p>
-              <div className="grid grid-cols-2 gap-2">
-                <RequirementItem text="En az 8 karakter" met={newPassword.length >= 8} />
-                <RequirementItem text="Büyük/Küçük harf" met={/[a-z]/.test(newPassword) && /[A-Z]/.test(newPassword)} />
-                <RequirementItem text="Rakam içerikli" met={/[0-9]/.test(newPassword)} />
-                <RequirementItem text="Özel karakter" met={/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)} />
+            <div className="bg-slate-50 p-6 rounded-[32px] border border-slate-100 space-y-4">
+              <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-1">Şifre Güvenlik Kriterleri</p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                <RequirementItem text="Min. 8 karakter" met={newPassword.length >= 8} />
+                <RequirementItem text="Büyük/Küçük" met={/[a-z]/.test(newPassword) && /[A-Z]/.test(newPassword)} />
+                <RequirementItem text="Rakam" met={/[0-9]/.test(newPassword)} />
+                <RequirementItem text="Özel Karakter" met={/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)} />
               </div>
             </div>
 
-            <Button type="submit" className="w-full py-3 text-base shadow-lg shadow-primary/20" disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Şifreyi Güncelle <ChevronRight className="w-5 h-5 ml-2" /></>}
+            <Button 
+              type="submit" 
+              className="w-full h-16 text-lg font-black uppercase tracking-widest shadow-2xl shadow-primary/30 rounded-[24px] bg-primary hover:bg-primary/90 active:scale-[0.98] transition-all" 
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                  <span>Güncelleniyor...</span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center gap-2">
+                  <span>Şifreyi Kaydet</span>
+                  <ChevronRight className="w-5 h-5" />
+                </div>
+              )}
             </Button>
           </form>
         </div>
+
+        <p className="text-center mt-10 text-[11px] text-slate-400 font-medium">
+          Operio Güvenlik Altyapısı © 2026
+        </p>
       </div>
     </div>
   );

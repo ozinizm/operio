@@ -34,6 +34,7 @@ export default function PlatformWorkspaceCreate() {
     active_modules: [] as string[]
   });
 
+  const [successData, setSuccessData] = useState<any>(null);
   const [isManuallyEditingSlug, setIsManuallyEditingSlug] = useState(false);
 
   const slugify = (text: string) => {
@@ -74,9 +75,12 @@ export default function PlatformWorkspaceCreate() {
 
     setIsSubmitting(true);
     try {
-      await platformApi.createWorkspace(formData);
+      const response = await platformApi.createWorkspace(formData);
+      setSuccessData({
+        ...formData,
+        id: response.id
+      });
       showToast('İşletme başarıyla oluşturuldu.', 'success');
-      navigate('/platform/workspaces');
     } catch (error: any) {
       console.error('Failed to create workspace:', error);
       showToast(error.response?.data?.detail || 'İşletme oluşturulurken bir hata oluştu.', 'error');
@@ -93,6 +97,69 @@ export default function PlatformWorkspaceCreate() {
         : [...prev.active_modules, key]
     }));
   };
+
+  if (successData) {
+    return (
+      <div className="max-w-3xl mx-auto space-y-8 animate-in zoom-in-95 duration-500 py-10">
+        <div className="bg-white p-12 rounded-[48px] border border-slate-100 shadow-2xl shadow-indigo-100/50 text-center space-y-8 relative overflow-hidden">
+          <div className="absolute top-0 inset-x-0 h-2 bg-gradient-to-r from-indigo-500 via-primary to-emerald-500" />
+          
+          <div className="w-24 h-24 bg-emerald-50 text-emerald-500 rounded-[32px] flex items-center justify-center mx-auto mb-6 shadow-inner">
+            <Check className="w-12 h-12" />
+          </div>
+
+          <div className="space-y-3">
+            <h1 className="text-4xl font-jakarta font-black text-slate-900 tracking-tight">Kurulum Başarılı!</h1>
+            <p className="text-slate-500 font-medium text-lg">
+              <span className="font-bold text-indigo-600">{successData.name}</span> işletmesi ve yönetici hesabı aktif edildi.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+            <div className="bg-slate-50 p-6 rounded-[32px] border border-slate-100 space-y-1">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Yönetici E-posta</p>
+              <p className="text-sm font-bold text-slate-700">{successData.owner_email}</p>
+            </div>
+            <div className="bg-slate-50 p-6 rounded-[32px] border border-slate-100 space-y-1">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Geçici Şifre</p>
+              <p className="text-sm font-bold text-indigo-600 font-mono tracking-wider">{successData.owner_password}</p>
+            </div>
+          </div>
+
+          <div className="bg-indigo-50/50 p-6 rounded-[32px] border border-indigo-100 flex gap-4 text-left">
+            <Info className="w-6 h-6 text-indigo-500 shrink-0" />
+            <p className="text-xs text-indigo-800 font-bold leading-relaxed">
+              Kullanıcı sisteme ilk girdiğinde bu geçici şifreyi kullanacak ve otomatik olarak şifre değiştirme ekranına yönlendirilecektir.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 pt-4">
+            <button
+              onClick={() => navigate(`/platform/workspaces/${successData.id}`)}
+              className="flex-1 h-16 bg-slate-900 text-white rounded-[24px] font-black text-sm uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
+            >
+              İşletme Detayına Git
+            </button>
+            <button
+              onClick={() => {
+                setSuccessData(null);
+                setFormData({
+                  name: '', slug: '', sector: '', status: 'pilot',
+                  owner_name: '', owner_email: '',
+                  owner_password: 'Operio' + Math.floor(Math.random() * 9000 + 1000) + '!',
+                  active_modules: []
+                });
+                setIsManuallyEditingSlug(false);
+              }}
+              className="flex-1 h-16 bg-white border-2 border-slate-200 text-slate-600 rounded-[24px] font-black text-sm uppercase tracking-widest hover:bg-slate-50 transition-all"
+            >
+              Yeni İşletme Kur
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
@@ -209,6 +276,10 @@ export default function PlatformWorkspaceCreate() {
                     onChange={(e) => setFormData({...formData, owner_email: e.target.value})}
                   />
                 </div>
+                <div className="flex items-center gap-1.5 mt-2 ml-1">
+                  <Info className="w-3 h-3 text-slate-400" />
+                  <p className="text-[10px] text-slate-400 font-bold">Kullanıcı mevcutsa yeni şifre ile ilişkilendirilir.</p>
+                </div>
               </div>
               <div className="space-y-2 md:col-span-2">
                 <label className="text-sm font-bold text-slate-700 ml-1">Geçici Sistem Şifresi *</label>
@@ -233,7 +304,7 @@ export default function PlatformWorkspaceCreate() {
                 </div>
                 <div className="flex items-center gap-2 mt-3 px-1">
                   <Info className="w-3.5 h-3.5 text-indigo-500" />
-                  <p className="text-[11px] text-slate-400 font-medium">Kullanıcı ilk girişte bu şifreyi kullanacak ve değiştirmesi önerilecektir.</p>
+                  <p className="text-[11px] text-slate-400 font-medium">Kullanıcı ilk girişte bu şifreyi kullanacak ve değiştirmesi gerekecektir.</p>
                 </div>
               </div>
             </div>
@@ -299,7 +370,7 @@ export default function PlatformWorkspaceCreate() {
               <div className="space-y-1">
                 <p className="text-xs font-bold text-amber-900">Dikkat</p>
                 <p className="text-[10px] text-amber-800 font-medium leading-relaxed">
-                  Bu işlem yeni bir işletme çalışma alanı, yönetici hesabı ve seçilen modül ayarlarını oluşturur. İşlem tamamlandıktan sonra işletme panelden düzenlenebilir, askıya alınabilir veya arşivlenebilir.
+                  Bu işlem yeni bir işletme çalışma alanı, yönetici hesabı ve seçilen modül ayarlarını oluşturur.
                 </p>
               </div>
             </div>

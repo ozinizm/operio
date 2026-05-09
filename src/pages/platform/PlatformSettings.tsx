@@ -253,22 +253,24 @@ export default function PlatformSettings() {
           </div>
 
           <div className="space-y-6">
-            <div className="bg-slate-900 p-8 rounded-[32px] text-white space-y-6 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-full -mr-16 -mt-16 blur-2xl" />
+            <div className="bg-slate-900 p-8 rounded-[32px] text-white space-y-6 relative overflow-hidden shadow-2xl shadow-slate-200">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/30 rounded-full -mr-16 -mt-16 blur-3xl opacity-50" />
               <div className="relative z-10">
-                <Shield className="w-10 h-10 text-primary mb-4" />
-                <h3 className="text-xl font-jakarta font-bold mb-2">Güvenlik Hatırlatması</h3>
-                <p className="text-xs text-slate-400 leading-relaxed font-medium">
+                <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-primary mb-5 backdrop-blur-md border border-white/10">
+                  <Shield className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-jakarta font-extrabold mb-3 tracking-tight">Güvenlik Hatırlatması</h3>
+                <p className="text-[13px] text-slate-300 leading-relaxed font-medium">
                   Buradaki bilgiler tüm kullanıcıların erişimine açıktır. Lütfen API key, şifre veya hassas verileri bu alanlara girmeyin.
                 </p>
               </div>
             </div>
 
-            <div className="bg-amber-50 p-6 rounded-[32px] border border-amber-100 space-y-4">
-              <div className="flex items-center gap-2 text-amber-600 font-bold text-xs uppercase">
+            <div className="bg-amber-50 p-8 rounded-[32px] border border-amber-100 space-y-4 shadow-sm">
+              <div className="flex items-center gap-2 text-amber-700 font-bold text-xs uppercase tracking-widest">
                 <Info className="w-4 h-4" /> Sistem Bilgisi
               </div>
-              <p className="text-[11px] text-amber-800 font-medium leading-relaxed">
+              <p className="text-[12px] text-amber-900 font-bold leading-relaxed">
                 Ayarlar güncellendiğinde tüm aktif oturumlar için dinamik olarak yenilenecektir. Cache temizliği gerekmez.
               </p>
             </div>
