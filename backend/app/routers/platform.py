@@ -14,6 +14,9 @@ from ..schemas.workspace import Workspace as WorkspaceSchema, WorkspaceCreate, W
 from ..schemas.platform import PlatformSettingSchema, PlatformSettingUpdate, SupportRequestSchema, SupportRequestUpdate
 from ..core.security import get_password_hash
 from ..services.activity_service import log_audit_event
+from ..services.email_service import send_email
+from ..services import email_templates
+from ..models import EmailLog
 from datetime import datetime
 from pydantic import BaseModel
 from fastapi.responses import JSONResponse
@@ -132,6 +135,24 @@ def create_workspace_full(
 
         db.commit()
         db.refresh(workspace)
+        
+        # 7. Send Welcome Email
+        tpl = email_templates.welcome_workspace_admin(
+            full_name=user.full_name,
+            email=user.email,
+            temporary_password=workspace_in.owner_password
+        )
+        send_email(
+            db=db,
+            to=user.email,
+            subject=tpl["subject"],
+            html_body=tpl["html"],
+            text_body=tpl["text"],
+            template_key="welcome_workspace_admin",
+            workspace_id=workspace.id,
+            user_id=user.id
+        )
+
         return workspace
     except Exception as e:
         db.rollback()
@@ -395,6 +416,22 @@ def reset_user_password(
     user.password_hash = get_password_hash(data.temporary_password)
     user.must_change_password = True
     db.commit()
+
+    # Send Email Notification
+    tpl = email_templates.password_reset_by_admin(
+        full_name=user.full_name,
+        temporary_password=data.temporary_password
+    )
+    send_email(
+        db=db,
+        to=user.email,
+        subject=tpl["subject"],
+        html_body=tpl["html"],
+        text_body=tpl["text"],
+        template_key="password_reset_by_admin",
+        workspace_id=workspace_id,
+        user_id=user.id
+    )
     
     log_audit_event(
         db=db,
@@ -678,4 +715,42 @@ def search_user_by_email(
         "is_active": user.is_active,
         "is_super_admin": user.is_super_admin,
         "workspaces": workspaces
+    }
+
+@router.get("/email-logs")
+def get_email_logs(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_super_admin),
+    status: Optional[str] = None,
+    template_key: Optional[str] = None,
+    recipient_email: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0
+):
+    query = db.query(EmailLog)
+    
+    if status:
+        query = query.filter(EmailLog.status == status)
+    if template_key:
+        query = query.filter(EmailLog.template_key == template_key)
+    if recipient_email:
+        query = query.filter(EmailLog.recipient_email.ilike(f"%{recipient_email}%"))
+        
+    total = query.count()
+    logs = query.order_by(EmailLog.created_at.desc()).offset(offset).limit(limit).all()
+    
+    return {
+        "total": total,
+        "items": [
+            {
+                "id": log.id,
+                "recipient_email": log.recipient_email,
+                "subject": log.subject,
+                "template_key": log.template_key,
+                "status": log.status,
+                "error_message": log.error_message,
+                "created_at": log.created_at,
+                "sent_at": log.sent_at
+            } for log in logs
+        ]
     }

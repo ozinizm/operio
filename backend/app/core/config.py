@@ -20,6 +20,17 @@ class Settings(BaseSettings):
     OPERIO_SUPERADMIN_PASSWORD: str = "Operio123!"
     OPERIO_SUPERADMIN_NAME: str = "Fikir Super Admin"
     OPERIO_FORCE_SUPERADMIN_PASSWORD_RESET: bool = False
+    
+    # SMTP Settings
+    SMTP_ENABLED: bool = False
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = "noreply@operio.dev"
+    SMTP_FROM_NAME: str = "Operio"
+    SMTP_USE_TLS: bool = True
+    ADMIN_NOTIFICATION_EMAIL: str = ""
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

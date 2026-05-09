@@ -14,6 +14,9 @@ from ..schemas.platform import ForgotPasswordRequest
 from ..schemas.user import User as UserSchema
 from ..schemas.workspace import Workspace as WorkspaceSchema
 from ..services.activity_service import log_audit_event
+from ..services.email_service import send_email
+from ..services import email_templates
+from ..core.config import settings
 from datetime import datetime
 import re
 
@@ -174,6 +177,34 @@ async def forgot_password(
     db.add(new_request)
     db.commit()
     
+    # Send Notification Emails
+    # 1. To User
+    user_tpl = email_templates.support_request_received_user_notice()
+    send_email(
+        db=db,
+        to=data.email,
+        subject=user_tpl["subject"],
+        html_body=user_tpl["html"],
+        text_body=user_tpl["text"],
+        template_key="forgot_password_user_notice"
+    )
+    
+    # 2. To Admin
+    admin_email = settings.ADMIN_NOTIFICATION_EMAIL or settings.OPERIO_SUPERADMIN_EMAIL
+    if admin_email:
+        admin_tpl = email_templates.forgot_password_request_admin_notice(
+            email=data.email,
+            date_str=datetime.now().strftime("%Y-%m-%d %H:%M")
+        )
+        send_email(
+            db=db,
+            to=admin_email,
+            subject=admin_tpl["subject"],
+            html_body=admin_tpl["html"],
+            text_body=admin_tpl["text"],
+            template_key="forgot_password_admin_notice"
+        )
+
     # Always return success message to prevent enumeration
     return {
         "message": "Şifre sıfırlama talebiniz alındı. Hesabınız doğrulandıktan sonra işletme yöneticiniz veya Operio destek ekibi sizinle iletişime geçecektir."
