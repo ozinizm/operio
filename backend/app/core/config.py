@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     OPERIO_SUPERADMIN_EMAIL: str = "superadmin@operio.dev"
     OPERIO_SUPERADMIN_PASSWORD: str = "Operio123!"
     OPERIO_SUPERADMIN_NAME: str = "Fikir Super Admin"
+    OPERIO_FORCE_SUPERADMIN_PASSWORD_RESET: bool = False
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

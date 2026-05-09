@@ -1,8 +1,13 @@
 import os
 import sys
 import subprocess
+from app.core.config import settings
 
 def ensure_seed():
+    if settings.APP_ENV == "production":
+        print("Production environment detected. Skipping demo seed for safety.")
+        return
+
     db_path = "operio_demo.db"
     
     # Check if database file exists

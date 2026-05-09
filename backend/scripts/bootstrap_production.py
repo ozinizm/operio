@@ -23,15 +23,26 @@ def bootstrap():
     
     db = SessionLocal()
     try:
-        # 1. Ensure Super Admin exists
+        # 1. Configuration Check
         email = settings.OPERIO_SUPERADMIN_EMAIL
         password = settings.OPERIO_SUPERADMIN_PASSWORD
         name = settings.OPERIO_SUPERADMIN_NAME
+        force_reset = settings.OPERIO_FORCE_SUPERADMIN_PASSWORD_RESET
+        is_production = settings.APP_ENV == "production"
         
+        # 2. Production Safety Guard
+        if is_production and password == "Operio123!":
+            logger.error("DANGER: Default password 'Operio123!' is NOT allowed in production environment.")
+            sys.exit(1)
+
         user = db.query(User).filter(User.email == email).first()
         
         if not user:
-            logger.info(f"Creating Super Admin user: {email}")
+            logger.info(f"Creating initial Super Admin user: {email}")
+            if is_production and not password:
+                logger.error("DANGER: OPERIO_SUPERADMIN_PASSWORD must be set in production.")
+                sys.exit(1)
+                
             user = User(
                 email=email,
                 full_name=name,
@@ -40,14 +51,19 @@ def bootstrap():
                 is_active=True
             )
             db.add(user)
+            logger.info("Super Admin user created successfully.")
         else:
-            logger.info(f"Super Admin user already exists: {email}. Updating details...")
+            logger.info(f"Super Admin user exists: {email}. Verifying status...")
             user.full_name = name
             user.is_super_admin = True
             user.is_active = True
-            # Optional: Only update password if needed, or leave as is if already hashed
-            # For bootstrap, we might want to ensure the env password is set
-            user.password_hash = get_password_hash(password)
+            
+            # 3. Password Overwrite Protection
+            if force_reset:
+                logger.warning("Super Admin password reset applied via OPERIO_FORCE_SUPERADMIN_PASSWORD_RESET flag.")
+                user.password_hash = get_password_hash(password)
+            else:
+                logger.info("Super Admin password exists. Skipping overwrite for safety. (Use OPERIO_FORCE_SUPERADMIN_PASSWORD_RESET=true to force reset)")
         
         db.commit()
         logger.info("Production bootstrap completed successfully.")

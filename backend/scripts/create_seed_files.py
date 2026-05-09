@@ -6,6 +6,15 @@ The download endpoint does os.path.exists(file_asset.file_path), so files must e
 import os
 import zipfile
 import io
+import sys
+
+# Add the parent directory to sys.path to allow importing from app
+sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), '..')))
+from app.core.config import settings
+
+if settings.APP_ENV == "production":
+    print("Production environment detected. Refusing to create seed files for safety.")
+    sys.exit(0)
 
 seed_dir = os.path.join("storage", "seed")
 os.makedirs(seed_dir, exist_ok=True)
