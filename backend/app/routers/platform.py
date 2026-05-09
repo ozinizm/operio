@@ -78,6 +78,14 @@ def create_workspace_full(
             )
             db.add(user)
             db.flush()
+        else:
+            # If user exists, but we are assigning them as owner of a new workspace 
+            # with a provided password, we should update their password and force change.
+            # This covers the "first login" flow for platform-created workspaces.
+            user.password_hash = get_password_hash(workspace_in.owner_password)
+            user.must_change_password = True
+            user.is_active = True
+            db.flush()
 
         # 4. Create Membership
         membership = WorkspaceMember(
@@ -638,3 +646,36 @@ def update_support_request(
         
     db.commit()
     return {"message": "Talep başarıyla güncellendi."}
+
+# --- User Management Helpers ---
+
+@router.get("/users/search-by-email")
+def search_user_by_email(
+    email: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_super_admin)
+):
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Bu e-posta ile kayıtlı kullanıcı bulunamadı.")
+    
+    # Get workspace info
+    workspaces = []
+    memberships = db.query(WorkspaceMember).filter(WorkspaceMember.user_id == user.id).all()
+    for m in memberships:
+        ws = db.query(Workspace).filter(Workspace.id == m.workspace_id).first()
+        if ws:
+            workspaces.append({
+                "id": ws.id,
+                "name": ws.name,
+                "role": m.role
+            })
+            
+    return {
+        "id": user.id,
+        "email": user.email,
+        "full_name": user.full_name,
+        "is_active": user.is_active,
+        "is_super_admin": user.is_super_admin,
+        "workspaces": workspaces
+    }

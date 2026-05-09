@@ -7,6 +7,7 @@ import { platformApi } from '../../services/platformApi';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useToast } from '../../components/ui/Toast';
+import { UserPasswordResetModal } from '../../components/platform/UserPasswordResetModal';
 
 export default function PlatformSettings() {
   const { showToast } = useToast();
@@ -23,6 +24,12 @@ export default function PlatformSettings() {
   const [requests, setRequests] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Password Reset Flow for Requests
+  const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [resettingUser, setResettingUser] = useState<any>(null);
+  const [activeRequestId, setActiveRequestId] = useState<number | null>(null);
+  const [isSearchingUser, setIsSearchingUser] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -71,6 +78,50 @@ export default function PlatformSettings() {
       fetchData();
     } catch (error) {
       showToast('İşlem başarısız.', 'error');
+    }
+  };
+
+  const handleInitiateReset = async (requestId: number, email: string) => {
+    setIsSearchingUser(true);
+    setActiveRequestId(requestId);
+    try {
+      const userData = await platformApi.searchUserByEmail(email);
+      setResettingUser(userData);
+      setResetModalOpen(true);
+    } catch (error: any) {
+      const detail = error.response?.data?.detail || 'Kullanıcı bulunamadı.';
+      showToast(detail, 'error');
+    } finally {
+      setIsSearchingUser(false);
+    }
+  };
+
+  const handleResetConfirm = async (tempPassword: string) => {
+    if (!resettingUser || !activeRequestId) return;
+    
+    try {
+      // Find the first workspace (or admin can choose if we implement it later)
+      // For now, use the first workspace found for the user
+      const workspaceId = resettingUser.workspaces[0]?.id;
+      
+      if (!workspaceId) {
+        showToast('Kullanıcının bağlı olduğu işletme bulunamadı.', 'error');
+        return;
+      }
+
+      await platformApi.resetUserPassword(workspaceId, resettingUser.id, tempPassword);
+      
+      // Also update the support request status to resolved
+      await platformApi.updateSupportRequest(activeRequestId, { 
+        status: 'resolved',
+        note: 'Şifre yönetici tarafından sıfırlandı.'
+      });
+      
+      showToast('Şifre sıfırlandı ve talep çözüldü.', 'success');
+      fetchData();
+    } catch (error) {
+      showToast('Şifre sıfırlama işlemi başarısız.', 'error');
+      throw error;
     }
   };
 
@@ -293,10 +344,19 @@ export default function PlatformSettings() {
                       <td className="p-6 text-right">
                         {req.status === 'new' ? (
                           <div className="flex items-center justify-end gap-2">
+                            <Button 
+                              variant="outline"
+                              size="sm"
+                              className="h-9 px-4 rounded-lg bg-indigo-50 border-indigo-100 text-indigo-600 font-bold hover:bg-indigo-100"
+                              onClick={() => handleInitiateReset(req.id, req.email)}
+                              isLoading={isSearchingUser && activeRequestId === req.id}
+                            >
+                              <Lock className="w-4 h-4 mr-2" /> Şifre Sıfırla
+                            </Button>
                             <button 
                               onClick={() => handleUpdateRequestStatus(req.id, 'resolved')}
                               className="p-2 hover:bg-emerald-50 text-emerald-600 rounded-lg transition-colors"
-                              title="Çözüldü İşaretle"
+                              title="Sadece Çözüldü İşaretle"
                             >
                               <CheckCircle2 className="w-5 h-5" />
                             </button>
@@ -319,6 +379,20 @@ export default function PlatformSettings() {
             </div>
           )}
         </div>
+      )}
+
+      {resetModalOpen && resettingUser && (
+        <UserPasswordResetModal 
+          isOpen={resetModalOpen}
+          onClose={() => {
+            setResetModalOpen(false);
+            setResettingUser(null);
+            setActiveRequestId(null);
+          }}
+          onConfirm={handleResetConfirm}
+          userEmail={resettingUser.email}
+          userName={resettingUser.full_name || resettingUser.email}
+        />
       )}
     </div>
   );

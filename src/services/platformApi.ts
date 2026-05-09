@@ -123,5 +123,12 @@ export const platformApi = {
       headers: getAuthHeader()
     });
     return response.data;
+  },
+  searchUserByEmail: async (email: string) => {
+    const response = await axios.get(`${API_URL}/platform/users/search-by-email`, {
+      params: { email },
+      headers: getAuthHeader()
+    });
+    return response.data;
   }
 };
