@@ -30,7 +30,18 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str = "noreply@operio.dev"
     SMTP_FROM_NAME: str = "Operio"
     SMTP_USE_TLS: bool = True
+
+    # Resend API Settings
+    RESEND_ENABLED: bool = False
+    RESEND_API_KEY: str = ""
+    RESEND_FROM_EMAIL: str = "noreply@operio.dev"
+    RESEND_FROM_NAME: str = "Operio"
+    
+    # Provider Selection (resend or smtp)
+    EMAIL_PROVIDER: str = "resend"
+
     ADMIN_NOTIFICATION_EMAIL: str = ""
+
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
