@@ -41,7 +41,7 @@ const moduleMetadata: Record<string, { bullets: string[], impact: string }> = {
     bullets: ["Teslimat planlama", "Saha servis formları", "Konum takibi"], 
     impact: "Menü, Hızlı İşlem" 
   },
-  complaints_requests: { 
+  complaints: { 
     bullets: ["Müşteri talepleri", "Şikayet çözümü", "Destek kayıtları"], 
     impact: "Menü, Hızlı İşlem" 
   },
@@ -99,9 +99,9 @@ const sectorPackMetadata: Record<string, { description: string, icon: any, color
 };
 
 const SECTOR_PACK_RECOMMENDED: Record<string, string[]> = {
-  small_business_op_pack: ["complaints_requests", "delivery_service", "finance", "files", "inventory", "data_import", "reports", "notifications", "operations"],
-  furniture_production: ["operations", "delivery_service", "complaints_requests", "files", "finance", "reports", "inventory", "data_import"],
-  technical_service: ["delivery_service", "complaints_requests", "files", "finance", "reports", "inventory"],
+  small_business_op_pack: ["complaints", "delivery_service", "finance", "files", "inventory", "data_import", "reports", "notifications", "operations"],
+  furniture_production: ["operations", "delivery_service", "complaints", "files", "finance", "reports", "inventory", "data_import"],
+  technical_service: ["delivery_service", "complaints", "files", "finance", "reports", "inventory"],
   agency_office: ["operations", "files", "finance", "reports", "notifications", "data_import"]
 };
 

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
-from .routers import auth, customers, jobs, tasks, dashboard, offers, finance, files, reports, comments, notifications, watchers, delivery_services, request_tickets, modules, inventory, imports, platform, public
+from .routers import auth, customers, jobs, tasks, dashboard, offers, finance, files, reports, comments, notifications, watchers, delivery_services, request_tickets, modules, inventory, imports, platform, public, users
 from .core.database import engine, Base
 from . import models
 
@@ -51,6 +51,7 @@ app.include_router(modules.router, prefix="/api/modules", tags=["modules"])
 app.include_router(inventory.router, prefix="/api/inventory", tags=["inventory"])
 app.include_router(imports.router, prefix="/api/imports", tags=["imports"])
 app.include_router(platform.router, prefix="/api/platform", tags=["platform"])
+app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(public.router, prefix="/api/public", tags=["public"])
 
 @app.get("/api/docs", include_in_schema=False)

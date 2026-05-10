@@ -28,6 +28,7 @@ import PlatformWorkspaceCreate from '../pages/platform/PlatformWorkspaceCreate';
 import PlatformWorkspaceDetail from '../pages/platform/PlatformWorkspaceDetail';
 import PlatformAuditLogs from '../pages/platform/PlatformAuditLogs';
 import PlatformSettings from '../pages/platform/PlatformSettings';
+import TeamPage from '../pages/TeamPage';
 
 export default function AppRoutes() {
   return (
@@ -97,8 +98,8 @@ export default function AppRoutes() {
         } />
         
         <Route path="complaints" element={
-          <ProtectedRoute requiredRoles={['owner', 'manager']}>
-            <ModuleRouteGuard moduleKey="complaints_requests">
+          <ProtectedRoute requiredRoles={['owner', 'admin', 'manager']}>
+            <ModuleRouteGuard moduleKey="complaints">
               <ComplaintsPage />
             </ModuleRouteGuard>
           </ProtectedRoute>
@@ -146,8 +147,14 @@ export default function AppRoutes() {
         <Route path="modules" element={<Navigate to="/dashboard" replace />} />
         
         <Route path="settings" element={
-          <ProtectedRoute requiredRoles={['owner']}>
+          <ProtectedRoute requiredRoles={['owner', 'admin']}>
             <SettingsPage />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="team" element={
+          <ProtectedRoute requiredRoles={['owner', 'admin']}>
+            <TeamPage />
           </ProtectedRoute>
         } />
         

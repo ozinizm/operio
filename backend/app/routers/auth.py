@@ -68,9 +68,9 @@ def change_password(
     # Password policy validation
     if len(data.new_password) < 8:
         raise HTTPException(status_code=400, detail="Şifre en az 8 karakter olmalıdır.")
-    if not re.search("[a-z]", data.new_password):
+    if not any(c.islower() for c in data.new_password):
         raise HTTPException(status_code=400, detail="Şifre en az bir küçük harf içermelidir.")
-    if not re.search("[A-Z]", data.new_password):
+    if not any(c.isupper() for c in data.new_password):
         raise HTTPException(status_code=400, detail="Şifre en az bir büyük harf içermelidir.")
     if not re.search("[0-9]", data.new_password):
         raise HTTPException(status_code=400, detail="Şifre en az bir rakam içermelidir.")

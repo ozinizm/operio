@@ -310,7 +310,7 @@ export default function PlatformWorkspaceDetail() {
     { key: 'tasks', label: 'Görev Yönetimi', description: 'Ekip içi görev atama ve durum takibi.' },
     { key: 'operations', label: 'Operasyon', description: 'Üretim ve iş süreci yönetimi.' },
     { key: 'delivery_service', label: 'Teslimat / Servis', description: 'Saha operasyonları ve teslimat takibi.' },
-    { key: 'complaints_requests', label: 'Şikayet & Talep', description: 'Müşteri geri bildirim yönetim sistemi.' },
+    { key: 'complaints', label: 'Şikayet & Talep', description: 'Müşteri geri bildirim yönetim sistemi.' },
     { key: 'finance', label: 'Finans', description: 'Gelir-gider takibi ve finansal raporlama.' },
     { key: 'inventory', label: 'Stok Yönetimi', description: 'Stok ve demirbaş takibi.' },
     { key: 'data_import', label: 'Veri Aktarımı', description: 'Excel ve toplu veri içe aktarma araçları.' },

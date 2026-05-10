@@ -130,7 +130,10 @@ export default function ChangePasswordPage() {
               <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-1">Şifre Güvenlik Kriterleri</p>
               <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                 <RequirementItem text="Min. 8 karakter" met={newPassword.length >= 8} />
-                <RequirementItem text="Büyük/Küçük" met={/[a-z]/.test(newPassword) && /[A-Z]/.test(newPassword)} />
+                <RequirementItem 
+                  text="Büyük/Küçük" 
+                  met={/[a-zçğıöşuü]/.test(newPassword.toLowerCase()) && /[A-ZÇĞİÖŞUÜ]/.test(newPassword)} 
+                />
                 <RequirementItem text="Rakam" met={/[0-9]/.test(newPassword)} />
                 <RequirementItem text="Özel Karakter" met={/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)} />
               </div>

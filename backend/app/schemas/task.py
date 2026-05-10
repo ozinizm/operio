@@ -28,4 +28,4 @@ class TaskInDBBase(TaskBase):
         from_attributes = True
 
 class Task(TaskInDBBase):
-    pass
+    assignee: Optional[dict] = None

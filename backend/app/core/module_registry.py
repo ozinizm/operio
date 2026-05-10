@@ -160,8 +160,8 @@ MODULE_REGISTRY: Dict[str, ModuleDefinition] = {
         status="active",
         related_quick_create_types=["delivery_service"]
     ),
-    "complaints_requests": ModuleDefinition(
-        key="complaints_requests",
+    "complaints": ModuleDefinition(
+        key="complaints",
         name="Şikayet & Talep",
         description="Müşteri şikayetlerini, talepleri ve çözüm notlarını tek ekranda takip edin.",
         category="customer_service",
@@ -324,7 +324,7 @@ SECTOR_PACKS = {
     "small_business_op_pack": {
         "name": "Küçük İşletme Operasyon Paketi",
         "description": "Excel, WhatsApp ve dağınık takip yerine müşteri, iş, stok, finans ve talepleri tek panelden yönetin.",
-        "recommended": ["complaints_requests", "delivery_service", "finance", "files", "inventory", "data_import", "reports", "notifications", "operations"],
+        "recommended": ["complaints", "delivery_service", "finance", "files", "inventory", "data_import", "reports", "notifications", "operations"],
         "features": [
             "Excel’den stok aktarımı",
             "Şikayet ve talep takibi",
@@ -335,12 +335,12 @@ SECTOR_PACKS = {
     },
     "furniture_production": {
         "name": "Mobilya / Üretim Paketi",
-        "recommended": ["operations", "delivery_service", "complaints_requests", "files", "finance", "reports", "inventory", "data_import"],
+        "recommended": ["operations", "delivery_service", "complaints", "files", "finance", "reports", "inventory", "data_import"],
         "future": ["quality_control"]
     },
     "technical_service": {
         "name": "Teknik Servis Paketi",
-        "recommended": ["delivery_service", "complaints_requests", "files", "finance", "reports", "inventory"],
+        "recommended": ["delivery_service", "complaints", "files", "finance", "reports", "inventory"],
         "future": ["warranty", "equipment_assets", "vehicle_fleet"]
     },
     "agency_office": {

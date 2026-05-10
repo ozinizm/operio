@@ -649,15 +649,23 @@ def hard_delete_workspace(
         db.flush()
 
         # Delete all related records in order
-        # Note: If cascade is set in models, this might be simpler, but let's be explicit
+        from ..models import (
+            EmailLog, ImportJob, JobStage, EntityWatcher
+        )
+        
         models_to_clean = [
             Activity, WorkspaceMember, WorkspaceModule, Customer, Job, Offer, Task,
             FinanceEntry, InventoryItem, DeliveryService, RequestTicket, FileAsset,
-            Notification, Comment
+            Notification, Comment, EmailLog, ImportJob, JobStage, EntityWatcher
         ]
         
         for model in models_to_clean:
-            db.query(model).filter(model.workspace_id == workspace_id).delete(synchronize_session=False)
+            try:
+                db.query(model).filter(model.workspace_id == workspace_id).delete(synchronize_session=False)
+            except Exception as e:
+                # Log and continue if a specific table delete fails, but we want to be as thorough as possible
+                print(f"Error deleting {model.__name__}: {e}")
+                pass
 
         # Finally delete workspace
         workspace_name = workspace.name
@@ -678,7 +686,7 @@ def hard_delete_workspace(
         return {"message": f"İşletme '{workspace_name}' başarıyla kalıcı olarak silindi."}
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Silme işlemi sırasında hata: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Silme işlemi sırasında hata oluştu. Bazı veriler silinememiş olabilir. Hata: {str(e)}")
 
 # --- Platform Settings Management ---
 

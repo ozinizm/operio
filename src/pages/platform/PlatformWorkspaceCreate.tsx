@@ -12,7 +12,7 @@ const availableModules = [
   { key: 'offers', label: 'Teklif Yönetimi', icon: 'FileText' },
   { key: 'operations', label: 'Operasyon', icon: 'Activity' },
   { key: 'delivery_service', label: 'Teslimat & Servis', icon: 'Truck' },
-  { key: 'complaints_requests', label: 'Şikayet & Talep', icon: 'AlertCircle' },
+  { key: 'complaints', label: 'Şikayet & Talep', icon: 'AlertCircle' },
   { key: 'finance', label: 'Finans', icon: 'DollarSign' },
   { key: 'inventory', label: 'Stok Yönetimi', icon: 'Package' },
   { key: 'reports', label: 'Raporlar', icon: 'BarChart2' },

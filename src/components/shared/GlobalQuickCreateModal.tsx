@@ -35,6 +35,7 @@ export function GlobalQuickCreateModal({ type, onClose, onSuccess }: GlobalQuick
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [customers, setCustomers] = useState<any[]>([]);
+  const [team, setTeam] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState<Record<string, any>>({});
 
@@ -42,6 +43,7 @@ export function GlobalQuickCreateModal({ type, onClose, onSuccess }: GlobalQuick
     if (type) {
       setForm({});
       customersApi.list().then(setCustomers).catch(() => {});
+      tasksApi.listTeam().then(setTeam).catch(() => {});
     }
   }, [type]);
 
@@ -64,7 +66,7 @@ export function GlobalQuickCreateModal({ type, onClose, onSuccess }: GlobalQuick
         created = await jobsApi.create({ title: form.title, customer_id: parseInt(form.customer_id), job_type: form.job_type || 'general', priority: form.priority || 'normal', description: form.description });
       } else if (type === 'task') {
         if (!form.title) { showToast('Görev başlığı zorunludur.', 'error'); return; }
-        created = await tasksApi.create({ title: form.title, priority: form.priority || 'normal', status: 'todo', customer_id: form.customer_id ? parseInt(form.customer_id) : null, due_date: form.due_date || null });
+        created = await tasksApi.create({ title: form.title, priority: form.priority || 'normal', status: 'todo', customer_id: form.customer_id ? parseInt(form.customer_id) : null, due_date: form.due_date || null, assignee_user_id: form.assignee_user_id ? parseInt(form.assignee_user_id) : null });
       } else if (type === 'finance') {
         if (!form.title || !form.amount) { showToast('Başlık ve tutar zorunludur.', 'error'); return; }
         created = await financeApi.createEntry({ title: form.title, type: form.fin_type || 'income', amount: parseFloat(form.amount), status: 'pending', category: form.category || '', customer_id: form.customer_id ? parseInt(form.customer_id) : null });
@@ -202,6 +204,13 @@ export function GlobalQuickCreateModal({ type, onClose, onSuccess }: GlobalQuick
             <select className={fieldClass} value={form.customer_id || ''} onChange={set('customer_id')}>
               <option value="">Müşteri seçin (opsiyonel)</option>
               {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={labelClass}>Sorumlu Personel</label>
+            <select className={fieldClass} value={form.assignee_user_id || ''} onChange={set('assignee_user_id')}>
+              <option value="">Personel seçin (opsiyonel)</option>
+              {team.map(m => <option key={m.user_id} value={m.user_id}>{m.full_name}</option>)}
             </select>
           </div>
         </>)}

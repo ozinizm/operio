@@ -24,7 +24,8 @@ def read_tasks(
     skip: int = 0,
     limit: int = 100,
 ) -> Any:
-    query = db.query(TaskModel).filter(
+    from sqlalchemy.orm import joinedload
+    query = db.query(TaskModel).options(joinedload(TaskModel.assignee)).filter(
         TaskModel.workspace_id == workspace.id,
         TaskModel.is_deleted == False
     )
@@ -36,7 +37,14 @@ def read_tasks(
     if job_id:
         query = query.filter(TaskModel.job_id == job_id)
         
-    return query.offset(skip).limit(limit).all()
+    tasks = query.offset(skip).limit(limit).all()
+    
+    # Map assignee to dict for schema
+    for t in tasks:
+        if t.assignee:
+            t.assignee = {"full_name": t.assignee.full_name, "email": t.assignee.email}
+            
+    return tasks
 
 @router.post("/", response_model=Task)
 def create_task(

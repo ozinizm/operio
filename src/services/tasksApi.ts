@@ -5,6 +5,10 @@ export const tasksApi = {
     const response = await apiClient.get('/tasks/', { params });
     return response.data;
   },
+  listTeam: async () => {
+    const response = await apiClient.get('/users/team');
+    return response.data;
+  },
   get: async (id: number) => {
     const response = await apiClient.get(`/tasks/${id}`);
     return response.data;

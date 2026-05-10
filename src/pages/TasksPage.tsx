@@ -43,6 +43,7 @@ export default function TasksPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [team, setTeam] = useState<any[]>([]);
 
   const fetchTasks = async () => {
     setIsLoading(true);
@@ -57,8 +58,18 @@ export default function TasksPage() {
     }
   };
 
+  const fetchTeam = async () => {
+    try {
+      const data = await tasksApi.listTeam(); // I need to add this to tasksApi or use teamApi
+      setTeam(data);
+    } catch (err) {
+      console.error('Team load failed:', err);
+    }
+  };
+
   useEffect(() => {
     fetchTasks();
+    fetchTeam();
 
     const handleResourceCreated = (e: any) => {
       if (e.detail?.type === 'task') {
@@ -89,6 +100,7 @@ export default function TasksPage() {
       status: task.status,
       due_date: task.due_date ? task.due_date.split('T')[0] : '',
       description: task.description || '',
+      assignee_user_id: task.assignee_user_id || '',
     });
     setIsEditModalOpen(true);
   };
@@ -208,7 +220,7 @@ export default function TasksPage() {
                       </h3>
                       <div className="flex flex-wrap items-center gap-4 mt-2">
                         <span className="text-xs text-text-body font-medium flex items-center gap-1.5">
-                          <Tag className="w-3 h-3 text-primary" /> Sorumlu {task.assignee_user_id}
+                          <Tag className="w-3 h-3 text-primary" /> {task.assignee?.full_name || 'Sorumlu Yok'}
                         </span>
                         <span className={`text-xs font-bold flex items-center gap-1.5 ${priorityConfig[task.priority]?.color || 'text-text-body'}`}>
                           <Clock className="w-3 h-3" /> {priorityConfig[task.priority]?.label || task.priority}
@@ -281,6 +293,19 @@ export default function TasksPage() {
         <div>
           <label className={labelClass}>Açıklama</label>
           <textarea className={`${fieldClass} h-20 resize-none`} value={editForm.description || ''} onChange={e => setEditForm((p: any) => ({ ...p, description: e.target.value }))} />
+        </div>
+        <div>
+          <label className={labelClass}>Sorumlu Kişi</label>
+          <select 
+            className={fieldClass} 
+            value={editForm.assignee_user_id || ''} 
+            onChange={e => setEditForm((p: any) => ({ ...p, assignee_user_id: e.target.value ? Number(e.target.value) : null }))}
+          >
+            <option value="">Seçilmedi</option>
+            {team.map(member => (
+              <option key={member.user_id} value={member.user_id}>{member.full_name}</option>
+            ))}
+          </select>
         </div>
         <div className="flex gap-3 pt-2">
           <Button type="button" variant="outline" className="flex-1" onClick={() => setIsEditModalOpen(false)}>İptal</Button>

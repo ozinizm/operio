@@ -136,8 +136,21 @@ export default function AppLayout() {
                   return false;
                 }
 
-                // Hide modules page from customer panel
-                if (item.key === 'modules') {
+                // RBAC Filtering
+                const roleRestrictions: Record<string, string[]> = {
+                  'finance': ['owner', 'admin', 'finance'],
+                  'reports': ['owner', 'admin', 'manager'],
+                  'data_import': ['owner', 'admin'],
+                  'modules': ['owner', 'admin'],
+                  'settings': ['owner', 'admin']
+                };
+
+                if (item.key && roleRestrictions[item.key] && !roleRestrictions[item.key].includes(role || '')) {
+                  return false;
+                }
+
+                // Hide certain items from staff that aren't modules but routes
+                if (role === 'staff' && (item.route === '/settings' || item.route === '/modules')) {
                   return false;
                 }
                 
@@ -165,6 +178,22 @@ export default function AppLayout() {
                 );
               });
           })()}
+          
+          {(role === 'owner' || role === 'admin') && (
+            <NavLink
+              to="/team"
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 group ${
+                  isActive 
+                    ? 'bg-primary text-white shadow-lg shadow-primary/20' 
+                    : 'text-text-body hover:bg-surface-dim hover:text-text-high'
+                }`
+              }
+            >
+              <Users2 className="w-5 h-5 transition-transform group-hover:scale-110" />
+              <span className="text-sm font-semibold">Ekip Yönetimi</span>
+            </NavLink>
+          )}
 
         </nav>
         <div className="p-4 border-t border-border">
@@ -199,6 +228,19 @@ export default function AppLayout() {
                     if (item.key && !coreKeys.includes(item.key) && !isModuleEnabled(item.key)) {
                       return false;
                     }
+
+                    // RBAC Filtering
+                    const roleRestrictions: Record<string, string[]> = {
+                      'finance': ['owner', 'admin', 'finance'],
+                      'reports': ['owner', 'admin', 'manager'],
+                      'data_import': ['owner', 'admin'],
+                      'modules': ['owner', 'admin'],
+                      'settings': ['owner', 'admin']
+                    };
+
+                    if (item.key && roleRestrictions[item.key] && !roleRestrictions[item.key].includes(role || '')) {
+                      return false;
+                    }
                     
                     seenRoutes.add(item.route);
                     return true;
@@ -225,6 +267,23 @@ export default function AppLayout() {
                     );
                   });
               })()}
+              
+              {(role === 'owner' || role === 'admin') && (
+                <NavLink
+                  to="/team"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                      isActive 
+                        ? 'bg-primary text-white shadow-lg shadow-primary/20' 
+                        : 'text-text-body hover:bg-surface-dim hover:text-text-high'
+                    }`
+                  }
+                >
+                  <Users2 className="w-5 h-5" />
+                  <span className="font-semibold">Ekip Yönetimi</span>
+                </NavLink>
+              )}
             </nav>
           </aside>
         </div>
@@ -292,7 +351,7 @@ export default function AppLayout() {
                       <Package className="w-4 h-4 text-emerald-600" /> Yeni Stok Kalemi
                     </button>
                   )}
-                  {isModuleEnabled('finance') && (
+                  {isModuleEnabled('finance') && (role === 'owner' || role === 'admin' || role === 'finance') && (
                     <button onClick={() => handleQuickAction('finance')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left transition-colors">
                       <DollarSign className="w-4 h-4 text-teal-500" /> Yeni Finans Kaydı
                     </button>
@@ -302,7 +361,7 @@ export default function AppLayout() {
                       <Truck className="w-4 h-4 text-orange-500" /> Yeni Teslimat / Servis
                     </button>
                   )}
-                  {isModuleEnabled('complaints_requests') && (
+                  {isModuleEnabled('complaints') && (
                     <button onClick={() => handleQuickAction('request_ticket')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left transition-colors">
                       <MessageCircle className="w-4 h-4 text-red-500" /> Yeni Şikayet / Talep
                     </button>
@@ -324,7 +383,7 @@ export default function AppLayout() {
                 <div className="hidden lg:block text-left">
                   <p className="text-sm font-bold text-text-high leading-none">{user?.full_name || 'Kullanıcı'}</p>
                   <p className="text-[10px] font-bold text-primary uppercase mt-1 tracking-wider opacity-70">
-                    {role === 'owner' ? 'İşletme Sahibi' : role === 'manager' ? 'Yönetici' : 'Personel'}
+                    {role === 'owner' ? 'İşletme Sahibi' : role === 'manager' ? 'Yönetici' : role === 'admin' ? 'Yönetici' : 'Personel'}
                   </p>
                 </div>
                 <ChevronDown className="w-4 h-4 text-text-body hidden lg:block group-hover:rotate-180 transition-transform duration-300" />
@@ -335,17 +394,21 @@ export default function AppLayout() {
                   <p className="text-[10px] font-bold text-text-body uppercase opacity-50 tracking-widest mb-1">Hesabım</p>
                   <p className="text-xs font-bold text-text-high truncate">{user?.email}</p>
                 </div>
-                <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left transition-colors">
+                <Link to="/change-password" title="Şifre Değiştir" className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left transition-colors">
                   <UserCircle className="w-4 h-4 text-text-body" /> Profil Bilgileri
-                </button>
+                </Link>
                 {user?.is_super_admin ? (
                   <Link to="/platform/settings" className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left transition-colors">
                     <Settings className="w-4 h-4 text-text-body" /> Sistem Ayarları
                   </Link>
-                ) : (
-                  <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left transition-colors">
+                ) : (role === 'owner' || role === 'admin') ? (
+                  <Link to="/settings" className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left transition-colors">
                     <CreditCard className="w-4 h-4 text-text-body" /> Abonelik ve Plan
-                  </button>
+                  </Link>
+                ) : (
+                  <div className="px-4 py-2.5 text-[10px] font-bold text-text-body/40 italic uppercase tracking-tighter">
+                    Ek abonelik yetkisi yok
+                  </div>
                 )}
                 <div className="my-2 border-t border-border" />
                 <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 text-left transition-colors font-bold">
