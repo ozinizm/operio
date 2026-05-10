@@ -28,7 +28,8 @@ export default function TeamPage() {
     email: '',
     full_name: '',
     role: 'staff',
-    password: ''
+    password: '',
+    is_active: true
   });
   const [tempPassword, setTempPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -54,7 +55,8 @@ export default function TeamPage() {
       email: '',
       full_name: '',
       role: 'staff',
-      password: Math.random().toString(36).slice(-8)
+      password: Math.random().toString(36).slice(-8),
+      is_active: true
     });
     setIsModalOpen(true);
   };
