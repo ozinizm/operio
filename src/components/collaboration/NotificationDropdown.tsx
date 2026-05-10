@@ -5,6 +5,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Link, useNavigate } from 'react-router-dom';
 import { useToast } from '../ui/Toast';
+import { useAuth } from '../../context/AuthContext';
 
 export function NotificationDropdown() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -12,6 +13,7 @@ export function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { showToast } = useToast();
+  const { user, workspace } = useAuth();
   const navigate = useNavigate();
   
   // Ref to track last seen notification ID to prevent duplicate toasts
@@ -19,27 +21,69 @@ export function NotificationDropdown() {
   const isInitialLoadRef = useRef(true);
 
   useEffect(() => {
+    // 1. Initial Data Load & Polling Fallback
     fetchData(true);
-    // Poll for notifications every 15 seconds
-    const interval = setInterval(() => fetchData(false), 15000);
-    return () => clearInterval(interval);
-  }, []);
+    const interval = setInterval(() => fetchData(false), 30000); // 30s fallback polling
+
+    // 2. SSE Real-time Delivery
+    const token = localStorage.getItem('token');
+    let eventSource: EventSource | null = null;
+
+    if (token && user) {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      // Native EventSource doesn't support headers, so we use query token
+      eventSource = new EventSource(`${API_URL}/notifications/stream?token=${token}`);
+
+      eventSource.addEventListener('notification', (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          // Anlık UI güncelleme
+          setUnreadCount(prev => prev + 1);
+          
+          // Dropdown listesini de önden güncelle (opsiyonel ama UX için iyi)
+          setNotifications(prev => {
+            // Duplicate check
+            if (prev.some(n => n.id === data.id)) return prev;
+            return [data, ...prev].slice(0, 10);
+          });
+
+          // Toast gösterimi (Duplicate check via ref)
+          if (lastSeenIdRef.current === null || data.id > lastSeenIdRef.current) {
+            showToast(data.title || 'Yeni bildirim', 'info');
+            lastSeenIdRef.current = data.id;
+          }
+        } catch (err) {
+          console.error('SSE data parse error:', err);
+        }
+      });
+
+      eventSource.onerror = (err) => {
+        // EventSource will automatically try to reconnect by default
+        console.warn('SSE Connection lost, waiting for auto-reconnect...', err);
+      };
+    }
+
+    return () => {
+      clearInterval(interval);
+      if (eventSource) {
+        eventSource.close();
+      }
+    };
+  }, [user?.id, workspace?.id]); // Re-connect on user or workspace change
 
   const fetchData = async (isInitial = false) => {
     try {
-      // 1. Get count
+      // Get unread count from API (source of truth)
       const { count } = await notificationsApi.getUnreadCount();
       
-      // 2. If count increased or it's initial load, check for the latest notification
-      if (isInitial || count > 0) {
+      // If count increased or it's initial load, check for the latest notification
+      if (isInitial || count > unreadCount) {
         const latest = await notificationsApi.list(1);
         if (latest && latest.length > 0) {
           const newest = latest[0];
           
-          // Show toast only if:
-          // - Not the very first load of the app (prevent old notification spam)
-          // - ID is newer than what we last saw
-          // - It's unread
+          // Only show toast if it's actually new and not first app load
           if (!isInitialLoadRef.current && 
               lastSeenIdRef.current !== null && 
               newest.id > lastSeenIdRef.current && 

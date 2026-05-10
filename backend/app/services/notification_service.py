@@ -4,6 +4,9 @@ from ..models.watcher import EntityWatcher
 from ..models.user import User
 from typing import Optional, List
 
+from ..core.broadcaster import broadcaster
+from ..schemas.notification import NotificationResponse
+
 def create_notification(
     db: Session,
     workspace_id: int,
@@ -32,6 +35,19 @@ def create_notification(
     db.add(notification)
     db.commit()
     db.refresh(notification)
+    
+    # Real-time Broadcast via SSE
+    try:
+        # Use schema to normalize payload
+        response_data = NotificationResponse.model_validate(notification)
+        if notification.actor:
+            response_data.actor_name = notification.actor.full_name
+            
+        payload = response_data.model_dump(mode='json')
+        broadcaster.trigger(user_id, payload)
+    except Exception as e:
+        print(f"SSE Broadcast failed: {str(e)}")
+
     return notification
 
 def notify_watchers(

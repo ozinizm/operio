@@ -1,5 +1,8 @@
+import asyncio
+import json
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime
@@ -9,8 +12,45 @@ from ..models.notification import Notification
 from ..schemas.notification import NotificationResponse
 from ..models.task import Task
 from ..services.notification_service import create_notification
+from ..core.broadcaster import broadcaster
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
+
+@router.get("/stream")
+async def notification_stream(
+    current_user = Depends(get_current_user),
+):
+    """
+    Server-Sent Events (SSE) stream for real-time notifications.
+    """
+    async def event_generator():
+        # Subscribe user to broadcaster
+        queue = await broadcaster.subscribe(current_user.id)
+        try:
+            while True:
+                try:
+                    # Wait for new data with a timeout for heartbeat
+                    data = await asyncio.wait_for(queue.get(), timeout=30.0)
+                    yield f"event: notification\ndata: {json.dumps(data)}\n\n"
+                except asyncio.TimeoutError:
+                    # Send a heartbeat/ping every 30 seconds to keep connection alive
+                    yield ": ping\n\n"
+        except asyncio.CancelledError:
+            # Handle client disconnect
+            pass
+        finally:
+            # Ensure cleanup
+            await broadcaster.unsubscribe(current_user.id, queue)
+
+    return StreamingResponse(
+        event_generator(), 
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no" # Essential for Nginx
+        }
+    )
 
 @router.get("/", response_model=List[NotificationResponse])
 def list_notifications(
