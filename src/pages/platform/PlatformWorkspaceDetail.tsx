@@ -155,13 +155,21 @@ export default function PlatformWorkspaceDetail() {
   };
 
   const handleToggleModule = async (moduleKey: string, currentEnabled: boolean) => {
+    // Optimistic Update
+    const previousModules = [...modules];
+    setModules(prev => prev.map(m => 
+      m.module_key === moduleKey ? { ...m, is_enabled: !currentEnabled } : m
+    ));
+
     try {
       await platformApi.toggleModule(Number(id), moduleKey, !currentEnabled);
       showToast('Modül durumu güncellendi.', 'success');
-      // Update local state optimistically or refetch
-      fetchModules();
+      // Final sync with backend
+      const data = await platformApi.getWorkspaceModules(Number(id));
+      setModules(data);
     } catch (error) {
-      // If error, don't show success, just error
+      // Revert on error
+      setModules(previousModules);
       showToast('Modül güncellenemedi.', 'error');
     }
   };
@@ -575,29 +583,35 @@ export default function PlatformWorkspaceDetail() {
 
         {activeTab === 'modules' && (
           <div className="p-10">
-            <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
-              <div>
-                <h3 className="text-xl font-bold text-slate-800">Modül Yapılandırması</h3>
-                <p className="text-sm text-slate-400 mt-1">İşletmenin erişebileceği özellikleri buradan kontrol edebilirsiniz.</p>
+            {isTabDataLoading && modules.length === 0 ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
               </div>
-              
-              <div className="flex items-center gap-4">
-                <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 flex flex-col items-center min-w-[80px]">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Toplam Aktif</span>
-                  <span className="text-lg font-black text-indigo-600">{modules.filter(m => m.is_enabled).length}</span>
+            ) : (
+              <>
+                <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-800">Modül Yapılandırması</h3>
+                    <p className="text-sm text-slate-400 mt-1">İşletmenin erişebileceği özellikleri buradan kontrol edebilirsiniz.</p>
+                  </div>
+                  
+                  <div className="flex items-center gap-4">
+                    <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 flex flex-col items-center min-w-[80px]">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Toplam Aktif</span>
+                      <span className="text-lg font-black text-indigo-600">{modules.filter(m => m.is_enabled).length}</span>
+                    </div>
+                    <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 flex flex-col items-center min-w-[80px]">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Temel</span>
+                      <span className="text-lg font-black text-slate-600">{modules.filter(m => m.is_enabled && coreModules.includes(m.module_key)).length}</span>
+                    </div>
+                    <div className="bg-indigo-50 px-4 py-2 rounded-xl border border-indigo-100 flex flex-col items-center min-w-[80px]">
+                      <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-tighter">Ek</span>
+                      <span className="text-lg font-black text-indigo-600">{modules.filter(m => m.is_enabled && !coreModules.includes(m.module_key)).length}</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 flex flex-col items-center min-w-[80px]">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Temel</span>
-                  <span className="text-lg font-black text-slate-600">{modules.filter(m => m.is_enabled && coreModules.includes(m.module_key)).length}</span>
-                </div>
-                <div className="bg-indigo-50 px-4 py-2 rounded-xl border border-indigo-100 flex flex-col items-center min-w-[80px]">
-                  <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-tighter">Ek</span>
-                  <span className="text-lg font-black text-indigo-600">{modules.filter(m => m.is_enabled && !coreModules.includes(m.module_key)).length}</span>
-                </div>
-              </div>
-            </div>
 
-            <div className="space-y-12">
+                <div className="space-y-12">
               {/* Temel Modüller */}
               <section>
                 <div className="flex items-center gap-2 mb-6">
@@ -660,6 +674,8 @@ export default function PlatformWorkspaceDetail() {
                 </div>
               </section>
             </div>
+            </>
+            )}
           </div>
         )}
 

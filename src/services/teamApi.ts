@@ -24,7 +24,7 @@ export const teamApi = {
     return response.data;
   },
   resetPassword: async (userId: number, password: string) => {
-    const response = await api.post(`/users/team/${userId}/reset-password`, { password });
+    const response = await api.post(`/users/team/${userId}/reset-password`, { new_password: password });
     return response.data;
   }
 };

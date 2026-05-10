@@ -38,12 +38,6 @@ def read_tasks(
         query = query.filter(TaskModel.job_id == job_id)
         
     tasks = query.offset(skip).limit(limit).all()
-    
-    # Map assignee to dict for schema
-    for t in tasks:
-        if t.assignee:
-            t.assignee = {"full_name": t.assignee.full_name, "email": t.assignee.email}
-            
     return tasks
 
 @router.post("/", response_model=Task)

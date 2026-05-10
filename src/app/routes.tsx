@@ -54,19 +54,19 @@ export default function AppRoutes() {
         } />
         
         <Route path="customers" element={
-          <ProtectedRoute requiredRoles={['owner', 'manager', 'finance']}>
+          <ProtectedRoute requiredRoles={['owner', 'admin', 'manager', 'finance', 'staff']}>
             <CustomersPage />
           </ProtectedRoute>
         } />
         
         <Route path="customers/:id" element={
-          <ProtectedRoute requiredRoles={['owner', 'manager', 'finance']}>
+          <ProtectedRoute requiredRoles={['owner', 'admin', 'manager', 'finance', 'staff']}>
             <CustomerDetailPage />
           </ProtectedRoute>
         } />
         
         <Route path="offers" element={
-          <ProtectedRoute requiredRoles={['owner', 'manager']}>
+          <ProtectedRoute requiredRoles={['owner', 'admin', 'manager', 'finance']}>
             <ModuleRouteGuard moduleKey="offers">
               <OffersPage />
             </ModuleRouteGuard>
@@ -98,7 +98,7 @@ export default function AppRoutes() {
         } />
         
         <Route path="complaints" element={
-          <ProtectedRoute requiredRoles={['owner', 'admin', 'manager']}>
+          <ProtectedRoute requiredRoles={['owner', 'admin', 'manager', 'staff']}>
             <ModuleRouteGuard moduleKey="complaints">
               <ComplaintsPage />
             </ModuleRouteGuard>

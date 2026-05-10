@@ -2,6 +2,13 @@ from typing import Optional
 from pydantic import BaseModel
 from datetime import datetime
 
+class UserBrief(BaseModel):
+    full_name: str
+    email: str
+
+    class Config:
+        from_attributes = True
+
 class TaskBase(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
@@ -28,4 +35,4 @@ class TaskInDBBase(TaskBase):
         from_attributes = True
 
 class Task(TaskInDBBase):
-    assignee: Optional[dict] = None
+    assignee: Optional[UserBrief] = None

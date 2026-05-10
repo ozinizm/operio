@@ -5,7 +5,7 @@ import {
   Folder, BarChart2, Package, Search, Menu, X, Bell,
   Box, FileSpreadsheet, Database, ShieldCheck, UserCheck, 
   Globe, Wrench, Car, Users2, PieChart, Settings2, MessageCircle,
-  Plus, ChevronDown, LogOut, UserCircle, CreditCard,
+  Plus, ChevronDown, LogOut,
   Layers, BarChart3
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
@@ -142,7 +142,10 @@ export default function AppLayout() {
                   'reports': ['owner', 'admin', 'manager'],
                   'data_import': ['owner', 'admin'],
                   'modules': ['owner', 'admin'],
-                  'settings': ['owner', 'admin']
+                  'settings': ['owner', 'admin'],
+                  'customers': ['owner', 'admin', 'manager', 'finance', 'staff'],
+                  'complaints': ['owner', 'admin', 'manager', 'staff'],
+                  'offers': ['owner', 'admin', 'manager', 'finance']
                 };
 
                 if (item.key && roleRestrictions[item.key] && !roleRestrictions[item.key].includes(role || '')) {
@@ -235,7 +238,10 @@ export default function AppLayout() {
                       'reports': ['owner', 'admin', 'manager'],
                       'data_import': ['owner', 'admin'],
                       'modules': ['owner', 'admin'],
-                      'settings': ['owner', 'admin']
+                      'settings': ['owner', 'admin'],
+                      'customers': ['owner', 'admin', 'manager', 'finance', 'staff'],
+                      'complaints': ['owner', 'admin', 'manager', 'staff'],
+                      'offers': ['owner', 'admin', 'manager', 'finance']
                     };
 
                     if (item.key && roleRestrictions[item.key] && !roleRestrictions[item.key].includes(role || '')) {
@@ -395,7 +401,7 @@ export default function AppLayout() {
                   <p className="text-xs font-bold text-text-high truncate">{user?.email}</p>
                 </div>
                 <Link to="/change-password" title="Şifre Değiştir" className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left transition-colors">
-                  <UserCircle className="w-4 h-4 text-text-body" /> Profil Bilgileri
+                  <ShieldCheck className="w-4 h-4 text-primary" /> Şifre Değiştir
                 </Link>
                 {user?.is_super_admin ? (
                   <Link to="/platform/settings" className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left transition-colors">
@@ -403,13 +409,9 @@ export default function AppLayout() {
                   </Link>
                 ) : (role === 'owner' || role === 'admin') ? (
                   <Link to="/settings" className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-high hover:bg-surface-dim text-left transition-colors">
-                    <CreditCard className="w-4 h-4 text-text-body" /> Abonelik ve Plan
+                    <Settings2 className="w-4 h-4 text-text-body" /> İşletme Ayarları
                   </Link>
-                ) : (
-                  <div className="px-4 py-2.5 text-[10px] font-bold text-text-body/40 italic uppercase tracking-tighter">
-                    Ek abonelik yetkisi yok
-                  </div>
-                )}
+                ) : null}
                 <div className="my-2 border-t border-border" />
                 <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 text-left transition-colors font-bold">
                   <LogOut className="w-4 h-4" /> Çıkış Yap

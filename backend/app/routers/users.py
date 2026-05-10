@@ -34,7 +34,7 @@ def get_team_members(
         WorkspaceMember.user_id == current_user.id
     ).first()
     
-    if not member_check or member_check.role not in ["owner", "admin"]:
+    if not member_check or member_check.role not in ["owner", "admin", "staff", "manager"]:
         raise HTTPException(status_code=403, detail="Bu işlem için yetkiniz bulunmuyor.")
         
     members = db.query(WorkspaceMember).filter(

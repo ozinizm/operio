@@ -147,8 +147,8 @@ def seed_data():
             db.add(stage)
         
         # Tasks
-        db.add(Task(workspace_id=workspace.id, customer_id=db_customers["Bora Mobilya"].id, job_id=bora_job.id, title="Menteşe ve Kulp Siparişi", status="completed", priority="normal", assignee_user_id=db_users["staff"].id, due_date=datetime.now() - timedelta(days=2)))
-        db.add(Task(workspace_id=workspace.id, customer_id=db_customers["Bora Mobilya"].id, job_id=bora_job.id, title="Kapak Boyama İşlemi", status="in_progress", priority="high", assignee_user_id=db_users["staff"].id, due_date=datetime.now() + timedelta(days=1)))
+        db.add(Task(workspace_id=workspace.id, customer_id=db_customers["Bora Mobilya"].id, job_id=bora_job.id, title="Menteşe ve Kulp Siparişi", status="completed", priority="normal", assignee_user_id=db_users["staff"].id, creator_id=db_users["owner"].id, due_date=datetime.now() - timedelta(days=2)))
+        db.add(Task(workspace_id=workspace.id, customer_id=db_customers["Bora Mobilya"].id, job_id=bora_job.id, title="Kapak Boyama İşlemi", status="in_progress", priority="high", assignee_user_id=db_users["staff"].id, creator_id=db_users["owner"].id, due_date=datetime.now() + timedelta(days=1)))
         
         # Delivery
         db.add(DeliveryService(

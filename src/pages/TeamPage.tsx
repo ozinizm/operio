@@ -124,8 +124,8 @@ export default function TeamPage() {
   };
 
   const filteredMembers = members.filter(m => 
-    m.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    m.email.toLowerCase().includes(searchQuery.toLowerCase())
+    m.full_name.toLocaleLowerCase('tr-TR').includes(searchQuery.toLocaleLowerCase('tr-TR')) ||
+    m.email.toLocaleLowerCase('tr-TR').includes(searchQuery.toLocaleLowerCase('tr-TR'))
   );
 
   const getRoleBadge = (role: string) => {
@@ -246,11 +246,11 @@ export default function TeamPage() {
                     {format(new Date(member.created_at), 'd MMM yyyy', { locale: tr })}
                   </td>
                   <td className="py-5 px-8">
-                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="sm" className="h-9 px-3 text-amber-600 font-bold" onClick={() => handleOpenReset(member)}>
+                    <div className="flex items-center justify-end gap-2 transition-opacity">
+                      <Button variant="ghost" size="sm" className="h-9 px-3 text-amber-600 font-bold hover:bg-amber-50 rounded-xl border border-amber-100" onClick={() => handleOpenReset(member)}>
                         <ShieldAlert className="w-3.5 h-3.5 mr-1.5" /> Şifre
                       </Button>
-                      <Button variant="ghost" size="sm" className="h-9 px-3 text-indigo-600 font-bold" onClick={() => handleOpenEdit(member)}>
+                      <Button variant="ghost" size="sm" className="h-9 px-3 text-indigo-600 font-bold hover:bg-indigo-50 rounded-xl border border-indigo-100" onClick={() => handleOpenEdit(member)}>
                         <Edit className="w-3.5 h-3.5 mr-1.5" /> Düzenle
                       </Button>
                     </div>
