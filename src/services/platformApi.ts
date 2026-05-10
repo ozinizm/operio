@@ -15,6 +15,13 @@ export const platformApi = {
     return response.data;
   },
 
+  getAvailableModules: async () => {
+    const response = await axios.get(`${API_URL}/platform/available-modules`, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  },
+
   createWorkspace: async (data: any) => {
     const response = await axios.post(`${API_URL}/platform/workspaces`, data, {
       headers: getAuthHeader()

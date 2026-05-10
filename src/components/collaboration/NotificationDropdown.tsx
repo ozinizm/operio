@@ -1,30 +1,60 @@
-import { useEffect, useState } from 'react';
-import { Bell, CheckCircle2, MessageSquare, AlertCircle, Briefcase, FileText, CheckSquare, Clock } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Bell, CheckCircle2, MessageSquare, AlertCircle, Briefcase, FileText, CheckSquare, Clock, Loader2 } from 'lucide-react';
 import { notificationsApi, type Notification } from '../../services/notificationsApi';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Link, useNavigate } from 'react-router-dom';
+import { useToast } from '../ui/Toast';
 
 export function NotificationDropdown() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { showToast } = useToast();
   const navigate = useNavigate();
+  
+  // Ref to track last seen notification ID to prevent duplicate toasts
+  const lastSeenIdRef = useRef<number | null>(null);
+  const isInitialLoadRef = useRef(true);
 
   useEffect(() => {
-    fetchUnreadCount();
-    // Poll for notifications every 60 seconds
-    const interval = setInterval(fetchUnreadCount, 60000);
+    fetchData(true);
+    // Poll for notifications every 15 seconds
+    const interval = setInterval(() => fetchData(false), 15000);
     return () => clearInterval(interval);
   }, []);
 
-  const fetchUnreadCount = async () => {
+  const fetchData = async (isInitial = false) => {
     try {
+      // 1. Get count
       const { count } = await notificationsApi.getUnreadCount();
+      
+      // 2. If count increased or it's initial load, check for the latest notification
+      if (isInitial || count > 0) {
+        const latest = await notificationsApi.list(1);
+        if (latest && latest.length > 0) {
+          const newest = latest[0];
+          
+          // Show toast only if:
+          // - Not the very first load of the app (prevent old notification spam)
+          // - ID is newer than what we last saw
+          // - It's unread
+          if (!isInitialLoadRef.current && 
+              lastSeenIdRef.current !== null && 
+              newest.id > lastSeenIdRef.current && 
+              !newest.is_read) {
+            showToast(newest.title || 'Yeni bildirim', 'info');
+          }
+          
+          lastSeenIdRef.current = newest.id;
+        }
+      }
+
       setUnreadCount(count);
+      isInitialLoadRef.current = false;
     } catch (err) {
-      console.error('Failed to fetch unread count:', err);
+      console.error('Failed to fetch notification data:', err);
     }
   };
 
@@ -106,7 +136,9 @@ export function NotificationDropdown() {
       >
         <Bell className={`w-5 h-5 ${unreadCount > 0 ? 'group-hover:shake' : ''}`} />
         {unreadCount > 0 && (
-          <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-error rounded-full ring-2 ring-surface"></span>
+          <span className="absolute -top-1 -right-1 bg-error text-white text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full ring-2 ring-white animate-in zoom-in duration-300">
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
         )}
       </button>
 
@@ -170,10 +202,3 @@ export function NotificationDropdown() {
   );
 }
 
-function Loader2(props: any) {
-  return (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-    </svg>
-  );
-}

@@ -30,7 +30,21 @@ ADDITIONAL_MODULES = [
 ]
 ALL_MODULES = CORE_MODULES + ADDITIONAL_MODULES
 
+from ..core.module_registry import MODULE_REGISTRY, SECTOR_PACKS
+from ..models.workspace_module import WorkspaceModule
+
 router = APIRouter()
+
+@router.get("/available-modules")
+def get_available_modules(
+    current_super_admin: User = Depends(get_current_super_admin),
+) -> List[Any]:
+    """Returns all available modules from the registry."""
+    return [
+        definition.to_dict() 
+        for definition in MODULE_REGISTRY.values() 
+        if definition.is_available
+    ]
 
 @router.get("/workspaces", response_model=List[WorkspaceSchema])
 def read_workspaces(

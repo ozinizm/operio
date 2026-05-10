@@ -309,23 +309,19 @@ export default function PlatformWorkspaceDetail() {
     { id: 'settings', label: 'Yönetim', icon: Settings },
   ];
 
-  const availableModules = [
-    { key: 'dashboard', label: 'Panel', description: 'İşletme genel durum özeti ve KPI takibi.' },
-    { key: 'customers', label: 'Müşteri Yönetimi', description: 'Müşteri veri tabanı ve iletişim geçmişi.' },
-    { key: 'jobs', label: 'İş ve Siparişler', description: 'İş emirleri ve sipariş yönetim süreci.' },
-    { key: 'settings', label: 'Ayarlar', description: 'İşletme özel yapılandırma ve tanımlar.' },
-    { key: 'offers', label: 'Teklif Yönetimi', description: 'Gelişmiş teklif oluşturma ve takip sistemi.' },
-    { key: 'tasks', label: 'Görev Yönetimi', description: 'Ekip içi görev atama ve durum takibi.' },
-    { key: 'operations', label: 'Operasyon', description: 'Üretim ve iş süreci yönetimi.' },
-    { key: 'delivery_service', label: 'Teslimat / Servis', description: 'Saha operasyonları ve teslimat takibi.' },
-    { key: 'complaints', label: 'Şikayet & Talep', description: 'Müşteri geri bildirim yönetim sistemi.' },
-    { key: 'finance', label: 'Finans', description: 'Gelir-gider takibi ve finansal raporlama.' },
-    { key: 'inventory', label: 'Stok Yönetimi', description: 'Stok ve demirbaş takibi.' },
-    { key: 'data_import', label: 'Veri Aktarımı', description: 'Excel ve toplu veri içe aktarma araçları.' },
-    { key: 'reports', label: 'Raporlar', description: 'Gelişmiş analitik ve görsel raporlama.' },
-    { key: 'notifications', label: 'Bildirimler', description: 'Sistem içi ve e-posta bildirimleri.' },
-    { key: 'files', label: 'Dosyalar', description: 'Kurumsal döküman ve dosya saklama.' },
-  ];
+  const [availableModules, setAvailableModules] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchAvailableModules = async () => {
+      try {
+        const data = await platformApi.getAvailableModules();
+        setAvailableModules(data);
+      } catch (error) {
+        console.error('Failed to fetch available modules:', error);
+      }
+    };
+    fetchAvailableModules();
+  }, []);
 
   const coreModules = ['dashboard', 'customers', 'jobs', 'settings'];
 
@@ -628,7 +624,7 @@ export default function PlatformWorkspaceDetail() {
                           </div>
                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-200/50 px-2 py-1 rounded-lg">Kilitli Modül</span>
                         </div>
-                        <h4 className="font-bold text-slate-800 mb-1">{mod.label === 'Dashboard' ? 'Panel' : mod.label}</h4>
+                        <h4 className="font-bold text-slate-800 mb-1">{mod.name === 'Dashboard' ? 'Panel' : mod.name}</h4>
                         <p className="text-xs text-slate-500 leading-relaxed">{mod.description}</p>
                       </div>
                     );
@@ -666,7 +662,7 @@ export default function PlatformWorkspaceDetail() {
                             )}
                           </button>
                         </div>
-                        <h4 className="font-bold text-slate-800 mb-1">{mod.label}</h4>
+                        <h4 className="font-bold text-slate-800 mb-1">{mod.name}</h4>
                         <p className="text-xs text-slate-500 leading-relaxed">{mod.description}</p>
                       </div>
                     );

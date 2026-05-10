@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   ArrowLeft, Save, User, 
   Shield, Check, AlertCircle, Info, Loader2,
@@ -8,21 +8,11 @@ import { useNavigate } from 'react-router-dom';
 import { platformApi } from '../../services/platformApi';
 import { useToast } from '../../components/ui/Toast';
 
-const availableModules = [
-  { key: 'offers', label: 'Teklif Yönetimi', icon: 'FileText' },
-  { key: 'operations', label: 'Operasyon', icon: 'Activity' },
-  { key: 'delivery_service', label: 'Teslimat & Servis', icon: 'Truck' },
-  { key: 'complaints', label: 'Şikayet & Talep', icon: 'AlertCircle' },
-  { key: 'finance', label: 'Finans', icon: 'DollarSign' },
-  { key: 'inventory', label: 'Stok Yönetimi', icon: 'Package' },
-  { key: 'reports', label: 'Raporlar', icon: 'BarChart2' },
-  { key: 'data_import', label: 'Veri Aktarımı', icon: 'FileSpreadsheet' }
-];
-
 export default function PlatformWorkspaceCreate() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [availableModules, setAvailableModules] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
@@ -33,6 +23,22 @@ export default function PlatformWorkspaceCreate() {
     owner_password: 'Operio' + Math.floor(Math.random() * 9000 + 1000) + '!',
     active_modules: [] as string[]
   });
+
+  useEffect(() => {
+    const fetchAvailableModules = async () => {
+      try {
+        const data = await platformApi.getAvailableModules();
+        // The backend returns a list of module definitions
+        setAvailableModules(data.map((m: any) => ({
+          key: m.key,
+          label: m.name // In module_registry, 'name' is the display label
+        })));
+      } catch (error) {
+        console.error('Failed to fetch available modules:', error);
+      }
+    };
+    fetchAvailableModules();
+  }, []);
 
   const [successData, setSuccessData] = useState<any>(null);
   const [isManuallyEditingSlug, setIsManuallyEditingSlug] = useState(false);
