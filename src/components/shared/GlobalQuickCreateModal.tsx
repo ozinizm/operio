@@ -210,7 +210,7 @@ export function GlobalQuickCreateModal({ type, onClose, onSuccess }: GlobalQuick
             <label className={labelClass}>Sorumlu Personel</label>
             <select className={fieldClass} value={form.assignee_user_id || ''} onChange={set('assignee_user_id')}>
               <option value="">Personel seçin (opsiyonel)</option>
-              {team.map(m => <option key={m.user_id} value={m.user_id}>{m.full_name}</option>)}
+              {team.map((m: any) => <option key={m.user_id} value={m.user_id}>{m.full_name} ({m.email})</option>)}
             </select>
           </div>
         </>)}

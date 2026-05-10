@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useToast } from '../../components/ui/Toast';
 import { UserPasswordResetModal } from '../../components/platform/UserPasswordResetModal';
+import { formatDate, formatTime } from '../../utils/formatters';
 
 export default function PlatformSettings() {
   const { showToast } = useToast();
@@ -448,10 +449,10 @@ export default function PlatformSettings() {
                       </td>
                       <td className="p-6">
                         <p className="text-sm font-bold text-slate-600">
-                          {new Date(log.created_at).toLocaleDateString('tr-TR')}
+                          {formatDate(log.created_at, 'dd.MM.yyyy')}
                         </p>
                         <p className="text-[10px] text-slate-400 font-medium">
-                          {new Date(log.created_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                          {formatTime(log.created_at)}
                         </p>
                       </td>
                       <td className="p-6">

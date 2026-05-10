@@ -18,6 +18,7 @@ router = APIRouter()
 def read_tasks(
     db: Session = Depends(get_db),
     workspace: Workspace = Depends(get_current_workspace),
+    user: User = Depends(get_current_user),
     status: Optional[str] = None,
     assignee_user_id: Optional[int] = None,
     job_id: Optional[int] = None,
@@ -25,10 +26,27 @@ def read_tasks(
     limit: int = 100,
 ) -> Any:
     from sqlalchemy.orm import joinedload
+    from ..models.workspace import WorkspaceMember
+    
     query = db.query(TaskModel).options(joinedload(TaskModel.assignee)).filter(
         TaskModel.workspace_id == workspace.id,
         TaskModel.is_deleted == False
     )
+    
+    # RBAC: Staff can only see tasks assigned to them or created by them
+    member = db.query(WorkspaceMember).filter(
+        WorkspaceMember.workspace_id == workspace.id,
+        WorkspaceMember.user_id == user.id
+    ).first()
+    
+    if member and member.role == "staff":
+        from sqlalchemy import or_
+        query = query.filter(
+            or_(
+                TaskModel.assignee_user_id == user.id,
+                TaskModel.creator_id == user.id
+            )
+        )
     
     if status:
         query = query.filter(TaskModel.status == status)

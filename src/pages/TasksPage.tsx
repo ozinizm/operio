@@ -303,7 +303,7 @@ export default function TasksPage() {
           >
             <option value="">Seçilmedi</option>
             {team.map(member => (
-              <option key={member.user_id} value={member.user_id}>{member.full_name}</option>
+              <option key={member.user_id} value={member.user_id}>{member.full_name} ({member.email})</option>
             ))}
           </select>
         </div>
