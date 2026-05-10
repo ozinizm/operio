@@ -65,7 +65,8 @@ export default function TeamPage() {
       email: member.email,
       full_name: member.full_name,
       role: member.role,
-      password: '' // Not used for edit
+      password: '', // Not used for edit
+      is_active: member.is_active
     });
     setIsModalOpen(true);
   };
@@ -81,9 +82,10 @@ export default function TeamPage() {
     setIsSubmitting(true);
     try {
       if (editingMember) {
-        await teamApi.update(editingMember.user_id, {
+        await teamApi.update(editingMember.id, {
           full_name: formData.full_name,
-          role: formData.role
+          role: formData.role,
+          is_active: formData.is_active
         });
         showToast('Kullanıcı güncellendi.', 'success');
       } else {
@@ -99,21 +101,11 @@ export default function TeamPage() {
     }
   };
 
-  const handleToggleStatus = async (member: TeamMember) => {
-    try {
-      await teamApi.update(member.user_id, { is_active: !member.is_active });
-      showToast('Durum güncellendi.', 'success');
-      fetchTeam();
-    } catch (error) {
-      showToast('İşlem başarısız.', 'error');
-    }
-  };
-
   const handleConfirmReset = async () => {
     if (!resettingMember) return;
     setIsSubmitting(true);
     try {
-      await teamApi.resetPassword(resettingMember.user_id, tempPassword);
+      await teamApi.resetPassword(resettingMember.id, tempPassword);
       showToast('Şifre sıfırlandı.', 'success');
       setIsResetModalOpen(false);
     } catch (error) {
@@ -230,17 +222,16 @@ export default function TeamPage() {
                     {getRoleBadge(member.role)}
                   </td>
                   <td className="py-5 px-8">
-                    <button 
-                      onClick={() => handleToggleStatus(member)}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                    <span 
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold ${
                         member.is_active 
-                          ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' 
-                          : 'bg-red-50 text-red-700 hover:bg-red-100'
+                          ? 'bg-emerald-50 text-emerald-700' 
+                          : 'bg-red-50 text-red-700'
                       }`}
                     >
                       <div className={`w-1.5 h-1.5 rounded-full ${member.is_active ? 'bg-emerald-500' : 'bg-red-500'}`} />
                       {member.is_active ? 'Aktif' : 'Pasif'}
-                    </button>
+                    </span>
                   </td>
                   <td className="py-5 px-8 text-xs text-slate-400 font-medium tabular-nums">
                     {format(new Date(member.created_at), 'd MMM yyyy', { locale: tr })}
@@ -315,6 +306,19 @@ export default function TeamPage() {
                   <option value="field">Saha Personeli</option>
                 </select>
               </div>
+              {editingMember && (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-bold text-slate-700">Hesap Durumu</label>
+                  <select 
+                    className="w-full h-12 bg-slate-50 border border-slate-200 rounded-2xl px-4 text-sm font-medium outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all"
+                    value={formData.is_active ? 'true' : 'false'}
+                    onChange={(e) => setFormData({...formData, is_active: e.target.value === 'true'})}
+                  >
+                    <option value="true">Aktif (Sisteme Girebilir)</option>
+                    <option value="false">Pasif (Giriş Engellendi)</option>
+                  </select>
+                </div>
+              )}
               {!editingMember && (
                 <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl">
                   <div className="flex items-center gap-2 mb-2">

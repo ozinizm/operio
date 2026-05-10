@@ -19,12 +19,12 @@ export const teamApi = {
     const response = await api.post('/users/team', data);
     return response.data;
   },
-  update: async (userId: number, data: any) => {
-    const response = await api.patch(`/users/team/${userId}`, data);
+  update: async (memberId: number, data: any) => {
+    const response = await api.patch(`/users/team/${memberId}`, data);
     return response.data;
   },
-  resetPassword: async (userId: number, password: string) => {
-    const response = await api.post(`/users/team/${userId}/reset-password`, { new_password: password });
+  resetPassword: async (memberId: number, password: string) => {
+    const response = await api.post(`/users/team/${memberId}/reset-password`, { new_password: password });
     return response.data;
   }
 };

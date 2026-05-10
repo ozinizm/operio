@@ -17,8 +17,16 @@ def list_notifications(
     limit: int = 50,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
-    member = Depends(get_current_workspace_member)
 ):
+    from ..models.workspace import WorkspaceMember
+    member = db.query(WorkspaceMember).filter(
+        WorkspaceMember.user_id == current_user.id,
+        WorkspaceMember.is_active == True
+    ).first()
+    
+    if not member:
+        return []
+        
     notifications = db.query(Notification).filter(
         Notification.workspace_id == member.workspace_id,
         Notification.user_id == current_user.id
@@ -36,8 +44,16 @@ def list_notifications(
 def get_unread_count(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
-    member = Depends(get_current_workspace_member)
 ):
+    from ..models.workspace import WorkspaceMember
+    member = db.query(WorkspaceMember).filter(
+        WorkspaceMember.user_id == current_user.id,
+        WorkspaceMember.is_active == True
+    ).first()
+    
+    if not member:
+        return {"count": 0}
+        
     count = db.query(Notification).filter(
         Notification.workspace_id == member.workspace_id,
         Notification.user_id == current_user.id,

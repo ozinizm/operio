@@ -102,9 +102,9 @@ def create_team_member(
     
     return {"message": "Kullanıcı başarıyla eklendi.", "user_id": user.id}
 
-@router.patch("/team/{user_id}")
+@router.patch("/team/{member_id}")
 def update_team_member(
-    user_id: int,
+    member_id: int,
     data: TeamMemberUpdate,
     db: Session = Depends(get_db),
     workspace: Workspace = Depends(get_current_workspace),
@@ -120,7 +120,7 @@ def update_team_member(
         
     target_member = db.query(WorkspaceMember).filter(
         WorkspaceMember.workspace_id == workspace.id,
-        WorkspaceMember.user_id == user_id
+        WorkspaceMember.id == member_id
     ).first()
     
     if not target_member:
@@ -132,6 +132,8 @@ def update_team_member(
         target_member.role = data.role
         
     if data.is_active is not None:
+        if data.is_active is False and target_member.user_id == current_user.id:
+            raise HTTPException(status_code=400, detail="Kendi hesabınızı pasife alamazsınız.")
         target_member.is_active = data.is_active
         
     if data.full_name is not None:
@@ -140,9 +142,9 @@ def update_team_member(
     db.commit()
     return {"message": "Kullanıcı güncellendi."}
 
-@router.post("/team/{user_id}/reset-password")
+@router.post("/team/{member_id}/reset-password")
 def reset_member_password(
-    user_id: int,
+    member_id: int,
     new_password: str = Body(..., embed=True),
     db: Session = Depends(get_db),
     workspace: Workspace = Depends(get_current_workspace),
@@ -158,7 +160,7 @@ def reset_member_password(
         
     target_member = db.query(WorkspaceMember).filter(
         WorkspaceMember.workspace_id == workspace.id,
-        WorkspaceMember.user_id == user_id
+        WorkspaceMember.id == member_id
     ).first()
     
     if not target_member:

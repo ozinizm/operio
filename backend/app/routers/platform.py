@@ -654,18 +654,18 @@ def hard_delete_workspace(
         )
         
         models_to_clean = [
-            Activity, WorkspaceMember, WorkspaceModule, Customer, Job, Offer, Task,
-            FinanceEntry, InventoryItem, DeliveryService, RequestTicket, FileAsset,
-            Notification, Comment, EmailLog, ImportJob, JobStage, EntityWatcher
+            # 1. Leaf nodes (no other tables depend on these)
+            Activity, Comment, Notification, EmailLog, EntityWatcher,
+            FileAsset, FinanceEntry, RequestTicket, DeliveryService,
+            Task, JobStage, Offer,
+            # 2. Mid nodes (depend on Customer, but parents to leaves)
+            Job,
+            # 3. Root nodes (depend only on Workspace)
+            Customer, InventoryItem, ImportJob, WorkspaceModule, WorkspaceMember
         ]
         
         for model in models_to_clean:
-            try:
-                db.query(model).filter(model.workspace_id == workspace_id).delete(synchronize_session=False)
-            except Exception as e:
-                # Log and continue if a specific table delete fails, but we want to be as thorough as possible
-                print(f"Error deleting {model.__name__}: {e}")
-                pass
+            db.query(model).filter(model.workspace_id == workspace_id).delete(synchronize_session=False)
 
         # Finally delete workspace
         workspace_name = workspace.name
