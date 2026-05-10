@@ -434,7 +434,16 @@ export default function PlatformSettings() {
                       </td>
                       <td className="p-6">
                         <span className="px-2 py-1 rounded-lg bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-tight border border-slate-200">
-                          {log.template_key || 'CUSTOM'}
+                          {{
+                            'task_assigned': 'Görev Atama',
+                            'task_status_changed': 'Görev Durumu Güncelleme',
+                            'team_member_created': 'Yeni Personel',
+                            'team_member_password_reset': 'Personel Şifre Sıfırlama',
+                            'welcome_workspace_admin': 'Yeni İşletme Sahibi',
+                            'password_reset_by_admin': 'Şifre Sıfırlama',
+                            'forgot_password_request_admin_notice': 'Şifre Talebi (Admin)',
+                            'support_request_received_user_notice': 'Talep Alındı',
+                          }[log.template_key as string] || log.template_key || 'CUSTOM'}
                         </span>
                       </td>
                       <td className="p-6">

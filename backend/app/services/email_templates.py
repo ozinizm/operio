@@ -107,3 +107,107 @@ def support_request_received_user_notice() -> Dict[str, str]:
         "html": get_base_html(html),
         "text": text
     }
+
+def task_assigned(task_title: str, priority: str, due_date: Optional[str], assigner_name: str, workspace_name: str) -> Dict[str, str]:
+    priority_label = {"low": "Düşük", "normal": "Normal", "high": "Yüksek", "urgent": "Acil"}.get(priority, priority)
+    html = f"""
+    <h2>Yeni Görev Atandı</h2>
+    <p>Merhaba,</p>
+    <p><strong>{workspace_name}</strong> çalışma alanında sana yeni bir görev atandı.</p>
+    <div style="background: #f9f9f9; padding: 15px; border-left: 4px solid #000; margin: 20px 0;">
+        <p style="margin: 0 0 10px 0;"><strong>Görev:</strong> {task_title}</p>
+        <p style="margin: 0 0 10px 0;"><strong>Öncelik:</strong> {priority_label}</p>
+        <p style="margin: 0 0 10px 0;"><strong>Son Tarih:</strong> {due_date or 'Belirtilmedi'}</p>
+        <p style="margin: 0;"><strong>Atayan:</strong> {assigner_name}</p>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+        <a href="https://operio.fikircreative.com/tasks" style="background: #000; color: #fff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Görevi Görüntüle</a>
+    </div>
+    """
+    
+    text = f"Yeni Görev Atandı\n\n{workspace_name} çalışma alanında sana yeni bir görev atandı.\n\nGörev: {task_title}\nÖncelik: {priority_label}\nSon Tarih: {due_date or 'Belirtilmedi'}\nAtayan: {assigner_name}\n\nLink: https://operio.fikircreative.com/tasks"
+
+    return {
+        "subject": f"Yeni görev atandı: {task_title}",
+        "html": get_base_html(html),
+        "text": text
+    }
+
+def task_status_changed(task_title: str, old_status: str, new_status: str, actor_name: str, workspace_name: str) -> Dict[str, str]:
+    status_labels = {
+        "todo": "Yapılacak",
+        "in_progress": "İşlemde",
+        "review": "İncelemede",
+        "completed": "Tamamlandı",
+        "overdue": "Gecikti"
+    }
+    old_label = status_labels.get(old_status, old_status)
+    new_label = status_labels.get(new_status, new_status)
+    
+    html = f"""
+    <h2>Görev Durumu Güncellendi</h2>
+    <p>Merhaba,</p>
+    <p><strong>{workspace_name}</strong> çalışma alanındaki bir görevin durumu güncellendi.</p>
+    <div style="background: #f9f9f9; padding: 15px; border-left: 4px solid #000; margin: 20px 0;">
+        <p style="margin: 0 0 10px 0;"><strong>Görev:</strong> {task_title}</p>
+        <p style="margin: 0 0 10px 0;"><strong>Durum:</strong> <span style="text-decoration: line-through; color: #777;">{old_label}</span> ➔ <strong>{new_label}</strong></p>
+        <p style="margin: 0;"><strong>Güncelleyen:</strong> {actor_name}</p>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+        <a href="https://operio.fikircreative.com/tasks" style="background: #000; color: #fff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Görevi Görüntüle</a>
+    </div>
+    """
+    
+    text = f"Görev Durumu Güncellendi\n\n{workspace_name} çalışma alanındaki bir görevin durumu güncellendi.\n\nGörev: {task_title}\nDurum: {old_label} -> {new_label}\nGüncelleyen: {actor_name}\n\nLink: https://operio.fikircreative.com/tasks"
+
+    return {
+        "subject": f"Görev durumu güncellendi: {task_title}",
+        "html": get_base_html(html),
+        "text": text
+    }
+
+def team_member_created(full_name: str, email: str, temporary_password: str, workspace_name: str) -> Dict[str, str]:
+    html = f"""
+    <h2>Aramıza Hoş Geldin!</h2>
+    <p>Merhaba {full_name},</p>
+    <p><strong>{workspace_name}</strong> çalışma alanına personel olarak eklendiniz.</p>
+    <div style="background: #f9f9f9; padding: 15px; border-left: 4px solid #000; margin: 20px 0;">
+        <p style="margin: 0 0 10px 0;"><strong>Giriş E-postası:</strong> {email}</p>
+        <p style="margin: 0;"><strong>Geçici Şifre:</strong> <span style="background: #eaeaea; padding: 2px 6px; border-radius: 4px;">{temporary_password}</span></p>
+    </div>
+    <p style="color: #d32f2f; font-weight: bold;">Güvenliğiniz için sisteme ilk girişinizde şifrenizi değiştirmeniz zorunludur.</p>
+    <div style="text-align: center; margin: 30px 0;">
+        <a href="https://operio.fikircreative.com" style="background: #000; color: #fff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Sisteme Giriş Yap</a>
+    </div>
+    """
+    
+    text = f"Aramıza Hoş Geldin!\n\nMerhaba {full_name},\n{workspace_name} çalışma alanına eklendiniz.\n\nGiriş E-postası: {email}\nGeçici Şifre: {temporary_password}\n\nGüvenliğiniz için ilk girişte şifrenizi değiştirin.\n\nLink: https://operio.fikircreative.com"
+
+    return {
+        "subject": f"{workspace_name} Çalışma Alanına Eklendiniz",
+        "html": get_base_html(html),
+        "text": text
+    }
+
+def team_member_password_reset(full_name: str, temporary_password: str) -> Dict[str, str]:
+    html = f"""
+    <h2>Şifreniz Sıfırlandı</h2>
+    <p>Merhaba {full_name},</p>
+    <p>Hesap şifreniz çalışma alanı yöneticiniz tarafından sıfırlanmıştır.</p>
+    <div style="background: #f9f9f9; padding: 15px; border-left: 4px solid #000; margin: 20px 0;">
+        <p style="margin: 0;"><strong>Yeni Geçici Şifreniz:</strong> <span style="background: #eaeaea; padding: 2px 6px; border-radius: 4px;">{temporary_password}</span></p>
+    </div>
+    <p style="color: #d32f2f; font-weight: bold;">Lütfen sisteme giriş yaptıktan sonra güvenlik ayarlarınızdan şifrenizi güncelleyin.</p>
+    <p>Eğer bu işlemi yöneticinizden talep etmediyseniz, lütfen hemen işletme yöneticinizle iletişime geçin.</p>
+    <div style="text-align: center; margin: 30px 0;">
+        <a href="https://operio.fikircreative.com" style="background: #000; color: #fff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Sisteme Giriş Yap</a>
+    </div>
+    """
+    
+    text = f"Şifreniz Sıfırlandı\n\nMerhaba {full_name},\nHesap şifreniz yöneticiniz tarafından sıfırlandı.\n\nYeni Geçici Şifre: {temporary_password}\n\nLütfen giriş yaptıktan sonra şifrenizi değiştirin.\n\nLink: https://operio.fikircreative.com"
+
+    return {
+        "subject": "Hesap Şifreniz Sıfırlandı",
+        "html": get_base_html(html),
+        "text": text
+    }

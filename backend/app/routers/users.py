@@ -1,5 +1,5 @@
 from typing import Any, List
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, Depends, HTTPException, Body, BackgroundTasks
 from sqlalchemy.orm import Session
 from ..core.database import get_db
 from ..core.deps import get_current_user, get_current_workspace
@@ -57,6 +57,7 @@ def get_team_members(
 @router.post("/team")
 def create_team_member(
     data: TeamMemberCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     workspace: Workspace = Depends(get_current_workspace),
     current_user: User = Depends(get_current_user)
@@ -71,6 +72,7 @@ def create_team_member(
         
     # Check if user already exists
     user = db.query(User).filter(User.email == data.email).first()
+    is_new_user = False
     if user:
         # Check if already a member of this workspace
         existing_member = db.query(WorkspaceMember).filter(
@@ -89,6 +91,7 @@ def create_team_member(
         )
         db.add(user)
         db.flush()
+        is_new_user = True
         
     # Add to workspace
     new_member = WorkspaceMember(
@@ -99,6 +102,29 @@ def create_team_member(
     )
     db.add(new_member)
     db.commit()
+    
+    # Send email notification
+    if is_new_user:
+        from ..services.email_service import send_email_background
+        from ..services import email_templates
+        
+        email_data = email_templates.team_member_created(
+            full_name=user.full_name,
+            email=user.email,
+            temporary_password=data.password,
+            workspace_name=workspace.name
+        )
+        
+        background_tasks.add_task(
+            send_email_background,
+            to=user.email,
+            subject=email_data["subject"],
+            html_body=email_data["html"],
+            text_body=email_data["text"],
+            template_key="team_member_created",
+            workspace_id=workspace.id,
+            user_id=user.id
+        )
     
     return {"message": "Kullanıcı başarıyla eklendi.", "user_id": user.id}
 
@@ -145,6 +171,7 @@ def update_team_member(
 @router.post("/team/{member_id}/reset-password")
 def reset_member_password(
     member_id: int,
+    background_tasks: BackgroundTasks,
     new_password: str = Body(..., embed=True),
     db: Session = Depends(get_db),
     workspace: Workspace = Depends(get_current_workspace),
@@ -171,4 +198,25 @@ def reset_member_password(
     target_user.must_change_password = True
     
     db.commit()
+    
+    # Send email notification
+    from ..services.email_service import send_email_background
+    from ..services import email_templates
+    
+    email_data = email_templates.team_member_password_reset(
+        full_name=target_user.full_name,
+        temporary_password=new_password
+    )
+    
+    background_tasks.add_task(
+        send_email_background,
+        to=target_user.email,
+        subject=email_data["subject"],
+        html_body=email_data["html"],
+        text_body=email_data["text"],
+        template_key="team_member_password_reset",
+        workspace_id=workspace.id,
+        user_id=target_user.id
+    )
+    
     return {"message": "Şifre başarıyla sıfırlandı."}

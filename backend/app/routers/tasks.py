@@ -1,5 +1,5 @@
 from typing import Any, List, Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from ..core.database import get_db
 from ..core.deps import get_current_user, get_current_workspace
@@ -46,6 +46,7 @@ def create_task(
     db: Session = Depends(get_db),
     workspace: Workspace = Depends(get_current_workspace),
     user: User = Depends(get_current_user),
+    background_tasks: BackgroundTasks,
     task_in: TaskCreate,
 ) -> Any:
     task = TaskModel(
@@ -63,7 +64,7 @@ def create_task(
     )
     
     if task.assignee_user_id:
-        notify_task_assigned(db, workspace.id, user.id, task)
+        notify_task_assigned(db, workspace.id, user.id, task, background_tasks)
         # Auto-watch for assignee
         add_watcher(db, workspace.id, task.assignee_user_id, "task", task.id)
     
@@ -75,6 +76,7 @@ def update_task(
     db: Session = Depends(get_db),
     workspace: Workspace = Depends(get_current_workspace),
     user: User = Depends(get_current_user),
+    background_tasks: BackgroundTasks,
     task_id: int,
     task_in: TaskUpdate,
 ) -> Any:
@@ -99,11 +101,11 @@ def update_task(
     
     # Notifications
     if task.assignee_user_id and task.assignee_user_id != old_assignee_id:
-        notify_task_assigned(db, workspace.id, user.id, task)
+        notify_task_assigned(db, workspace.id, user.id, task, background_tasks)
         add_watcher(db, workspace.id, task.assignee_user_id, "task", task.id)
         
     if task.status != old_status:
-        notify_task_status_changed(db, workspace.id, user.id, task, old_status)
+        notify_task_status_changed(db, workspace.id, user.id, task, old_status, background_tasks)
         
     if task.status == "completed" and old_status != "completed":
         create_activity(
