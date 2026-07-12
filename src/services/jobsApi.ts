@@ -1,33 +1,21 @@
 import apiClient from './apiClient';
-
-export interface Job {
-  id: number;
-  title: string;
-  status: string;
-  priority: string;
-  customer_id: number;
-  customer?: {
-    id: number;
-    name: string;
-  };
-  progress: number;
-  created_at: string;
-}
+import type { Job } from '../types/domain';
+export type { Job } from '../types/domain';
 
 export const jobsApi = {
   list: async (params?: { status?: string; priority?: string; customer_id?: number }) => {
     const response = await apiClient.get('/jobs/', { params });
-    return response.data;
+    return response.data as Job[];
   },
   get: async (id: number) => {
     const response = await apiClient.get(`/jobs/${id}`);
-    return response.data;
+    return response.data as Job;
   },
-  create: async (data: any) => {
+  create: async (data: object) => {
     const response = await apiClient.post('/jobs/', data);
     return response.data;
   },
-  update: async (id: number, data: any) => {
+  update: async (id: number, data: object) => {
     const response = await apiClient.put(`/jobs/${id}`, data);
     return response.data;
   },

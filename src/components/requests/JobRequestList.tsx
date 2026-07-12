@@ -9,7 +9,7 @@ import { LoadingState } from '../ui/States';
 import { Card, CardHeader } from '../ui/Card';
 import { Button } from '../ui/Button';
 
-export function JobRequestList({ jobId, customerId: _customerId, onSelect, onCreate }: { jobId: number, customerId: number, onSelect: (id: number) => void, onCreate: () => void }) {
+export function JobRequestList({ jobId, onSelect, onCreate }: { jobId: number, customerId: number, onSelect: (id: number) => void, onCreate: () => void }) {
   const [items, setItems] = useState<RequestTicket[]>([]);
   const [loading, setLoading] = useState(true);
 

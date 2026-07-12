@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
-import { useToast } from '../ui/Toast';
-import { importsApi, type ImportPreviewResponse } from '../../services/importsApi';
+import { useToast } from '../ui/ToastContext';
+import { importsApi, type ImportFieldError, type ImportPreviewResponse, type ImportRowError, type InventoryPreviewRow } from '../../services/importsApi';
+import { getErrorMessage } from '../../services/apiClient';
 import { 
   FileSpreadsheet, Upload, AlertCircle, 
   CheckCircle2, ChevronRight, 
-  FileText
+  FileText, Download
 } from 'lucide-react';
 
 interface InventoryImportModalProps {
@@ -27,8 +28,36 @@ export function InventoryImportModal({ isOpen, onClose, onSuccess }: InventoryIm
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+      const selected = e.target.files[0];
+      const extension = selected.name.toLowerCase();
+      if (!extension.endsWith('.csv') && !extension.endsWith('.xlsx')) {
+        showToast('Yalnız .csv veya .xlsx dosyası seçebilirsiniz.', 'error');
+        e.target.value = '';
+        return;
+      }
+      if (selected.size > 10 * 1024 * 1024) {
+        showToast('Dosya boyutu 10 MB sınırını aşıyor.', 'error');
+        e.target.value = '';
+        return;
+      }
+      setFile(selected);
     }
+  };
+
+  const downloadErrorReport = () => {
+    if (!preview?.errors?.length) return;
+    const escapeCsv = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+    const lines = ['Satır,Alan,Hata'];
+    preview.errors.forEach(row => row.errors.forEach(fieldError => {
+      lines.push([row.row_number, fieldError.field, fieldError.message].map(escapeCsv).join(','));
+    }));
+    const blob = new Blob([`\uFEFF${lines.join('\n')}`], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'tavelya-aktarim-hata-raporu.csv';
+    anchor.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleUpload = async () => {
@@ -42,8 +71,8 @@ export function InventoryImportModal({ isOpen, onClose, onSuccess }: InventoryIm
       } else {
         throw new Error('Geçersiz sunucu yanıtı.');
       }
-    } catch (err: any) {
-      showToast(err.response?.data?.detail || err.message || 'Dosya yüklenirken hata oluştu.', 'error');
+    } catch (err: unknown) {
+      showToast(getErrorMessage(err) || 'Dosya yüklenirken hata oluştu.', 'error');
     } finally {
       setIsUploading(false);
     }
@@ -72,20 +101,9 @@ export function InventoryImportModal({ isOpen, onClose, onSuccess }: InventoryIm
       } else {
         throw new Error('Aktarım tamamlanamadı.');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Import confirm error:', err);
-      let errorMessage = 'Aktarım tamamlanamadı.';
-      
-      const detail = err.response?.data?.detail;
-      if (Array.isArray(detail)) {
-        errorMessage = detail[0]?.msg || detail[0]?.message || 'Doğrulama hatası.';
-      } else if (typeof detail === 'string') {
-        errorMessage = detail;
-      } else {
-        errorMessage = err.message || 'Aktarım tamamlanamadı.';
-      }
-      
-      showToast(errorMessage, 'error');
+      showToast(getErrorMessage(err) || 'Aktarım tamamlanamadı.', 'error');
     } finally {
       setIsConfirming(false);
     }
@@ -181,7 +199,7 @@ export function InventoryImportModal({ isOpen, onClose, onSuccess }: InventoryIm
                 <div className="space-y-1">
                   <p className="text-sm font-bold text-amber-900">Önemli Hatırlatma</p>
                   <p className="text-xs text-amber-800/70 leading-relaxed font-medium">
-                    Doğru aktarım için lütfen Operio standart şablonunu kullanın. 
+                    Doğru aktarım için lütfen Tavelya standart şablonunu kullanın.
                     Ürün Adı, Birim ve Miktar alanları doldurulması zorunludur.
                   </p>
                 </div>
@@ -223,11 +241,11 @@ export function InventoryImportModal({ isOpen, onClose, onSuccess }: InventoryIm
                 <div className="bg-white rounded-3xl border border-border overflow-hidden flex flex-col h-[350px] shadow-soft">
                   <div className="px-6 py-4 bg-red-50 border-b border-red-100 flex items-center justify-between sticky top-0 z-10">
                     <span className="text-[11px] font-black text-red-800 uppercase tracking-[0.15em]">Hata Raporu</span>
-                    <Badge variant="error" className="text-[10px] font-black px-3">{preview.errors?.length || 0} UYARI</Badge>
+                    <div className="flex items-center gap-2"><Badge variant="error" className="text-[10px] font-black px-3">{preview.errors?.length || 0} UYARI</Badge>{preview.errors?.length > 0 && <button type="button" onClick={downloadErrorReport} className="rounded-lg p-2 text-red-700 hover:bg-red-100" title="Hata raporunu indir" aria-label="Hata raporunu indir"><Download className="h-4 w-4" /></button>}</div>
                   </div>
                   <div className="flex-1 overflow-y-auto p-6 space-y-4 no-scrollbar">
                     {Array.isArray(preview.errors) && preview.errors.length > 0 ? (
-                      preview.errors.map((err: any, i: number) => (
+                      preview.errors.map((err: ImportRowError, i: number) => (
                         <div key={i} className="bg-red-50/30 p-4 rounded-2xl border border-red-100/30 flex items-start gap-4 animate-in slide-in-from-left duration-300" style={{ animationDelay: `${i * 50}ms` }}>
                           <div className="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center font-bold text-xs shrink-0">
                             {err.row_number}
@@ -235,7 +253,7 @@ export function InventoryImportModal({ isOpen, onClose, onSuccess }: InventoryIm
                           <div className="space-y-1">
                             <p className="text-xs font-bold text-red-900">Satır {err.row_number}</p>
                             <div className="space-y-1">
-                              {Array.isArray(err.errors) ? err.errors.map((e: any, ei: number) => (
+                              {Array.isArray(err.errors) ? err.errors.map((e: ImportFieldError, ei: number) => (
                                 <p key={ei} className="text-[11px] font-medium text-red-700/80 leading-relaxed">
                                   <span className="font-bold">[{e.field}]:</span> {e.message}
                                 </p>
@@ -272,7 +290,7 @@ export function InventoryImportModal({ isOpen, onClose, onSuccess }: InventoryIm
                       </thead>
                       <tbody className="divide-y divide-border/60">
                         {Array.isArray(preview.preview_rows) && preview.preview_rows.length > 0 ? (
-                          preview.preview_rows.map((row: any, i: number) => (
+                          preview.preview_rows.map((row: InventoryPreviewRow, i: number) => (
                             <tr key={i} className="hover:bg-surface-dim/5 transition-colors">
                               <td className="px-6 py-4">
                                 <div className="text-xs font-extrabold text-text-high truncate max-w-[150px]">{row.name || 'Bilinmeyen'}</div>

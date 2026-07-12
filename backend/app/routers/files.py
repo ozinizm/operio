@@ -6,15 +6,17 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Q
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.core.deps import get_current_user, get_current_workspace_member, check_role
+from app.core.deps import get_current_user, get_current_workspace_member, require_permission
+from app.core.permissions import Permission
 from app.models.file_asset import FileAsset
 from app.schemas.file_asset import FileAssetResponse, FileAssetUpdate
 from app.core.config import settings
 from app.services.activity_service import create_activity
 from app.services.notification_service import notify_watchers, add_watcher
+from app.core.entity_access import get_workspace_entity_or_404
 from datetime import datetime
 
-router = APIRouter(prefix="/files", tags=["Files"])
+router = APIRouter(prefix="/files", tags=["Files"], dependencies=[Depends(require_permission(Permission.FILE_VIEW))])
 
 ALLOWED_EXTENSIONS = {
     "pdf", "doc", "docx", "xls", "xlsx", "csv", 
@@ -41,7 +43,8 @@ async def upload_file(
     request_ticket_id: Optional[int] = Form(None),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
-    member = Depends(get_current_workspace_member)
+    member = Depends(get_current_workspace_member),
+    permission_member = Depends(require_permission(Permission.FILE_WRITE)),
 ):
     # Validate extension
     ext = file.filename.split(".")[-1].lower() if "." in file.filename else ""
@@ -56,6 +59,20 @@ async def upload_file(
     #     raise HTTPException(status_code=400, detail="File too large")
 
     workspace_id = member.workspace_id
+    related_entities = {
+        "customer": customer_id,
+        "job": job_id,
+        "offer": offer_id,
+        "task": task_id,
+        "finance_entry": finance_entry_id,
+        "delivery_service": delivery_service_id,
+        "request_ticket": request_ticket_id,
+    }
+    for entity_type, entity_id in related_entities.items():
+        if entity_id is not None:
+            get_workspace_entity_or_404(
+                db, workspace_id=workspace_id, entity_type=entity_type, entity_id=entity_id
+            )
     upload_dir = get_workspace_upload_dir(workspace_id)
     
     unique_filename = f"{uuid.uuid4()}_{file.filename}"
@@ -132,7 +149,7 @@ def list_files(
     category: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    member = Depends(get_current_workspace_member)
+    member = Depends(get_current_workspace_member),
 ):
     query = db.query(FileAsset).filter(
         FileAsset.workspace_id == member.workspace_id,
@@ -204,7 +221,8 @@ def update_file_info(
     file_update: FileAssetUpdate,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
-    member = Depends(get_current_workspace_member)
+    member = Depends(get_current_workspace_member),
+    permission_member = Depends(require_permission(Permission.FILE_WRITE)),
 ):
     file_asset = db.query(FileAsset).filter(
         FileAsset.id == file_id, 
@@ -228,12 +246,9 @@ def delete_file(
     file_id: int,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
-    member = Depends(get_current_workspace_member)
+    member = Depends(get_current_workspace_member),
+    permission_member = Depends(require_permission(Permission.FILE_DELETE)),
 ):
-    # Check role
-    if member.role not in ["owner", "admin", "manager"]:
-        raise HTTPException(status_code=403, detail="Permission denied")
-
     file_asset = db.query(FileAsset).filter(
         FileAsset.id == file_id, 
         FileAsset.workspace_id == member.workspace_id

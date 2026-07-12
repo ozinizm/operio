@@ -5,16 +5,17 @@ import { Button } from '../components/ui/Button';
 import { ExcelImportActions } from '../components/shared/ExcelImportActions';
 import { FinanceEntryModal } from '../components/shared/FinanceEntryModal';
 import { ActionMenu, type ActionMenuItem } from '../components/ui/ActionMenu';
-import { ConfirmDialog, useConfirm } from '../components/ui/ConfirmDialog';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { useConfirm } from '../components/ui/useConfirm';
 import { 
   TrendingUp, TrendingDown, 
   ArrowUpRight, ArrowDownRight, Calendar, 
   Search, FileCheck, Plus, Download,
   Edit, Trash2, CheckCircle2, ShieldAlert
 } from 'lucide-react';
-import { useToast } from '../components/ui/Toast';
-import { useAuth } from '../context/AuthContext';
-import { financeApi } from '../services/financeApi';
+import { useToast } from '../components/ui/ToastContext';
+import { useAuth } from '../context/AuthContextValue';
+import { financeApi, type FinanceEntry, type FinanceSummary } from '../services/financeApi';
 import { reportsApi } from '../services/reportsApi';
 import { LoadingState, ErrorState } from '../components/ui/States';
 import { formatCurrency, formatDate } from '../utils/formatters';
@@ -24,18 +25,23 @@ export default function FinancePage() {
   const { role } = useAuth();
   const { showToast } = useToast();
   const { confirmProps, confirm } = useConfirm();
-  const [summary, setSummary] = useState<any>(null);
-  const [entries, setEntries] = useState<any[]>([]);
+  const [summary, setSummary] = useState<FinanceSummary | null>(null);
+  const [entries, setEntries] = useState<FinanceEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
-  const [editingEntry, setEditingEntry] = useState<any>(null);
+  const [editingEntry, setEditingEntry] = useState<FinanceEntry | null>(null);
 
   const canAccessFinance = ['owner', 'admin', 'finance'].includes(role || '');
 
   useEffect(() => {
-    if (canAccessFinance) fetchFinanceData();
+    if (!canAccessFinance) return;
+    void Promise.all([financeApi.getSummary(), financeApi.listEntries()]).then(([summaryData, entriesData]) => {
+      setSummary(summaryData);
+      setEntries(entriesData);
+      setError(null);
+    }).catch(() => setError('Finans verileri yüklenirken bir hata oluştu.')).finally(() => setLoading(false));
   }, [canAccessFinance]);
 
   const fetchFinanceData = async () => {
@@ -48,7 +54,7 @@ export default function FinancePage() {
       setSummary(summaryData);
       setEntries(entriesData);
       setError(null);
-    } catch (err) {
+    } catch {
       setError('Finans verileri yüklenirken bir hata oluştu.');
     } finally {
       setLoading(false);
@@ -74,7 +80,7 @@ export default function FinancePage() {
     });
   };
 
-  const handleMarkPaid = async (entry: any) => {
+  const handleMarkPaid = async (entry: FinanceEntry) => {
     try {
       await financeApi.updateEntry(entry.id, { ...entry, status: 'paid' });
       showToast('Ödeme durumu güncellendi.', 'success');
@@ -99,7 +105,7 @@ export default function FinancePage() {
     setIsEntryModalOpen(true);
   };
 
-  const handleEditEntry = (entry: any) => {
+  const handleEditEntry = (entry: FinanceEntry) => {
     setEditingEntry(entry);
     setIsEntryModalOpen(true);
   };
@@ -254,7 +260,7 @@ export default function FinancePage() {
                           {formatDate(t.due_date || t.created_at)}
                         </td>
                         <td className="px-6 py-4">
-                          <Badge variant={FINANCE_STATUS_MAP[t.status]?.variant as any || 'default'}>
+                          <Badge variant={FINANCE_STATUS_MAP[t.status]?.variant || 'default'}>
                             {FINANCE_STATUS_MAP[t.status]?.label || t.status}
                           </Badge>
                         </td>
@@ -289,7 +295,7 @@ export default function FinancePage() {
                   ]} />
                 </div>
                 <div className="flex justify-between items-center">
-                  <Badge variant={FINANCE_STATUS_MAP[t.status]?.variant as any || 'default'}>
+                  <Badge variant={FINANCE_STATUS_MAP[t.status]?.variant || 'default'}>
                     {FINANCE_STATUS_MAP[t.status]?.label || t.status}
                   </Badge>
                   <span className={`font-bold text-sm ${t.type === 'income' ? 'text-emerald-600' : 'text-text-high'}`}>

@@ -1,69 +1,75 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { authApi } from '../services/authApi';
-
-interface AuthContextType {
-  user: any | null;
-  workspace: any | null;
-  role: string | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  setAuth: (token: string, user: any, workspace: any, role: string) => void;
-  logout: () => void;
-  clearAuth: () => void;
-  refreshUser: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+import { normalizeRole } from '../utils/permissions';
+import type { AuthUser, WorkspaceSummary } from '../types/domain';
+import { AuthContext } from './AuthContextValue';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<any | null>(null);
-  const [workspace, setWorkspace] = useState<any | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [workspace, setWorkspace] = useState<WorkspaceSummary | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const hydrationRef = useRef<Promise<void> | null>(null);
 
-  const fetchUser = async () => {
+  const fetchUser = useCallback(async () => {
+    if (hydrationRef.current) return hydrationRef.current;
     const token = localStorage.getItem('token');
     if (!token) {
+      setUser(null);
+      setWorkspace(null);
+      setRole(null);
       setIsLoading(false);
       return;
     }
-
-    try {
-      const data = await authApi.me();
-      setUser(data.user);
-      setWorkspace(data.workspace);
-      setRole(data.role);
-      
-      // Sync to localStorage for interceptors
-      localStorage.setItem('user', JSON.stringify(data.user));
-      localStorage.setItem('workspace', JSON.stringify(data.workspace));
-      if (data.role) localStorage.setItem('role', data.role);
-    } catch (error) {
-      console.error('Auth check failed:', error);
-      // Don't remove token here immediately on random error, 
-      // let response interceptor handle 401 specifically
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    setIsLoading(true);
+    hydrationRef.current = (async () => {
+      try {
+        const data = await authApi.me();
+        setUser(data.user);
+        setWorkspace(data.workspace);
+        const canonicalRole = normalizeRole(data.role);
+        setRole(canonicalRole);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('workspace', JSON.stringify(data.workspace));
+        if (canonicalRole) localStorage.setItem('role', canonicalRole);
+        localStorage.removeItem('workspace_member_role');
+      } catch (error) {
+        console.error('Auth check failed:', error);
+      } finally {
+        setIsLoading(false);
+        hydrationRef.current = null;
+      }
+    })();
+    return hydrationRef.current;
+  }, []);
 
   useEffect(() => {
-    fetchUser();
-  }, []);
+    void Promise.resolve().then(fetchUser);
+    const expire = () => {
+      setUser(null);
+      setWorkspace(null);
+      setRole(null);
+      setIsLoading(false);
+    };
+    window.addEventListener('tavelya:auth-expired', expire);
+    return () => window.removeEventListener('tavelya:auth-expired', expire);
+  }, [fetchUser]);
 
   /**
    * Called by LoginPage after it has already fetched /auth/me.
    * Sets token + all auth state in one synchronous batch so that
    * ProtectedRoute sees isAuthenticated === true before navigate() fires.
    */
-  const setAuth = (token: string, userData: any, workspaceData: any, roleData: string) => {
+  const setAuth = (token: string, userData: AuthUser, workspaceData: WorkspaceSummary | null, roleData: string) => {
+    const canonicalRole = normalizeRole(roleData);
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(userData));
     localStorage.setItem('workspace', JSON.stringify(workspaceData));
-    localStorage.setItem('role', roleData);
+    if (canonicalRole) localStorage.setItem('role', canonicalRole);
+    localStorage.removeItem('workspace_member_role');
     setUser(userData);
     setWorkspace(workspaceData);
-    setRole(roleData);
+    setRole(canonicalRole);
     setIsLoading(false);
   };
 
@@ -71,6 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 1. Define all keys to clear
     const keysToRemove = [
       'token', 'access_token', 'user', 'workspace', 'role',
+      'workspace_member_role',
       'operio_platform_manager_mode', 
       'operio_active_workspace_id',
       'operio_active_workspace_name', 
@@ -113,12 +120,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 };

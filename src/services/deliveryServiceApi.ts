@@ -14,6 +14,7 @@ export interface DeliveryService {
   address?: string;
   contact_person?: string;
   contact_phone?: string;
+  contact_email?: string;
   notes?: string;
   result_note?: string;
   created_at: string;
@@ -35,11 +36,12 @@ export interface CreateDeliveryData {
   address?: string;
   contact_person?: string;
   contact_phone?: string;
+  contact_email?: string;
   notes?: string;
 }
 
 export const deliveryServiceApi = {
-  list: async (params?: any) => {
+  list: async (params?: object) => {
     const response = await api.get<DeliveryService[]>('/delivery-services', { params });
     return response.data;
   },

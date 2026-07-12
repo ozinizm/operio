@@ -1,5 +1,6 @@
 import { Loader2, Inbox, AlertTriangle } from 'lucide-react';
 import { Button } from './Button';
+import type { LucideIcon } from 'lucide-react';
 
 export function LoadingState({ message = 'Yükleniyor...' }: { message?: string }) {
   return (
@@ -18,7 +19,7 @@ export function EmptyState({
 }: { 
   title?: string; 
   description?: string; 
-  icon?: any;
+  icon?: LucideIcon;
   action?: { label: string; onClick: () => void };
 }) {
   return (

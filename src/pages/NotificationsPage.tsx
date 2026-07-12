@@ -11,6 +11,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { LoadingState, ErrorState } from '../components/ui/States';
 import { useNavigate } from 'react-router-dom';
+import { getEntityPath } from '../utils/entityRoutes';
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -19,7 +20,7 @@ export default function NotificationsPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchNotifications();
+    void notificationsApi.list(100).then(setNotifications).catch(() => setError('Bildirimler yüklenemedi.')).finally(() => setIsLoading(false));
   }, []);
 
   const fetchNotifications = async () => {
@@ -27,7 +28,7 @@ export default function NotificationsPage() {
       setIsLoading(true);
       const data = await notificationsApi.list(100);
       setNotifications(data);
-    } catch (err) {
+    } catch {
       setError('Bildirimler yüklenemedi.');
     } finally {
       setIsLoading(false);
@@ -77,16 +78,8 @@ export default function NotificationsPage() {
       markAsRead(notification.id);
     }
     
-    if (notification.entity_type && notification.entity_id) {
-      const routes: Record<string, string> = {
-        'customer': `/customers/${notification.entity_id}`,
-        'job': `/jobs/${notification.entity_id}`,
-        'task': `/tasks`,
-        'offer': `/offers`,
-      };
-      const path = routes[notification.entity_type];
-      if (path) navigate(path);
-    }
+    const path = getEntityPath(notification.entity_type, notification.entity_id);
+    if (path) navigate(path);
   };
 
   if (isLoading) return <LoadingState message="Bildirimler yükleniyor..." />;

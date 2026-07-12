@@ -13,6 +13,7 @@ from ..schemas.auth import Token, Register, AuthMeResponse, UserResponse, Worksp
 from ..schemas.platform import ForgotPasswordRequest
 from ..schemas.user import User as UserSchema
 from ..schemas.workspace import Workspace as WorkspaceSchema
+from ..core.permissions import normalize_role
 from ..services.activity_service import log_audit_event
 from ..services.email_service import send_email, send_email_background
 from ..services import email_templates
@@ -243,7 +244,7 @@ def read_user_me(
         
         if member:
             workspace = db.query(Workspace).filter(Workspace.id == member.workspace_id).first()
-            role = member.role
+            role = normalize_role(member.role)
         elif not current_user.is_super_admin:
             # ONLY raise error for non-super admins
             raise HTTPException(status_code=404, detail="No active workspace found for user")

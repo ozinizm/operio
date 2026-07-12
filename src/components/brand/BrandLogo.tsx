@@ -54,7 +54,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
       {showText && (
         <div className="flex flex-col">
           <span className={`font-jakarta font-black leading-none tracking-tight ${size === 'xl' ? 'text-4xl' : size === 'lg' ? 'text-2xl' : 'text-xl'} ${isWhite ? 'text-white' : 'text-slate-900'}`}>
-            Operio
+            Tavelya
           </span>
           {isPlatform && (
             <span className={`font-jakarta font-bold text-[10px] uppercase tracking-[0.3em] mt-1 opacity-60 ${isWhite ? 'text-white' : 'text-indigo-600'}`}>

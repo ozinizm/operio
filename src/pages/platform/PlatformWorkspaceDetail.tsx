@@ -9,8 +9,9 @@ import {
   Search, Calendar, Info, Plus, ShieldAlert,
   Download, Trash2, FileJson
 } from 'lucide-react';
-import { platformApi } from '../../services/platformApi';
-import { useToast } from '../../components/ui/Toast';
+import { platformApi, type PlatformActivity, type PlatformMember, type PlatformModuleDefinition, type PlatformModuleState, type PlatformWorkspace, type WorkspaceUserInput } from '../../services/platformApi';
+import { getErrorMessage } from '../../services/apiClient';
+import { useToast } from '../../components/ui/ToastContext';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
@@ -25,15 +26,15 @@ export default function PlatformWorkspaceDetail() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   
-  const [workspace, setWorkspace] = useState<any>(null);
+  const [workspace, setWorkspace] = useState<PlatformWorkspace | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [isSaving, setIsSaving] = useState(false);
 
   // Tab Data States
-  const [members, setMembers] = useState<any[]>([]);
-  const [modules, setModules] = useState<any[]>([]);
-  const [activities, setActivities] = useState<any[]>([]);
+  const [members, setMembers] = useState<PlatformMember[]>([]);
+  const [modules, setModules] = useState<PlatformModuleState[]>([]);
+  const [activities, setActivities] = useState<PlatformActivity[]>([]);
   const [isTabDataLoading, setIsTabDataLoading] = useState(false);
 
   // Form states
@@ -60,13 +61,16 @@ export default function PlatformWorkspaceDetail() {
   // Password Reset Modal State
   const [resetPasswordModal, setResetPasswordModal] = useState<{
     isOpen: boolean;
-    member: any;
+    member: PlatformMember | null;
   }>({
     isOpen: false,
     member: null
   });
 
   const [isUserCreateModalOpen, setIsUserCreateModalOpen] = useState(false);
+
+  // availableModules burada tanimlanmali — erken return'lardan ONCE
+  const [availableModules, setAvailableModules] = useState<PlatformModuleDefinition[]>([]);
 
   const fetchData = async () => {
     try {
@@ -88,46 +92,52 @@ export default function PlatformWorkspaceDetail() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, [id]);
+    void platformApi.getWorkspace(Number(id)).then((data) => {
+      setWorkspace(data);
+      setEditName(data.name);
+      setEditSector(data.sector || '');
+      setEditStatus(data.status);
+      setEditPlan(data.plan);
+      setEditContactName(data.primary_contact_name || '');
+      setEditContactEmail(data.primary_contact_email || '');
+      setEditContactPhone(data.primary_contact_phone || '');
+    }).catch((error: unknown) => {
+      console.error('Failed to fetch workspace:', error);
+      showToast('İşletme bilgileri yüklenemedi.', 'error');
+    }).finally(() => setIsLoading(false));
+  }, [id, showToast]);
 
   useEffect(() => {
-    if (activeTab === 'users') fetchMembers();
-    if (activeTab === 'modules') fetchModules();
-    if (activeTab === 'audit') fetchActivities();
-  }, [activeTab]);
+    if (activeTab === 'users') {
+      void platformApi.getWorkspaceMembers(Number(id)).then(setMembers).catch(() => showToast('Kullanıcılar yüklenemedi.', 'error')).finally(() => setIsTabDataLoading(false));
+    }
+    if (activeTab === 'modules') {
+      void platformApi.getWorkspaceModules(Number(id)).then(setModules).catch(() => showToast('Modüller yüklenemedi.', 'error')).finally(() => setIsTabDataLoading(false));
+    }
+    if (activeTab === 'audit') {
+      void platformApi.getWorkspaceActivities(Number(id)).then(setActivities).catch(() => showToast('Aktivite kayıtları yüklenemedi.', 'error')).finally(() => setIsTabDataLoading(false));
+    }
+  }, [activeTab, id, showToast]);
+
+  useEffect(() => {
+    const fetchAvailableModules = async () => {
+      try {
+        const data = await platformApi.getAvailableModules();
+        setAvailableModules(data);
+      } catch (error) {
+        console.error('Failed to fetch available modules:', error);
+      }
+    };
+    fetchAvailableModules();
+  }, []);
 
   const fetchMembers = async () => {
     setIsTabDataLoading(true);
     try {
       const data = await platformApi.getWorkspaceMembers(Number(id));
       setMembers(data);
-    } catch (error) {
+    } catch {
       showToast('Kullanıcılar yüklenemedi.', 'error');
-    } finally {
-      setIsTabDataLoading(false);
-    }
-  };
-
-  const fetchModules = async () => {
-    setIsTabDataLoading(true);
-    try {
-      const data = await platformApi.getWorkspaceModules(Number(id));
-      setModules(data);
-    } catch (error) {
-      showToast('Modüller yüklenemedi.', 'error');
-    } finally {
-      setIsTabDataLoading(false);
-    }
-  };
-
-  const fetchActivities = async () => {
-    setIsTabDataLoading(true);
-    try {
-      const data = await platformApi.getWorkspaceActivities(Number(id));
-      setActivities(data);
-    } catch (error) {
-      showToast('Aktivite kayıtları yüklenemedi.', 'error');
     } finally {
       setIsTabDataLoading(false);
     }
@@ -147,7 +157,7 @@ export default function PlatformWorkspaceDetail() {
       });
       setWorkspace(updated);
       showToast('İşletme başarıyla güncellendi.', 'success');
-    } catch (error) {
+    } catch {
       showToast('Güncelleme sırasında hata oluştu.', 'error');
     } finally {
       setIsSaving(false);
@@ -167,7 +177,7 @@ export default function PlatformWorkspaceDetail() {
       // Final sync with backend
       const data = await platformApi.getWorkspaceModules(Number(id));
       setModules(data);
-    } catch (error) {
+    } catch {
       // Revert on error
       setModules(previousModules);
       showToast('Modül güncellenemedi.', 'error');
@@ -175,7 +185,7 @@ export default function PlatformWorkspaceDetail() {
   };
 
   const openStatusConfirm = (newStatus: string) => {
-    const statusMap: any = {
+    const statusMap: Record<string, { title: string; desc: string; variant: 'danger' | 'warning' | 'default' }> = {
       active: { title: 'İşletmeyi Aktifleştir', desc: 'İşletme tüm fonksiyonlarıyla kullanıma açılacaktır.', variant: 'default' },
       suspended: { title: 'İşletmeyi Askıya Al', desc: 'İşletme kullanıcıları panele erişemeyecek, ancak veriler korunacaktır.', variant: 'warning' },
       archived: { title: 'İşletmeyi Arşivle', desc: 'İşletme arşivlenecek ve sistemden gizlenecektir.', variant: 'danger' }
@@ -192,14 +202,14 @@ export default function PlatformWorkspaceDetail() {
           await platformApi.updateWorkspace(Number(id), { status: newStatus });
           showToast('Durum güncellendi.', 'success');
           fetchData();
-        } catch (error) {
+        } catch {
           showToast('İşlem başarısız.', 'error');
         }
       }
     });
   };
 
-  const handleResetPassword = (member: any) => {
+  const handleResetPassword = (member: PlatformMember) => {
     setResetPasswordModal({
       isOpen: true,
       member
@@ -221,19 +231,20 @@ export default function PlatformWorkspaceDetail() {
     }
   };
 
-  const handleCreateUser = async (userData: any) => {
+  const handleCreateUser = async (userData: WorkspaceUserInput) => {
     try {
       await platformApi.createWorkspaceUser(Number(id), userData);
       showToast('Kullanıcı başarıyla oluşturuldu.', 'success');
       fetchMembers(); // Refresh list
-    } catch (error: any) {
-      const message = error.response?.data?.detail || 'Kullanıcı oluşturulamadı.';
+    } catch (error: unknown) {
+      const message = getErrorMessage(error) || 'Kullanıcı oluşturulamadı.';
       showToast(message, 'error');
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   };
 
   const handleExportWorkspace = async () => {
+    if (!workspace) return;
     try {
       const data = await platformApi.exportWorkspace(Number(id));
       const blob = new Blob([data], { type: 'application/json' });
@@ -245,12 +256,13 @@ export default function PlatformWorkspaceDetail() {
       link.click();
       link.parentNode?.removeChild(link);
       showToast('Yedek dosyası başarıyla indirildi. Kalıcı silme işleminden önce bu dosyayı güvenli bir yerde saklayın.', 'success');
-    } catch (error) {
+    } catch {
       showToast('Dışa aktarma sırasında hata oluştu.', 'error');
     }
   };
 
   const handleHardDelete = async () => {
+    if (!workspace) return;
     if (workspace.status !== 'archived') {
       showToast('Sadece arşivlenmiş işletmeler kalıcı olarak silinebilir.', 'warning');
       return;
@@ -265,8 +277,8 @@ export default function PlatformWorkspaceDetail() {
       showToast('İşletme kalıcı olarak silindi.', 'success');
       setIsDeleteModalOpen(false);
       navigate('/platform/workspaces');
-    } catch (error: any) {
-      showToast(error.message || 'Silme işlemi başarısız.', 'error');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error) || 'Silme işlemi başarısız.', 'error');
     } finally {
       setIsDeleting(false);
     }
@@ -309,20 +321,6 @@ export default function PlatformWorkspaceDetail() {
     { id: 'settings', label: 'Yönetim', icon: Settings },
   ];
 
-  const [availableModules, setAvailableModules] = useState<any[]>([]);
-
-  useEffect(() => {
-    const fetchAvailableModules = async () => {
-      try {
-        const data = await platformApi.getAvailableModules();
-        setAvailableModules(data);
-      } catch (error) {
-        console.error('Failed to fetch available modules:', error);
-      }
-    };
-    fetchAvailableModules();
-  }, []);
-
   const coreModules = ['dashboard', 'customers', 'jobs', 'settings'];
 
   const handleEnterWorkspace = async () => {
@@ -349,7 +347,7 @@ export default function PlatformWorkspaceDetail() {
             // Force reload or state refresh might be needed if using a global state
             window.location.reload(); 
           }, 500);
-        } catch (error) {
+        } catch {
           showToast('İşletme paneline geçiş yapılırken bir hata oluştu.', 'error');
         }
       }

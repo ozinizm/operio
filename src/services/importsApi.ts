@@ -12,8 +12,8 @@ export interface ImportJob {
   invalid_rows: number;
   skipped_rows: number;
   imported_rows: number;
-  error_report_json?: any;
-  preview_json?: any;
+  error_report_json?: unknown;
+  preview_json?: unknown;
   created_at: string;
   updated_at: string;
 }
@@ -24,9 +24,23 @@ export interface ImportPreviewResponse {
   valid_rows: number;
   invalid_rows: number;
   skipped_rows: number;
-  preview_rows: any[];
-  errors: any[];
+  preview_rows: InventoryPreviewRow[];
+  errors: ImportRowError[];
 }
+
+export interface InventoryPreviewRow {
+  name?: string;
+  sku?: string;
+  quantity?: number;
+  unit?: string;
+  purchase_price?: number;
+  sale_price?: number;
+}
+
+export interface ImportFieldError { field: string; message: string; }
+export interface ImportRowError { row_number: number; errors: ImportFieldError[]; }
+
+export interface ImportConfirmResponse { success?: boolean; imported_rows?: number; }
 
 export const importsApi = {
   previewInventory: async (file: File) => {
@@ -40,7 +54,7 @@ export const importsApi = {
   confirmInventory: async (importJobId: number) => {
     const formData = new FormData();
     formData.append('import_job_id', importJobId.toString());
-    const response = await api.post('/imports/inventory/confirm', formData, {
+    const response = await api.post<ImportConfirmResponse>('/imports/inventory/confirm', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     return response.data;

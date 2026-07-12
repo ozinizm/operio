@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MessageCircle, Mail, Clock, ShieldAlert, X, ExternalLink } from 'lucide-react';
 import { Button } from '../ui/Button';
-import { authApi } from '../../services/authApi';
+import { authApi, type PublicPlatformSettings } from '../../services/authApi';
 
 interface SupportContactModalProps {
   isOpen: boolean;
@@ -9,13 +9,13 @@ interface SupportContactModalProps {
 }
 
 export function SupportContactModal({ isOpen, onClose }: SupportContactModalProps) {
-  const [settings, setSettings] = useState<any>({
+  const [settings, setSettings] = useState<PublicPlatformSettings>({
     support_email: 'info@fikircreative.com',
     support_whatsapp: '',
     support_company_name: 'Fikir Creative',
     support_working_hours: 'Hafta içi 10:00 - 18:00',
     support_emergency_note: 'Acil erişim sorunlarında işletme yöneticiniz veya platform yöneticinizle iletişime geçin.',
-    platform_name: 'Operio'
+    platform_name: 'Tavelya'
   });
   const [isLoading, setIsLoading] = useState(false);
 

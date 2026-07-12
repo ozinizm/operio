@@ -6,8 +6,9 @@ import { RequestStatusBadge } from './RequestStatusBadge';
 import { RequestPriorityBadge } from './RequestPriorityBadge';
 import { CommentsPanel } from '../collaboration/CommentsPanel';
 import { EntityWatchButton } from '../collaboration/EntityWatchButton';
-import { useToast } from '../ui/Toast';
-import { ConfirmDialog, useConfirm } from '../ui/ConfirmDialog';
+import { useToast } from '../ui/ToastContext';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { useConfirm } from '../ui/useConfirm';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
@@ -19,6 +20,12 @@ interface RequestTicketDetailDrawerProps {
   onEdit: (request: RequestTicket) => void;
 }
 
+const requestTabs: Array<{ id: 'info' | 'comments' | 'files'; label: string; icon: typeof FileText }> = [
+  { id: 'info', label: 'Müşteri Bilgisi', icon: FileText },
+  { id: 'comments', label: 'Yorumlar', icon: MessageSquare },
+  { id: 'files', label: 'Ekler', icon: Package },
+];
+
 export function RequestTicketDetailDrawer({ isOpen, onClose, requestId, onUpdate, onEdit }: RequestTicketDetailDrawerProps) {
   const [request, setRequest] = useState<RequestTicket | null>(null);
   const [loading, setLoading] = useState(false);
@@ -29,9 +36,12 @@ export function RequestTicketDetailDrawer({ isOpen, onClose, requestId, onUpdate
 
   useEffect(() => {
     if (isOpen && requestId) {
-      fetchRequest();
+      void requestsApi.get(requestId).then(data => {
+        setRequest(data);
+        setResolutionNote(data.resolution_note || '');
+      }).catch(() => showToast('Detaylar yüklenemedi', 'error'));
     }
-  }, [isOpen, requestId]);
+  }, [isOpen, requestId, showToast]);
 
   const fetchRequest = async () => {
     if (!requestId) return;
@@ -40,7 +50,7 @@ export function RequestTicketDetailDrawer({ isOpen, onClose, requestId, onUpdate
       const data = await requestsApi.get(requestId);
       setRequest(data);
       setResolutionNote(data.resolution_note || '');
-    } catch (err) {
+    } catch {
       showToast('Detaylar yüklenemedi', 'error');
     } finally {
       setLoading(false);
@@ -66,7 +76,7 @@ export function RequestTicketDetailDrawer({ isOpen, onClose, requestId, onUpdate
       }
       fetchRequest();
       onUpdate();
-    } catch (err) {
+    } catch {
       showToast('İşlem başarısız', 'error');
     }
   };
@@ -186,14 +196,10 @@ export function RequestTicketDetailDrawer({ isOpen, onClose, requestId, onUpdate
 
             {/* Tabs */}
             <div className="flex border-b border-border">
-              {[
-                { id: 'info', label: 'Müşteri Bilgisi', icon: FileText },
-                { id: 'comments', label: 'Yorumlar', icon: MessageSquare },
-                { id: 'files', label: 'Ekler', icon: Package },
-              ].map(tab => (
+              {requestTabs.map(tab => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
+                  onClick={() => setActiveTab(tab.id)}
                   className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-bold transition-colors border-b-2 ${activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-text-body hover:text-text-high'}`}
                 >
                   <tab.icon className="w-4 h-4" />

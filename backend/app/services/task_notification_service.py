@@ -7,6 +7,7 @@ from ..models.user import User
 from ..models.workspace import Workspace
 from .email_service import send_email_background
 from . import email_templates
+from ..core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,7 @@ def notify_task_assigned(db: Session, workspace_id: int, actor_id: int, task: Ta
         actor = db.query(User).filter(User.id == actor_id).first()
         workspace = db.query(Workspace).filter(Workspace.id == workspace_id).first()
         
-        if assignee and actor and workspace:
+        if assignee and actor and workspace and (settings.RESEND_ENABLED or settings.SMTP_ENABLED):
             email_data = email_templates.task_assigned(
                 task_title=task.title,
                 priority=task.priority,

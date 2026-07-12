@@ -7,7 +7,8 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, case
 from app.core.database import get_db
-from app.core.deps import get_current_user, get_current_workspace_member, check_role
+from app.core.deps import get_current_user, get_current_workspace_member, check_role, require_permission
+from app.core.permissions import Permission
 from app.models.customer import Customer
 from app.models.job import Job
 from app.models.offer import Offer
@@ -215,11 +216,8 @@ def get_operations_report(
 @router.get("/export/summary")
 def export_summary(
     db: Session = Depends(get_db),
-    member = Depends(get_current_workspace_member)
+    member = Depends(require_permission(Permission.REPORT_EXPORT))
 ):
-    if member.role not in ["owner", "admin"]:
-        raise HTTPException(status_code=403, detail="Permission denied")
-
     workspace_id = member.workspace_id
     
     output = io.StringIO()

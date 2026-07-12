@@ -65,10 +65,12 @@ export function ActionMenu({ items, iconSize = 4 }: ActionMenuProps) {
     document.addEventListener('mousedown', close);
     document.addEventListener('keydown', close);
     window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onScroll);
     return () => {
       document.removeEventListener('mousedown', close);
       document.removeEventListener('keydown', close);
       window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onScroll);
     };
   }, [open]);
 
@@ -82,7 +84,7 @@ export function ActionMenu({ items, iconSize = 4 }: ActionMenuProps) {
         width: MENU_WIDTH,
         zIndex: 99999,
       }}
-      className="bg-surface border border-border rounded-2xl shadow-modal py-1 animate-in zoom-in-95 duration-100"
+      className="bg-surface border border-border rounded-2xl shadow-modal py-1 animate-in zoom-in-95 duration-100 max-h-[min(20rem,calc(100dvh-1rem))] overflow-y-auto"
       onMouseDown={e => e.stopPropagation()}
     >
       {items.map((item, idx) => (
@@ -117,8 +119,9 @@ export function ActionMenu({ items, iconSize = 4 }: ActionMenuProps) {
         aria-label="İşlemler"
         aria-haspopup="menu"
         aria-expanded={open}
+        title="İşlemler"
       >
-        <MoreVertical className={`w-${iconSize} h-${iconSize}`} />
+        <MoreVertical style={{ width: `${iconSize * 0.25}rem`, height: `${iconSize * 0.25}rem` }} />
       </button>
 
       {open && createPortal(menu, document.body)}

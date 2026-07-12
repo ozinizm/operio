@@ -4,22 +4,28 @@ import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { ActionMenu, type ActionMenuItem } from '../components/ui/ActionMenu';
-import { ConfirmDialog, useConfirm } from '../components/ui/ConfirmDialog';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { useConfirm } from '../components/ui/useConfirm';
 import { ExcelImportActions } from '../components/shared/ExcelImportActions';
-import { Search, Filter, Plus, Phone, ChevronRight, Eye, Edit2, UserX, Trash2 } from 'lucide-react';
+import { Search, Plus, Phone, ChevronRight, Eye, Edit2, UserX, Trash2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { customersApi } from '../services/customersApi';
+import { customersApi, type Customer } from '../services/customersApi';
+import { getErrorMessage } from '../services/apiClient';
+import type { ResourceCreatedEvent } from '../types/domain';
 import { LoadingState, ErrorState } from '../components/ui/States';
 import { CustomerModal } from '../components/customers/CustomerModal';
-import { useToast } from '../components/ui/Toast';
+import { useToast } from '../components/ui/ToastContext';
+import { useAuth } from '../context/AuthContextValue';
+import { can } from '../utils/permissions';
 
 export default function CustomersPage() {
-  const [customers, setCustomers] = useState<any[]>([]);
+  const { role, user } = useAuth();
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const { showToast } = useToast();
   const navigate = useNavigate();
   const { confirmProps, confirm } = useConfirm();
@@ -38,9 +44,12 @@ export default function CustomersPage() {
   };
 
   useEffect(() => {
-    fetchCustomers();
+    void customersApi.list().then(setCustomers).catch(() => {
+      setError('Müşteri listesi yüklenemedi.');
+    }).finally(() => setIsLoading(false));
 
-    const handleResourceCreated = (e: any) => {
+    const handleResourceCreated = (event: Event) => {
+      const e = event as ResourceCreatedEvent;
       if (e.detail?.type === 'customer') {
         fetchCustomers();
       }
@@ -63,12 +72,12 @@ export default function CustomersPage() {
     setIsModalOpen(true);
   };
 
-  const handleEditCustomer = (customer: any) => {
+  const handleEditCustomer = (customer: Customer) => {
     setSelectedCustomer(customer);
     setIsModalOpen(true);
   };
 
-  const handlePassivate = (customer: any) => {
+  const handlePassivate = (customer: Customer) => {
     const newStatus = customer.status === 'passive' ? 'active' : 'passive';
     const label = newStatus === 'passive' ? 'pasifleştirilsin' : 'aktifleştirilsin';
     const actionLabel = newStatus === 'passive' ? 'Pasifleştir' : 'Aktifleştir';
@@ -90,10 +99,10 @@ export default function CustomersPage() {
     });
   };
 
-  const handleDelete = (customer: any) => {
+  const handleDelete = (customer: Customer) => {
     confirm({
       title: 'Müşteriyi Sil',
-      description: `"${customer.name}" müşterisi kalıcı olarak silinecek. Bu işlem geri alınamaz.`,
+      description: `"${customer.name}" müşterisi arşivlenecek ve aktif listelerden kaldırılacak.`,
       confirmLabel: 'Sil',
       cancelLabel: 'Vazgeç',
       variant: 'danger',
@@ -102,8 +111,8 @@ export default function CustomersPage() {
           await customersApi.delete(customer.id);
           showToast(`${customer.name} silindi.`, 'success');
           fetchCustomers();
-        } catch (err: any) {
-          showToast(err.response?.data?.detail || 'Müşteri silinirken hata oluştu.', 'error');
+        } catch (err: unknown) {
+          showToast(getErrorMessage(err) || 'Müşteri silinirken hata oluştu.', 'error');
         }
       },
     });
@@ -129,12 +138,11 @@ export default function CustomersPage() {
           <p className="text-text-body mt-1">Müşteri portföyünüzü ve detaylarını yönetin.</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline">
-            <Filter className="w-4 h-4 mr-2" /> Filtrele
-          </Button>
-          <Button onClick={handleNewCustomer}>
-            <Plus className="w-4 h-4 mr-2" /> Yeni Müşteri
-          </Button>
+          {can(role, 'customer:create', !!user?.is_super_admin) && (
+            <Button onClick={handleNewCustomer}>
+              <Plus className="w-4 h-4 mr-2" /> Yeni Müşteri
+            </Button>
+          )}
         </div>
       </div>
 
@@ -208,7 +216,10 @@ export default function CustomersPage() {
                     </td>
                     <td className="px-6 py-4 text-text-body text-xs">{new Date(customer.created_at).toLocaleDateString('tr-TR')}</td>
                     <td className="px-6 py-4 text-right">
-                      <ActionMenu items={menuItems} />
+                      {(can(role, 'customer:update', !!user?.is_super_admin)
+                        || can(role, 'customer:delete', !!user?.is_super_admin)) && (
+                        <ActionMenu items={menuItems} />
+                      )}
                     </td>
                   </tr>
                 );
@@ -234,12 +245,15 @@ export default function CustomersPage() {
                 </Link>
                 <div className="flex items-center gap-2">
                   {getStatusBadge(customer.status)}
-                  <ActionMenu items={[
-                    { label: 'Detayı Gör', icon: <Eye className="w-4 h-4" />, onClick: () => navigate(`/customers/${customer.id}`) },
-                    { label: 'Düzenle', icon: <Edit2 className="w-4 h-4" />, onClick: () => handleEditCustomer(customer) },
-                    { label: customer.status === 'passive' ? 'Aktifleştir' : 'Pasifleştir', icon: <UserX className="w-4 h-4" />, onClick: () => handlePassivate(customer) },
-                    { label: 'Sil', icon: <Trash2 className="w-4 h-4" />, onClick: () => handleDelete(customer), variant: 'danger' },
-                  ]} />
+                  {(can(role, 'customer:update', !!user?.is_super_admin)
+                    || can(role, 'customer:delete', !!user?.is_super_admin)) && (
+                    <ActionMenu items={[
+                      { label: 'Detayı Gör', icon: <Eye className="w-4 h-4" />, onClick: () => navigate(`/customers/${customer.id}`) },
+                      { label: 'Düzenle', icon: <Edit2 className="w-4 h-4" />, onClick: () => handleEditCustomer(customer) },
+                      { label: customer.status === 'passive' ? 'Aktifleştir' : 'Pasifleştir', icon: <UserX className="w-4 h-4" />, onClick: () => handlePassivate(customer) },
+                      { label: 'Sil', icon: <Trash2 className="w-4 h-4" />, onClick: () => handleDelete(customer), variant: 'danger' },
+                    ]} />
+                  )}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2 text-sm text-text-body mb-3">

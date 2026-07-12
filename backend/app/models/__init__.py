@@ -18,3 +18,5 @@ from .inventory import InventoryItem
 from .import_job import ImportJob
 from .platform import PlatformSetting, SupportRequest
 from .email_log import EmailLog
+
+from .appointment import AppointmentSettings, AppointmentService, AppointmentStaff, Appointment

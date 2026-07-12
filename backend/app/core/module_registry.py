@@ -160,6 +160,23 @@ MODULE_REGISTRY: Dict[str, ModuleDefinition] = {
         status="active",
         related_quick_create_types=["delivery_service"]
     ),
+
+    "appointments": ModuleDefinition(
+        key="appointments",
+        name="Online Randevu",
+        description="İşletmenize özel randevu sayfası oluşturun; hizmet, personel, zamanlama ve talepleri tek panelden yönetin.",
+        category="operations",
+        route="/appointments",
+        sidebar_label="Randevular",
+        sidebar_order=75,
+        icon="CalendarDays",
+        status="active",
+        is_available=True,
+        is_premium=True,
+        plan_tier="professional",
+        sector_tags=["kuaför", "güzellik", "klinik", "danışmanlık", "dövme", "servis"],
+        related_dashboard_widgets=["upcoming_appointments"]
+    ),
     "complaints": ModuleDefinition(
         key="complaints",
         name="Şikayet & Talep",
@@ -348,4 +365,12 @@ SECTOR_PACKS = {
         "recommended": ["operations", "files", "finance", "reports", "notifications", "data_import"],
         "future": ["approvals", "customer_portal"]
     }
+}
+
+PRODUCT_PACKS = {
+    "starter": {"name": "Başlangıç", "modules": ["tasks", "notifications", "files"]},
+    "operations": {"name": "Operasyon", "modules": ["tasks", "operations", "delivery_service", "notifications", "files"]},
+    "appointments": {"name": "Randevu", "modules": ["tasks", "appointments", "notifications", "files"]},
+    "service": {"name": "Servis", "modules": ["tasks", "delivery_service", "complaints", "inventory", "notifications", "files"]},
+    "full": {"name": "Tam Paket", "modules": [key for key, definition in MODULE_REGISTRY.items() if definition.is_available and not definition.is_core]},
 }

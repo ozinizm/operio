@@ -4,9 +4,10 @@ import { Lock, ChevronRight, Loader2, ShieldCheck, CheckCircle2 } from 'lucide-r
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { authApi } from '../services/authApi';
-import { useToast } from '../components/ui/Toast';
+import { useToast } from '../components/ui/ToastContext';
 import { BrandLogo } from '../components/brand/BrandLogo';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContextValue';
+import { getErrorMessage } from '../services/apiClient';
 
 export default function ChangePasswordPage() {
   const navigate = useNavigate();
@@ -57,8 +58,8 @@ export default function ChangePasswordPage() {
           window.location.replace(loginUrl);
         }
       }, 500);
-    } catch (error: any) {
-      showToast(error.message || 'Şifre değiştirilemedi.', 'error');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error) || 'Şifre değiştirilemedi.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -160,7 +161,7 @@ export default function ChangePasswordPage() {
         </div>
 
         <p className="text-center mt-10 text-[11px] text-slate-400 font-medium">
-          Operio Güvenlik Altyapısı © 2026
+          Tavelya Güvenlik Altyapısı © 2026
         </p>
       </div>
     </div>

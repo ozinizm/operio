@@ -4,7 +4,7 @@ import {
   Clock, AlertTriangle, ArrowUpRight, TrendingUp,
   Database, ShieldCheck, Zap
 } from 'lucide-react';
-import { platformApi } from '../../services/platformApi';
+import { platformApi, type PlatformWorkspace } from '../../services/platformApi';
 import { Loader2 } from 'lucide-react';
 
 export default function PlatformDashboard() {
@@ -22,9 +22,9 @@ export default function PlatformDashboard() {
         const workspaces = await platformApi.getWorkspaces();
         setStats({
           totalWorkspaces: workspaces.length,
-          activeWorkspaces: workspaces.filter((w: any) => w.status === 'active').length,
-          pilotWorkspaces: workspaces.filter((w: any) => w.status === 'pilot').length,
-          suspendedWorkspaces: workspaces.filter((w: any) => w.status === 'suspended').length
+          activeWorkspaces: workspaces.filter((w: PlatformWorkspace) => w.status === 'active').length,
+          pilotWorkspaces: workspaces.filter((w: PlatformWorkspace) => w.status === 'pilot').length,
+          suspendedWorkspaces: workspaces.filter((w: PlatformWorkspace) => w.status === 'suspended').length
         });
       } catch (error) {
         console.error('Failed to fetch platform stats:', error);
@@ -57,7 +57,7 @@ export default function PlatformDashboard() {
           <Zap className="w-4 h-4" /> Platform Overview
         </div>
         <h1 className="text-4xl font-jakarta font-extrabold text-slate-800 tracking-tight">Platform Paneli</h1>
-        <p className="text-slate-500 font-medium">Operio ekosistemi genel durumu ve işletme büyüme istatistikleri.</p>
+        <p className="text-slate-500 font-medium">Tavelya ekosistemi genel durumu ve işletme büyüme istatistikleri.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

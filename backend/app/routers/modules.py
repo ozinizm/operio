@@ -3,7 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
 from datetime import datetime
 from ..core.database import get_db
-from ..core.deps import get_current_user, get_current_workspace
+from ..core.deps import get_current_user, get_current_workspace, require_permission
+from ..core.permissions import Permission
 from ..models.user import User
 from ..models.workspace import Workspace
 from ..models.workspace_module import WorkspaceModule
@@ -103,8 +104,11 @@ def enable_module(
     module_key: str,
     db: Session = Depends(get_db),
     workspace: Workspace = Depends(get_current_workspace),
-    user: User = Depends(get_current_user)
+    user: User = Depends(get_current_user),
+    permission_member = Depends(require_permission(Permission.WORKSPACE_MANAGE)),
 ) -> Any:
+    if not user.is_super_admin:
+        raise HTTPException(status_code=403, detail="Modules can only be enabled by a platform administrator")
     if module_key not in MODULE_REGISTRY:
         raise HTTPException(status_code=404, detail="Module not found")
         
@@ -146,8 +150,11 @@ def disable_module(
     module_key: str,
     db: Session = Depends(get_db),
     workspace: Workspace = Depends(get_current_workspace),
-    user: User = Depends(get_current_user)
+    user: User = Depends(get_current_user),
+    permission_member = Depends(require_permission(Permission.WORKSPACE_MANAGE)),
 ) -> Any:
+    if not user.is_super_admin:
+        raise HTTPException(status_code=403, detail="Modules can only be disabled by a platform administrator")
     if module_key not in MODULE_REGISTRY:
         raise HTTPException(status_code=404, detail="Module not found")
         
@@ -186,8 +193,11 @@ def enable_sector_pack(
     pack_key: str,
     db: Session = Depends(get_db),
     workspace: Workspace = Depends(get_current_workspace),
-    user: User = Depends(get_current_user)
+    user: User = Depends(get_current_user),
+    permission_member = Depends(require_permission(Permission.WORKSPACE_MANAGE)),
 ) -> Any:
+    if not user.is_super_admin:
+        raise HTTPException(status_code=403, detail="Module packs can only be assigned by a platform administrator")
     if pack_key not in SECTOR_PACKS:
         raise HTTPException(status_code=404, detail="Sector pack not found")
         

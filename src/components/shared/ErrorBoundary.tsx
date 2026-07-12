@@ -58,7 +58,11 @@ export class ErrorBoundary extends Component<Props, State> {
               </Button>
               <Button 
                 variant="outline" 
-                onClick={() => window.location.href = '/dashboard'}
+                onClick={() => {
+                  // Platform yöneticisi /platform'da hata aldıysa geri /platform'a git
+                  const isPlatform = window.location.pathname.startsWith('/platform');
+                  window.location.href = isPlatform ? '/platform' : '/dashboard';
+                }}
                 className="w-full py-6 rounded-2xl font-bold border-border hover:bg-surface-dim flex items-center justify-center gap-2"
               >
                 <Home className="w-4 h-4" /> Ana Sayfaya Dön
@@ -66,7 +70,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </div>
             
             <p className="text-[10px] font-bold text-text-body/40 uppercase tracking-widest">
-              OPERIO GÜVENLİ MOD
+              TAVELYA GÜVENLİ MOD
             </p>
           </div>
         </div>

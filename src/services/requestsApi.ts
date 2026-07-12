@@ -37,7 +37,7 @@ export interface CreateRequestData {
 }
 
 export const requestsApi = {
-  list: async (params?: any) => {
+  list: async (params?: object) => {
     const response = await api.get<RequestTicket[]>('/requests', { params });
     return response.data;
   },

@@ -2,7 +2,8 @@ from typing import Any, List
 from fastapi import APIRouter, Depends, HTTPException, Body, BackgroundTasks
 from sqlalchemy.orm import Session
 from ..core.database import get_db
-from ..core.deps import get_current_user, get_current_workspace
+from ..core.deps import get_current_user, get_current_workspace, require_permission
+from ..core.permissions import Permission
 from ..models.user import User
 from ..models.workspace import Workspace, WorkspaceMember
 from ..core.security import get_password_hash
@@ -26,17 +27,9 @@ class TeamMemberUpdate(BaseModel):
 def get_team_members(
     db: Session = Depends(get_db),
     workspace: Workspace = Depends(get_current_workspace),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    permission_member = Depends(require_permission(Permission.TEAM_MANAGE)),
 ) -> Any:
-    # Check if current user is authorized to manage team
-    member_check = db.query(WorkspaceMember).filter(
-        WorkspaceMember.workspace_id == workspace.id,
-        WorkspaceMember.user_id == current_user.id
-    ).first()
-    
-    if not member_check or member_check.role not in ["owner", "admin", "staff", "manager"]:
-        raise HTTPException(status_code=403, detail="Bu işlem için yetkiniz bulunmuyor.")
-        
     members = db.query(WorkspaceMember).filter(
         WorkspaceMember.workspace_id == workspace.id
     ).all()
@@ -60,16 +53,9 @@ def create_team_member(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     workspace: Workspace = Depends(get_current_workspace),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    permission_member = Depends(require_permission(Permission.TEAM_MANAGE)),
 ) -> Any:
-    member_check = db.query(WorkspaceMember).filter(
-        WorkspaceMember.workspace_id == workspace.id,
-        WorkspaceMember.user_id == current_user.id
-    ).first()
-    
-    if not member_check or member_check.role not in ["owner", "admin"]:
-        raise HTTPException(status_code=403, detail="Bu işlem için yetkiniz bulunmuyor.")
-        
     # Check if user already exists
     user = db.query(User).filter(User.email == data.email).first()
     is_new_user = False
@@ -134,16 +120,9 @@ def update_team_member(
     data: TeamMemberUpdate,
     db: Session = Depends(get_db),
     workspace: Workspace = Depends(get_current_workspace),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    permission_member = Depends(require_permission(Permission.TEAM_MANAGE)),
 ) -> Any:
-    member_check = db.query(WorkspaceMember).filter(
-        WorkspaceMember.workspace_id == workspace.id,
-        WorkspaceMember.user_id == current_user.id
-    ).first()
-    
-    if not member_check or member_check.role not in ["owner", "admin"]:
-        raise HTTPException(status_code=403, detail="Bu işlem için yetkiniz bulunmuyor.")
-        
     target_member = db.query(WorkspaceMember).filter(
         WorkspaceMember.workspace_id == workspace.id,
         WorkspaceMember.id == member_id
@@ -175,16 +154,9 @@ def reset_member_password(
     new_password: str = Body(..., embed=True),
     db: Session = Depends(get_db),
     workspace: Workspace = Depends(get_current_workspace),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    permission_member = Depends(require_permission(Permission.TEAM_MANAGE)),
 ) -> Any:
-    member_check = db.query(WorkspaceMember).filter(
-        WorkspaceMember.workspace_id == workspace.id,
-        WorkspaceMember.user_id == current_user.id
-    ).first()
-    
-    if not member_check or member_check.role not in ["owner", "admin"]:
-        raise HTTPException(status_code=403, detail="Bu işlem için yetkiniz bulunmuyor.")
-        
     target_member = db.query(WorkspaceMember).filter(
         WorkspaceMember.workspace_id == workspace.id,
         WorkspaceMember.id == member_id

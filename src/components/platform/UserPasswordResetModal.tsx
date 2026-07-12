@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ShieldAlert, Copy, Check, X, CheckCircle2 } from 'lucide-react';
 import { Button } from '../ui/Button';
-import { useToast } from '../ui/Toast';
+import { useToast } from '../ui/ToastContext';
 
 interface UserPasswordResetModalProps {
   isOpen: boolean;
@@ -34,7 +34,7 @@ export function UserPasswordResetModal({
       setIsCopied(true);
       showToast('Geçici şifre kopyalandı.', 'success');
       setTimeout(() => setIsCopied(false), 2000);
-    } catch (err) {
+    } catch {
       showToast('Kopyalama başarısız oldu.', 'error');
     }
   };
@@ -44,7 +44,7 @@ export function UserPasswordResetModal({
     try {
       await onConfirm(tempPassword);
       setStep('result');
-    } catch (error) {
+    } catch {
       // Error handled by parent toast
     } finally {
       setIsSubmitting(false);

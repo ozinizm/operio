@@ -2,16 +2,18 @@ from typing import Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from sqlalchemy.orm import Session
 from ..core.database import get_db
-from ..core.deps import get_current_user, get_current_workspace
+from ..core.deps import get_current_user, get_current_workspace, require_permission
+from ..core.permissions import Permission
 from ..models.user import User
 from ..models.workspace import Workspace
 from ..models.request_ticket import RequestTicket as RequestModel
 from ..schemas.request_ticket import RequestTicketResponse, RequestTicketCreate, RequestTicketUpdate
 from ..services.activity_service import create_activity
 from ..services.notification_service import create_notification, notify_watchers, add_watcher
+from ..core.entity_access import get_workspace_entity_or_404
 from datetime import datetime
 
-router = APIRouter(tags=["Complaints & Requests"])
+router = APIRouter(tags=["Complaints & Requests"], dependencies=[Depends(require_permission(Permission.REQUEST_VIEW))])
 
 @router.get("/", response_model=List[RequestTicketResponse])
 def read_requests(
@@ -71,6 +73,13 @@ def create_request(
     user: User = Depends(get_current_user),
     request_in: RequestTicketCreate,
 ) -> Any:
+    for entity_type, entity_id in {
+        "customer": request_in.customer_id,
+        "job": request_in.job_id,
+        "delivery_service": request_in.delivery_service_id,
+    }.items():
+        if entity_id is not None:
+            get_workspace_entity_or_404(db, workspace_id=workspace.id, entity_type=entity_type, entity_id=entity_id)
     request = RequestModel(
         **request_in.dict(),
         workspace_id=workspace.id
@@ -146,6 +155,11 @@ def update_request(
     
     old_status = request.status
     update_data = request_in.dict(exclude_unset=True)
+    for field, entity_type in {
+        "customer_id": "customer", "job_id": "job", "delivery_service_id": "delivery_service"
+    }.items():
+        if update_data.get(field) is not None:
+            get_workspace_entity_or_404(db, workspace_id=workspace.id, entity_type=entity_type, entity_id=update_data[field])
     for field, value in update_data.items():
         setattr(request, field, value)
         

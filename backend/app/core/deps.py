@@ -5,18 +5,22 @@ from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 from .config import settings
 from .database import get_db
+from .permissions import Permission, has_permission
 from ..models.user import User
 from ..models.workspace import Workspace, WorkspaceMember
+from ..models.workspace_module import WorkspaceModule
+from .module_registry import MODULE_REGISTRY
 from ..schemas.auth import TokenPayload
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 def get_current_user(
+    request: Request,
     db: Session = Depends(get_db), 
     token: Optional[str] = Depends(oauth2_scheme),
     query_token: Optional[str] = Query(None, alias="token")
 ) -> User:
-    final_token = token or query_token
+    final_token = token or request.cookies.get("access_token") or query_token
     if not final_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -38,14 +42,13 @@ def get_current_user(
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
-def get_current_workspace(
+def _resolve_workspace_member(
     request: Request,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> Workspace:
-    # Check for platform manager mode (Super Admin switching context)
+    db: Session,
+    current_user: User,
+) -> WorkspaceMember:
     active_workspace_id = request.headers.get("X-Active-Workspace-Id")
-    
+
     if current_user.is_super_admin and active_workspace_id:
         try:
             ws_id = int(active_workspace_id)
@@ -54,20 +57,55 @@ def get_current_workspace(
                 raise HTTPException(status_code=404, detail="Selected workspace not found")
             if workspace.status == "archived":
                 raise HTTPException(status_code=403, detail="Cannot access an archived workspace")
-            return workspace
+            member = db.query(WorkspaceMember).filter(
+                WorkspaceMember.workspace_id == ws_id,
+                WorkspaceMember.user_id == current_user.id,
+                WorkspaceMember.is_active == True,
+            ).one_or_none()
+            if member:
+                return member
+            return WorkspaceMember(
+                workspace_id=ws_id,
+                user_id=current_user.id,
+                role="owner",
+                is_active=True,
+            )
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid workspace ID header")
 
-    # Normal user flow or Super Admin without header
-    member = db.query(WorkspaceMember).filter(
+    query = db.query(WorkspaceMember).filter(
         WorkspaceMember.user_id == current_user.id,
-        WorkspaceMember.is_active == True
-    ).first()
-    
+        WorkspaceMember.is_active == True,
+    )
+
+    if active_workspace_id:
+        try:
+            query = query.filter(WorkspaceMember.workspace_id == int(active_workspace_id))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid workspace ID header")
+
+    # Preserve the existing single-workspace flow while making multi-membership
+    # selection deterministic when no explicit workspace header is supplied.
+    members = query.order_by(
+        WorkspaceMember.workspace_id.asc(),
+        WorkspaceMember.id.asc(),
+    ).limit(1).all()
+    member = members[0] if members else None
+
     if not member:
         raise HTTPException(status_code=404, detail="No active workspace found for user")
-        
+    return member
+
+
+def get_current_workspace(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Workspace:
+    member = _resolve_workspace_member(request, db, current_user)
     workspace = db.query(Workspace).filter(Workspace.id == member.workspace_id).first()
+    if not workspace:
+        raise HTTPException(status_code=404, detail="No active workspace found for user")
     return workspace
 
 def get_current_active_user(
@@ -82,39 +120,7 @@ def get_current_workspace_member(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> WorkspaceMember:
-    # Check for platform manager mode (Super Admin switching context)
-    active_workspace_id = request.headers.get("X-Active-Workspace-Id")
-    
-    if current_user.is_super_admin and active_workspace_id:
-        try:
-            ws_id = int(active_workspace_id)
-            # Create a virtual/mock member for the Super Admin in this context
-            # Or fetch if they happen to be a member (unlikely for random workspaces)
-            member = db.query(WorkspaceMember).filter(
-                WorkspaceMember.workspace_id == ws_id,
-                WorkspaceMember.user_id == current_user.id
-            ).first()
-            
-            if not member:
-                # Return a synthetic member with "admin" or "owner" role for context
-                return WorkspaceMember(
-                    workspace_id=ws_id,
-                    user_id=current_user.id,
-                    role="owner", # Give full power in manager mode
-                    is_active=True
-                )
-            return member
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid workspace ID header")
-
-    member = db.query(WorkspaceMember).filter(
-        WorkspaceMember.user_id == current_user.id,
-        WorkspaceMember.is_active == True
-    ).first()
-    
-    if not member:
-        raise HTTPException(status_code=404, detail="No active workspace found for user")
-    return member
+    return _resolve_workspace_member(request, db, current_user)
 
 def check_role(allowed_roles: list):
     def role_checker(member: WorkspaceMember = Depends(get_current_workspace_member)):
@@ -125,6 +131,46 @@ def check_role(allowed_roles: list):
             )
         return member.role
     return role_checker
+
+
+def require_permission(permission: Permission):
+    def permission_checker(
+        member: WorkspaceMember = Depends(get_current_workspace_member),
+    ) -> WorkspaceMember:
+        if not has_permission(member.role, permission):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to access this resource",
+            )
+        return member
+
+    return permission_checker
+
+
+def require_module(module_key: str):
+    """Reject direct API access when a workspace is not entitled to a module."""
+    if module_key not in MODULE_REGISTRY:
+        raise ValueError(f"Unknown module key: {module_key}")
+
+    def module_checker(
+        db: Session = Depends(get_db),
+        member: WorkspaceMember = Depends(get_current_workspace_member),
+    ) -> WorkspaceMember:
+        definition = MODULE_REGISTRY[module_key]
+        if not definition.is_available:
+            raise HTTPException(status_code=403, detail="Module is not available")
+        if definition.is_core:
+            return member
+        entitlement = db.query(WorkspaceModule).filter(
+            WorkspaceModule.workspace_id == member.workspace_id,
+            WorkspaceModule.module_key == module_key,
+            WorkspaceModule.is_enabled == True,
+        ).first()
+        if not entitlement:
+            raise HTTPException(status_code=403, detail="Module is not enabled for this workspace")
+        return member
+
+    return module_checker
 
 def get_current_super_admin(
     current_user: User = Depends(get_current_user),

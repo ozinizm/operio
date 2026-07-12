@@ -2,14 +2,15 @@ import { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { customersApi } from '../../services/customersApi';
-import { useToast } from '../ui/Toast';
+import { customersApi, type Customer } from '../../services/customersApi';
+import { getErrorMessage } from '../../services/apiClient';
+import { useToast } from '../ui/ToastContext';
 
 interface CustomerModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  customer?: any;
+  customer?: Customer | null;
 }
 
 export function CustomerModal({ isOpen, onClose, onSuccess, customer }: CustomerModalProps) {
@@ -27,7 +28,7 @@ export function CustomerModal({ isOpen, onClose, onSuccess, customer }: Customer
 
   useEffect(() => {
     if (customer) {
-      setFormData({
+      void Promise.resolve().then(() => setFormData({
         name: customer.name || '',
         sector: customer.sector || '',
         contact_person: customer.contact_person || '',
@@ -35,9 +36,9 @@ export function CustomerModal({ isOpen, onClose, onSuccess, customer }: Customer
         phone: customer.phone || '',
         address: customer.address || '',
         status: customer.status || 'active'
-      });
+      }));
     } else {
-      setFormData({
+      void Promise.resolve().then(() => setFormData({
         name: '',
         sector: '',
         contact_person: '',
@@ -45,7 +46,7 @@ export function CustomerModal({ isOpen, onClose, onSuccess, customer }: Customer
         phone: '',
         address: '',
         status: 'active'
-      });
+      }));
     }
   }, [customer, isOpen]);
 
@@ -62,8 +63,8 @@ export function CustomerModal({ isOpen, onClose, onSuccess, customer }: Customer
       }
       onSuccess();
       onClose();
-    } catch (err: any) {
-      showToast(err.message || 'Müşteri kaydedilemedi.', 'error');
+    } catch (err: unknown) {
+      showToast(getErrorMessage(err) || 'Müşteri kaydedilemedi.', 'error');
     } finally {
       setIsSubmitting(false);
     }

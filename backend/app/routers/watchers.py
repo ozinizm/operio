@@ -6,6 +6,7 @@ from ..core.deps import get_current_user, get_current_workspace_member
 from ..models.watcher import EntityWatcher
 from ..schemas.watcher import WatcherCreate, WatcherResponse
 from ..services.notification_service import add_watcher
+from ..core.entity_access import get_workspace_entity_or_404
 
 router = APIRouter(prefix="/watchers", tags=["Watchers"])
 
@@ -16,6 +17,12 @@ def watch_entity(
     current_user = Depends(get_current_user),
     member = Depends(get_current_workspace_member)
 ):
+    get_workspace_entity_or_404(
+        db,
+        workspace_id=member.workspace_id,
+        entity_type=watcher_in.entity_type,
+        entity_id=watcher_in.entity_id,
+    )
     watcher = add_watcher(
         db, 
         workspace_id=member.workspace_id,
@@ -32,6 +39,12 @@ def unwatch_entity(
     current_user = Depends(get_current_user),
     member = Depends(get_current_workspace_member)
 ):
+    get_workspace_entity_or_404(
+        db,
+        workspace_id=member.workspace_id,
+        entity_type=watcher_in.entity_type,
+        entity_id=watcher_in.entity_id,
+    )
     watcher = db.query(EntityWatcher).filter(
         EntityWatcher.workspace_id == member.workspace_id,
         EntityWatcher.user_id == current_user.id,

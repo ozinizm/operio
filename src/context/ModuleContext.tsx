@@ -1,17 +1,17 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { modulesApi } from '../services/modulesApi';
 import type { SidebarModule } from '../services/modulesApi';
-import { useAuth } from './AuthContext';
+import { useAuth } from './AuthContextValue';
+import { ModuleContext } from './ModuleContextValue';
 
-interface ModuleContextType {
-  enabledModules: string[];
-  sidebarModules: SidebarModule[];
-  isModuleEnabled: (key: string) => boolean;
-  refreshModules: () => Promise<void>;
-  loading: boolean;
-}
-
-const ModuleContext = createContext<ModuleContextType | undefined>(undefined);
+const unwrapItems = <T,>(value: unknown): T[] => {
+  if (Array.isArray(value)) return value as T[];
+  if (value && typeof value === 'object' && 'items' in value) {
+    const items = (value as { items?: unknown }).items;
+    return Array.isArray(items) ? items as T[] : [];
+  }
+  return [];
+};
 
 export const ModuleProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
@@ -47,13 +47,8 @@ export const ModuleProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       ]);
       
       // Aggressive normalization
-      const normalizedEnabled = Array.isArray(enabledData) 
-        ? enabledData 
-        : (enabledData as any)?.items || [];
-        
-      const normalizedSidebar = Array.isArray(sidebarData)
-        ? sidebarData
-        : (sidebarData as any)?.items || [];
+      const normalizedEnabled = unwrapItems<string>(enabledData);
+      const normalizedSidebar = unwrapItems<SidebarModule>(sidebarData);
 
       setEnabledModules(normalizedEnabled);
       setSidebarModules(normalizedSidebar);
@@ -69,11 +64,13 @@ export const ModuleProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   useEffect(() => {
     if (user) {
-      refreshModules();
+      void Promise.resolve().then(refreshModules);
     } else {
-      setEnabledModules([]);
-      setSidebarModules([]);
-      setLoading(false);
+      void Promise.resolve().then(() => {
+        setEnabledModules([]);
+        setSidebarModules([]);
+        setLoading(false);
+      });
     }
   }, [user, refreshModules]);
 
@@ -89,12 +86,4 @@ export const ModuleProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       {children}
     </ModuleContext.Provider>
   );
-};
-
-export const useModules = () => {
-  const context = useContext(ModuleContext);
-  if (context === undefined) {
-    throw new Error('useModules must be used within a ModuleProvider');
-  }
-  return context;
 };

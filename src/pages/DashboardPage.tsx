@@ -7,17 +7,17 @@ import {
   ChevronRight, Activity, FileText, Package, Settings
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { Button } from '../components/ui/Button';
-import { dashboardApi } from '../services/dashboardApi';
+import { dashboardApi, type DashboardActivity, type DashboardSummary, type DashboardTask } from '../services/dashboardApi';
 import { LoadingState, ErrorState } from '../components/ui/States';
-import { useAuth } from '../context/AuthContext';
-import { useModules } from '../context/ModuleContext';
-import { formatCurrency, formatTime, formatDate } from '../utils/formatters';
+import { useAuth } from '../context/AuthContextValue';
+import { useModules } from '../context/ModuleContextValue';
+import { formatCurrency, formatRelativeTime, formatDate } from '../utils/formatters';
+import { getEntityPath } from '../utils/entityRoutes';
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const { isModuleEnabled } = useModules();
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<DashboardSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,7 +46,7 @@ export default function DashboardPage() {
     { key: 'offers', title: 'Gönderilen Teklif', value: data?.offer_summary?.sent_offers || 0, change: 'Yeni', trend: 'up', icon: FileText, color: 'text-purple-600', bg: 'bg-purple-50/50', path: '/offers' },
     { key: 'offers', title: 'Onaylanan Teklif', value: data?.offer_summary?.approved_offers || 0, change: 'Güncel', trend: 'neutral', icon: FileText, color: 'text-emerald-600', bg: 'bg-emerald-50/50', path: '/offers' },
     { key: 'delivery_service', title: 'Bekleyen Teslimat', value: data?.pending_deliveries || 0, change: 'Planlanan', trend: 'neutral', icon: Truck, color: 'text-blue-600', bg: 'bg-blue-50/50', path: '/delivery-service' },
-    { key: 'complaints', title: 'Açık Şikayet/Talep', value: data?.open_complaints || 0, change: data?.critical_requests > 0 ? `${data.critical_requests} Kritik` : 'Normal', trend: data?.critical_requests > 0 ? 'down' : 'neutral', icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50/50', path: '/complaints' },
+    { key: 'complaints', title: 'Açık Şikayet/Talep', value: data?.open_complaints || 0, change: (data?.critical_requests ?? 0) > 0 ? `${data?.critical_requests} Kritik` : 'Normal', trend: (data?.critical_requests ?? 0) > 0 ? 'down' : 'neutral', icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50/50', path: '/complaints' },
     { key: 'finance', title: 'Bekleyen Tahsilat', value: formatCurrency(data?.pending_collection || 0), change: 'Canlı', trend: 'up', icon: DollarSign, color: 'text-teal-600', bg: 'bg-teal-50/50', path: '/finance' },
     { key: 'inventory', title: 'Kritik Stok', value: data?.low_stock_count || 0, change: 'Kritik', trend: 'down', icon: Package, color: 'text-amber-600', bg: 'bg-amber-50/50', path: '/inventory' },
   ].filter(kpi => isModuleEnabled(kpi.key));
@@ -78,32 +78,26 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="space-y-10 font-inter pb-20">
+    <div className="min-w-0 space-y-5 sm:space-y-8 lg:space-y-10 font-inter pb-4 sm:pb-12">
       {/* Header Alignment Polish */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 sm:gap-6">
         <div className="space-y-1">
-          <h1 className="text-4xl font-jakarta font-extrabold text-text-high tracking-tight">Hoş Geldiniz, {user?.full_name?.split(' ')[0]}</h1>
-          <p className="text-text-body font-medium max-w-xl leading-relaxed">Operio sistemindeki güncel özetiniz ve bekleyen işlemleriniz.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" className="shadow-sm rounded-xl px-6">Rapor Al</Button>
-          <div className="lg:hidden">
-            <Button className="rounded-xl shadow-lg shadow-primary/20 px-6">Yeni İşlem</Button>
-          </div>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-jakarta font-extrabold text-text-high tracking-tight break-words">Hoş Geldiniz, {user?.full_name?.split(' ')[0]}</h1>
+          <p className="text-sm sm:text-base text-text-body font-medium max-w-xl leading-relaxed">Tavelya sistemindeki güncel özetiniz ve bekleyen işlemleriniz.</p>
         </div>
       </div>
 
       {/* KPI Grid Polish */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-5 lg:gap-6">
         {kpis.map((kpi, idx) => {
           const Icon = kpi.icon;
           return (
             <Link key={idx} to={kpi.path} className="block group">
-              <Card className={`!p-0 hover:shadow-xl transition-all duration-500 border-none shadow-soft flex flex-col h-full cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${kpi.bg}`}>
-                <div className="p-7 flex flex-col h-full">
-                  <div className="flex justify-between items-start mb-8">
-                    <div className={`w-14 h-14 rounded-2xl bg-white shadow-lg shadow-black/[0.03] flex items-center justify-center ${kpi.color} transition-transform duration-500 group-hover:rotate-[10deg]`}>
-                      <Icon className="w-7 h-7" />
+              <Card className={`!p-0 hover:shadow-xl transition-all duration-500 border-none shadow-soft flex flex-col h-full min-h-[132px] sm:min-h-0 cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${kpi.bg}`}>
+                <div className="p-4 sm:p-6 lg:p-7 flex flex-col h-full">
+                  <div className="flex justify-between items-start gap-2 mb-4 sm:mb-8">
+                    <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-white shadow-lg shadow-black/[0.03] flex items-center justify-center ${kpi.color} transition-transform duration-500 group-hover:rotate-[10deg]`}>
+                      <Icon className="w-5 h-5 sm:w-7 sm:h-7" />
                     </div>
                     <div className="pt-1">
                       {kpi.trend === 'up' && (
@@ -124,8 +118,8 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <div className="mt-auto space-y-1.5">
-                    <p className="text-[11px] font-bold text-text-body uppercase opacity-40 tracking-[0.1em]">{kpi.title}</p>
-                    <h3 className="text-3xl font-jakarta font-extrabold text-text-high truncate tracking-tight">{kpi.value}</h3>
+                    <p className="text-[10px] sm:text-[11px] font-bold text-text-body uppercase opacity-50 tracking-[0.06em] break-words leading-tight">{kpi.title}</p>
+                    <h3 className="text-2xl sm:text-3xl font-jakarta font-extrabold text-text-high truncate tracking-tight">{kpi.value}</h3>
                   </div>
                 </div>
               </Card>
@@ -134,31 +128,38 @@ export default function DashboardPage() {
         })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-8 lg:gap-10 items-start">
         {/* Recent Activity Polish */}
         <Card className="col-span-1 lg:col-span-2" noPadding>
           <CardHeader 
             title="Son Aktiviteler" 
-            action={<Link to="/reports" className="text-xs text-primary font-bold hover:underline flex items-center gap-1">Tümünü Gör <ChevronRight className="w-4 h-4"/></Link>} 
+            action={null}
           />
-          <div className="p-6 lg:p-10 pt-4 space-y-0">
-            {data?.recent_activities.map((activity: any, i: number) => {
+          <div className="p-4 sm:p-6 lg:p-10 pt-2 sm:pt-4 space-y-0">
+            {data?.recent_activities.map((activity: DashboardActivity, i: number) => {
               const Icon = getIconForType(activity.entity_type);
               const color = getColorForType(activity.entity_type);
               return (
-                <div key={activity.id} className={`flex items-start gap-5 group cursor-pointer py-6 ${i !== data.recent_activities.length - 1 ? 'border-b border-border/60' : ''}`}>
-                  <div className={`w-12 h-12 rounded-[1.25rem] ${color} text-white flex items-center justify-center shadow-lg shadow-current/20 flex-shrink-0 transition-transform group-hover:scale-110`}>
-                    <Icon className="w-6 h-6" />
+                <div key={activity.id} className={`relative flex items-start gap-3 sm:gap-5 group cursor-pointer py-4 sm:py-6 min-h-[76px] ${i !== data.recent_activities.length - 1 ? 'border-b border-border/60' : ''}`}>
+                  <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-[1.25rem] ${color} text-white flex items-center justify-center shadow-lg shadow-current/20 flex-shrink-0 transition-transform group-hover:scale-110`}>
+                    <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start gap-4">
-                      <p className="text-[15px] font-bold text-text-high group-hover:text-primary transition-colors leading-snug">{activity.description}</p>
-                      <span className="text-[11px] font-bold text-text-body opacity-30 uppercase tracking-widest whitespace-nowrap pt-1">
-                        {formatTime(activity.created_at)}
+                  <div className="flex-1 min-w-0 pr-0 sm:pr-0">
+                    <div className="min-w-0 sm:flex sm:justify-between sm:items-start sm:gap-4">
+                      <p className="pr-16 sm:pr-0 text-sm sm:text-[15px] font-bold text-text-high group-hover:text-primary transition-colors leading-snug break-words">{activity.description}</p>
+                      <span className="absolute right-0 top-4 sm:static text-[10px] sm:text-[11px] font-bold text-text-body opacity-40 uppercase tracking-wide sm:tracking-widest whitespace-nowrap sm:pt-1">
+                        {formatRelativeTime(activity.created_at)}
                       </span>
                     </div>
                     <div className="mt-2.5 flex items-center gap-4">
-                      <button className="text-[11px] font-black text-primary uppercase tracking-tighter hover:opacity-70 transition-opacity">Detayı Gör</button>
+                      {getEntityPath(activity.entity_type, activity.entity_id) && (
+                        <Link
+                          to={getEntityPath(activity.entity_type, activity.entity_id)!}
+                          className="text-[11px] font-black text-primary uppercase tracking-tighter hover:opacity-70 transition-opacity"
+                        >
+                          Detayı Gör
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -176,14 +177,14 @@ export default function DashboardPage() {
         </Card>
 
         {/* Sidebar Cards Alignment Polish */}
-        <div className="space-y-10">
+        <div className="space-y-5 sm:space-y-8 lg:space-y-10">
           <Card noPadding className="shadow-xl">
             <CardHeader title="Yaklaşan Görevler" action={<Link to="/tasks" className="text-xs text-primary font-bold hover:underline">Yönet</Link>} />
-            <div className="p-6 lg:p-8 pt-4 space-y-4">
-              {data?.upcoming_tasks.map((task: any) => (
-                <div key={task.id} className="bg-surface-dim/30 hover:bg-white hover:shadow-xl hover:scale-[1.02] rounded-3xl p-5 border border-transparent hover:border-border transition-all duration-300 group">
+            <div className="p-4 sm:p-6 lg:p-8 pt-3 sm:pt-4 space-y-3 sm:space-y-4">
+              {data?.upcoming_tasks.map((task: DashboardTask) => (
+                <div key={task.id} className="min-w-0 bg-surface-dim/30 hover:bg-white hover:shadow-xl hover:scale-[1.02] rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-transparent hover:border-border transition-all duration-300 group">
                   <div className="flex justify-between items-start mb-4">
-                    <h4 className="text-[14px] font-bold text-text-high group-hover:text-primary transition-colors leading-tight pr-4">{task.title}</h4>
+                    <h4 className="min-w-0 text-[14px] font-bold text-text-high group-hover:text-primary transition-colors leading-tight pr-2 break-words">{task.title}</h4>
                     <Badge variant={task.priority === 'high' ? 'error' : task.priority === 'medium' ? 'warning' : 'info'} className="shrink-0 scale-90">
                       {formatDate(task.due_date)}
                     </Badge>

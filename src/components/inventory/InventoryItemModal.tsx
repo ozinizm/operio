@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { useToast } from '../ui/Toast';
+import { useToast } from '../ui/ToastContext';
 import { inventoryApi, type InventoryItem } from '../../services/inventoryApi';
+import { getErrorMessage } from '../../services/apiClient';
 
 interface InventoryItemModalProps {
   isOpen: boolean;
@@ -32,7 +33,7 @@ export function InventoryItemModal({ isOpen, onClose, onSuccess, item }: Invento
 
   useEffect(() => {
     if (item) {
-      setFormData({
+      void Promise.resolve().then(() => setFormData({
         name: item.name,
         sku: item.sku || '',
         category: item.category || '',
@@ -44,9 +45,9 @@ export function InventoryItemModal({ isOpen, onClose, onSuccess, item }: Invento
         supplier: item.supplier || '',
         warehouse_location: item.warehouse_location || '',
         notes: item.notes || ''
-      });
+      }));
     } else {
-      setFormData({
+      void Promise.resolve().then(() => setFormData({
         name: '',
         sku: '',
         category: '',
@@ -58,9 +59,9 @@ export function InventoryItemModal({ isOpen, onClose, onSuccess, item }: Invento
         supplier: '',
         warehouse_location: '',
         notes: ''
-      });
+      }));
     }
-    setErrors({});
+    void Promise.resolve().then(() => setErrors({}));
   }, [item, isOpen]);
 
   if (!isOpen) return null;
@@ -106,8 +107,8 @@ export function InventoryItemModal({ isOpen, onClose, onSuccess, item }: Invento
       }
       onSuccess();
       onClose();
-    } catch (err: any) {
-      showToast(err.response?.data?.detail || 'İşlem sırasında bir hata oluştu.', 'error');
+    } catch (err: unknown) {
+      showToast(getErrorMessage(err) || 'İşlem sırasında bir hata oluştu.', 'error');
     } finally {
       setIsSubmitting(false);
     }

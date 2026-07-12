@@ -8,13 +8,14 @@ import {
   Save, Download, FileText, Eye, EyeOff,
   Check, Info, ShieldCheck, Globe
 } from 'lucide-react';
-import { useToast } from '../components/ui/Toast';
+import type { LucideIcon } from 'lucide-react';
+import { useToast } from '../components/ui/ToastContext';
 import { reportsApi } from '../services/reportsApi';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContextValue';
 
 type Tab = 'Profil' | 'Güvenlik' | 'Bildirimler' | 'Veri Aktarımı' | 'Ödeme & Plan' | 'Sistem';
 
-const TABS: { name: Tab; icon: any }[] = [
+const TABS: { name: Tab; icon: LucideIcon }[] = [
   { name: 'Profil', icon: User },
   { name: 'Güvenlik', icon: Lock },
   { name: 'Bildirimler', icon: Bell },
@@ -57,7 +58,7 @@ export default function SettingsPage() {
       const backup = {
         exported_at: new Date().toISOString(),
         workspace: workspace?.name,
-        note: 'Bu Operio demo yedeğidir. Canlı sürümde tam veritabanı yedeği alınacaktır.',
+        note: 'Bu Tavelya demo yedeğidir. Canlı sürümde tam veritabanı yedeği alınacaktır.',
       };
       const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -123,7 +124,7 @@ export default function SettingsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                 <div>
                   <label className={labelClass}>Şirket Adı</label>
-                  <input className={fieldClass} defaultValue={workspace?.name || 'Operio Demo A.Ş.'} />
+                  <input className={fieldClass} defaultValue={workspace?.name || 'Tavelya Demo A.Ş.'} />
                 </div>
                 <div>
                   <label className={labelClass}>Sektör</label>
@@ -139,7 +140,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="sm:col-span-2">
                   <label className={labelClass}>E-posta</label>
-                  <input className={fieldClass} defaultValue={user?.email || 'admin@operio.com'} />
+                  <input className={fieldClass} defaultValue={user?.email || 'admin@tavelya.app'} />
                 </div>
                 <div className="sm:col-span-2">
                   <label className={labelClass}>Adres</label>
@@ -316,7 +317,7 @@ export default function SettingsPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className={labelClass}>Fatura Adı</label>
-                      <input className={fieldClass} defaultValue={workspace?.name || 'Operio Demo A.Ş.'} />
+                      <input className={fieldClass} defaultValue={workspace?.name || 'Tavelya Demo A.Ş.'} />
                     </div>
                     <div>
                       <label className={labelClass}>Vergi No</label>
@@ -325,7 +326,7 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <label className={labelClass}>Fatura E-postası</label>
-                    <input className={fieldClass} defaultValue="fatura@operio.com" />
+                    <input className={fieldClass} defaultValue="fatura@tavelya.app" />
                   </div>
                   <Button onClick={() => handleSave('Fatura Bilgileri')}>
                     <Save className="w-4 h-4 mr-2" /> Kaydet
@@ -354,7 +355,7 @@ export default function SettingsPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div className="p-4 bg-surface-dim/30 rounded-2xl border border-border">
                       <p className="text-[10px] font-bold text-text-body uppercase opacity-60 mb-2">Ürün</p>
-                      <p className="text-sm font-bold text-text-high">Operio</p>
+                      <p className="text-sm font-bold text-text-high">Tavelya</p>
                       <p className="text-xs text-text-body mt-1">Modüler İşletme Yönetim Platformu</p>
                     </div>
                     <div className="p-4 bg-surface-dim/30 rounded-2xl border border-border">
@@ -409,12 +410,12 @@ export default function SettingsPage() {
         <div className="space-y-3">
           <p className="text-xs text-text-body mb-4">Son 30 günlük sistem aktivite logları</p>
           {[
-            { time: '2026-05-06 00:21', action: 'Kullanıcı girişi', user: 'admin@operio.dev', level: 'info' },
-            { time: '2026-05-05 23:45', action: 'Dosya yüklendi: mutfak_v2.pdf', user: 'admin@operio.dev', level: 'info' },
-            { time: '2026-05-05 22:30', action: 'Yeni müşteri oluşturuldu', user: 'admin@operio.dev', level: 'info' },
-            { time: '2026-05-05 21:00', action: 'Finans kaydı güncellendi', user: 'admin@operio.dev', level: 'info' },
-            { time: '2026-05-04 18:15', action: 'İş durumu değiştirildi: in_progress', user: 'admin@operio.dev', level: 'info' },
-            { time: '2026-05-04 15:00', action: 'Teklif onaylandı', user: 'admin@operio.dev', level: 'success' },
+            { time: '2026-05-06 00:21', action: 'Kullanıcı girişi', user: 'admin@tavelya.app', level: 'info' },
+            { time: '2026-05-05 23:45', action: 'Dosya yüklendi: mutfak_v2.pdf', user: 'admin@tavelya.app', level: 'info' },
+            { time: '2026-05-05 22:30', action: 'Yeni müşteri oluşturuldu', user: 'admin@tavelya.app', level: 'info' },
+            { time: '2026-05-05 21:00', action: 'Finans kaydı güncellendi', user: 'admin@tavelya.app', level: 'info' },
+            { time: '2026-05-04 18:15', action: 'İş durumu değiştirildi: in_progress', user: 'admin@tavelya.app', level: 'info' },
+            { time: '2026-05-04 15:00', action: 'Teklif onaylandı', user: 'admin@tavelya.app', level: 'success' },
           ].map((log, i) => (
             <div key={i} className={`p-3 rounded-xl flex items-start gap-3 border ${log.level === 'success' ? 'border-emerald-200 bg-emerald-50' : 'border-border bg-surface-dim/20'}`}>
               <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${log.level === 'success' ? 'bg-emerald-500' : 'bg-primary'}`} />

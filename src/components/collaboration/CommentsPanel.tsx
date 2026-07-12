@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Card, CardHeader } from '../ui/Card';
 import { MessageSquare, Send, Trash2, Clock, Reply } from 'lucide-react';
 import { commentsApi, type Comment } from '../../services/commentsApi';
-import { useAuth } from '../../context/AuthContext';
-import { useToast } from '../ui/Toast';
-import { ConfirmDialog, useConfirm } from '../ui/ConfirmDialog';
+import { useAuth } from '../../context/AuthContextValue';
+import { useToast } from '../ui/ToastContext';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { useConfirm } from '../ui/useConfirm';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
+import { ensureUTC } from '../../utils/formatters';
 
 interface CommentsPanelProps {
   entityType: string;
@@ -22,11 +24,7 @@ export function CommentsPanel({ entityType, entityId }: CommentsPanelProps) {
   const { showToast } = useToast();
   const { confirmProps, confirm } = useConfirm();
 
-  useEffect(() => {
-    fetchComments();
-  }, [entityType, entityId]);
-
-  const fetchComments = async () => {
+  const fetchComments = useCallback(async () => {
     try {
       setIsLoading(true);
       const data = await commentsApi.list(entityType, entityId);
@@ -36,7 +34,13 @@ export function CommentsPanel({ entityType, entityId }: CommentsPanelProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [entityType, entityId]);
+
+  useEffect(() => {
+    void commentsApi.list(entityType, entityId).then(setComments).catch((err: unknown) => {
+      console.error('Comments load failed:', err);
+    }).finally(() => setIsLoading(false));
+  }, [entityType, entityId]);
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -50,9 +54,9 @@ export function CommentsPanel({ entityType, entityId }: CommentsPanelProps) {
         body: newComment.trim()
       });
       setNewComment('');
-      fetchComments();
+      void fetchComments();
       showToast('Yorum eklendi.', 'success');
-    } catch (err) {
+    } catch {
       showToast('Yorum gönderilemedi.', 'error');
     } finally {
       setIsSubmitting(false);
@@ -79,19 +83,19 @@ export function CommentsPanel({ entityType, entityId }: CommentsPanelProps) {
   };
 
   return (
-    <Card className="flex flex-col h-full min-h-[400px]">
+    <Card>
       <CardHeader 
         title="Yorumlar & Notlar" 
         action={<MessageSquare className="w-5 h-5 text-text-body" />} 
       />
       
-      <div className="flex-1 overflow-y-auto p-4 space-y-6 max-h-[500px]">
+      <div className="p-4 space-y-6">
         {isLoading ? (
-          <div className="flex justify-center items-center h-32">
+          <div className="flex justify-center items-center min-h-24">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         ) : comments.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-32 text-text-body italic">
+          <div className="flex flex-col items-center justify-center min-h-24 text-text-body italic">
             <p className="text-sm">Henüz yorum yapılmamış.</p>
             <p className="text-[10px] mt-1">İşbirliğini başlatmak için bir şeyler yazın.</p>
           </div>
@@ -108,7 +112,7 @@ export function CommentsPanel({ entityType, entityId }: CommentsPanelProps) {
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] text-text-body flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true, locale: tr })}
+                        {formatDistanceToNow(ensureUTC(comment.created_at), { addSuffix: true, locale: tr })}
                       </span>
                       {user?.id === comment.author_user_id && (
                         <button 

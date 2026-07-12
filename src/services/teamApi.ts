@@ -15,11 +15,11 @@ export const teamApi = {
     const response = await api.get<TeamMember[]>('/users/team');
     return response.data;
   },
-  create: async (data: any) => {
+  create: async (data: object) => {
     const response = await api.post('/users/team', data);
     return response.data;
   },
-  update: async (memberId: number, data: any) => {
+  update: async (memberId: number, data: object) => {
     const response = await api.patch(`/users/team/${memberId}`, data);
     return response.data;
   },

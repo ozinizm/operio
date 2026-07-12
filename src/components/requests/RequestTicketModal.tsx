@@ -2,17 +2,17 @@ import { useState, useEffect } from 'react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { X, Save, FileText } from 'lucide-react';
-import { requestsApi, type CreateRequestData } from '../../services/requestsApi';
+import { requestsApi, type CreateRequestData, type RequestTicket } from '../../services/requestsApi';
 import { customersApi, type Customer } from '../../services/customersApi';
 import { jobsApi, type Job } from '../../services/jobsApi';
 import { deliveryServiceApi, type DeliveryService } from '../../services/deliveryServiceApi';
-import { useToast } from '../ui/Toast';
+import { useToast } from '../ui/ToastContext';
 
 interface RequestTicketModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  initialData?: any;
+  initialData?: RequestTicket | null;
   customerId?: number;
   jobId?: number;
 }
@@ -37,52 +37,25 @@ export function RequestTicketModal({ isOpen, onClose, onSuccess, initialData, cu
 
   useEffect(() => {
     if (isOpen) {
-      fetchCustomers();
+      void customersApi.list().then(setCustomers).catch(() => console.error('Failed to fetch customers'));
       if (initialData) {
-        setFormData(initialData);
+        void Promise.resolve().then(() => setFormData(initialData));
       } else {
-        setFormData(prev => ({
+        void Promise.resolve().then(() => setFormData(prev => ({
           ...prev,
           customer_id: customerId || 0,
           job_id: jobId
-        }));
+        })));
       }
     }
   }, [isOpen, initialData, customerId, jobId]);
 
   useEffect(() => {
     if (formData.customer_id) {
-      fetchJobs(formData.customer_id);
-      fetchDeliveries(formData.customer_id);
+      void jobsApi.list({ customer_id: formData.customer_id }).then(setJobs).catch(() => console.error('Failed to fetch jobs'));
+      void deliveryServiceApi.list({ customer_id: formData.customer_id }).then(setDeliveries).catch(() => console.error('Failed to fetch deliveries'));
     }
   }, [formData.customer_id]);
-
-  const fetchCustomers = async () => {
-    try {
-      const data = await customersApi.list();
-      setCustomers(data);
-    } catch (err) {
-      console.error('Failed to fetch customers');
-    }
-  };
-
-  const fetchJobs = async (cid: number) => {
-    try {
-      const data = await jobsApi.list({ customer_id: cid });
-      setJobs(data);
-    } catch (err) {
-      console.error('Failed to fetch jobs');
-    }
-  };
-
-  const fetchDeliveries = async (cid: number) => {
-    try {
-      const data = await deliveryServiceApi.list({ customer_id: cid });
-      setDeliveries(data);
-    } catch (err) {
-      console.error('Failed to fetch deliveries');
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,7 +75,7 @@ export function RequestTicketModal({ isOpen, onClose, onSuccess, initialData, cu
       }
       onSuccess();
       onClose();
-    } catch (err) {
+    } catch {
       showToast('Hata oluştu', 'error');
     } finally {
       setLoading(false);

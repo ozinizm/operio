@@ -4,20 +4,25 @@ import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { ActionMenu, type ActionMenuItem } from '../components/ui/ActionMenu';
-import { ConfirmDialog, useConfirm } from '../components/ui/ConfirmDialog';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { useConfirm } from '../components/ui/useConfirm';
 import { GlobalQuickCreateModal, type QuickCreateType } from '../components/shared/GlobalQuickCreateModal';
 import { ExcelImportActions } from '../components/shared/ExcelImportActions';
 import {
-  Plus, Search, Filter,
+  Plus, Search,
   Clock, ChevronRight, User,
   Eye, RefreshCw, Trash2
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useToast } from '../components/ui/Toast';
-import { jobsApi } from '../services/jobsApi';
+import { useToast } from '../components/ui/ToastContext';
+import { jobsApi, type Job } from '../services/jobsApi';
+import { getErrorMessage } from '../services/apiClient';
+import type { ResourceCreatedEvent } from '../types/domain';
 import { LoadingState, ErrorState } from '../components/ui/States';
 import { formatDate } from '../utils/formatters';
-import { JOB_STATUS_MAP } from '../utils/statusMaps';
+import { JOB_STATUS_MAP, JOB_TYPE_LABELS, PRIORITY_LABELS, enumLabel } from '../utils/statusMaps';
+import { useAuth } from '../context/AuthContextValue';
+import { can } from '../utils/permissions';
 
 const JOB_STATUSES = [
   { value: 'planned', label: 'Planlandı' },
@@ -28,14 +33,15 @@ const JOB_STATUSES = [
 ];
 
 export default function JobsPage() {
+  const { role, user } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const { confirmProps, confirm } = useConfirm();
-  const [jobs, setJobs] = useState<any[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [quickCreateType, setQuickCreateType] = useState<QuickCreateType>(null);
-  const [statusJob, setStatusJob] = useState<any>(null);
+  const [statusJob, setStatusJob] = useState<Job | null>(null);
   const [newStatus, setNewStatus] = useState('');
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -54,9 +60,12 @@ export default function JobsPage() {
   };
 
   useEffect(() => {
-    fetchJobs();
+    void jobsApi.list().then(setJobs).catch(() => {
+      setError('İş listesi yüklenemedi.');
+    }).finally(() => setIsLoading(false));
 
-    const handleResourceCreated = (e: any) => {
+    const handleResourceCreated = (event: Event) => {
+      const e = event as ResourceCreatedEvent;
       if (e.detail?.type === 'job') {
         fetchJobs();
       }
@@ -66,7 +75,7 @@ export default function JobsPage() {
     return () => window.removeEventListener('operio:resource-created', handleResourceCreated);
   }, []);
 
-  const openStatusModal = (job: any) => {
+  const openStatusModal = (job: Job) => {
     setStatusJob(job);
     setNewStatus(job.status);
     setIsStatusModalOpen(true);
@@ -87,10 +96,10 @@ export default function JobsPage() {
     }
   };
 
-  const handleDelete = (job: any) => {
+  const handleDelete = (job: Job) => {
     confirm({
       title: 'İşi Sil',
-      description: `"${job.title}" işi kalıcı olarak silinecek. Bu işlem geri alınamaz.`,
+      description: `"${job.title}" işi arşivlenecek ve aktif listelerden kaldırılacak.`,
       confirmLabel: 'Sil',
       cancelLabel: 'Vazgeç',
       variant: 'danger',
@@ -99,8 +108,8 @@ export default function JobsPage() {
           await jobsApi.delete(job.id);
           showToast('İş silindi.', 'success');
           fetchJobs();
-        } catch (err: any) {
-          showToast(err.response?.data?.detail || 'Silme işlemi başarısız.', 'error');
+        } catch (err: unknown) {
+          showToast(getErrorMessage(err) || 'Silme işlemi başarısız.', 'error');
         }
       },
     });
@@ -115,7 +124,7 @@ export default function JobsPage() {
       case 'high': return <Badge variant="error">Yüksek</Badge>;
       case 'normal': return <Badge variant="default">Normal</Badge>;
       case 'low': return <Badge variant="info">Düşük</Badge>;
-      default: return <Badge variant="default">{priority}</Badge>;
+      default: return <Badge variant="default">{enumLabel(priority, PRIORITY_LABELS)}</Badge>;
     }
   };
 
@@ -128,10 +137,11 @@ export default function JobsPage() {
           <p className="text-text-body mt-1">Devam eden operasyonları ve teslimat tarihlerini yönetin.</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline"><Filter className="w-4 h-4 mr-2" /> Filtrele</Button>
-          <Button onClick={() => setQuickCreateType('job')}>
-            <Plus className="w-4 h-4 mr-2" /> Yeni İş Oluştur
-          </Button>
+          {can(role, 'job:create', !!user?.is_super_admin) && (
+            <Button onClick={() => setQuickCreateType('job')}>
+              <Plus className="w-4 h-4 mr-2" /> Yeni İş Oluştur
+            </Button>
+          )}
         </div>
       </div>
 
@@ -187,15 +197,15 @@ export default function JobsPage() {
                         <div className="font-bold text-text-high group-hover:text-primary transition-colors">{job.title}</div>
                         <div className="text-xs text-text-body mt-0.5">
                           {job.customer?.name || 'Müşteri Bilgisi Yok'} •
-                          <span className="font-medium text-red-500 ml-1">Teslimat: {formatDate(job.due_date)}</span>
+                          <span className="font-medium text-red-500 ml-1">Teslimat: {job.due_date ? formatDate(job.due_date) : '—'}</span>
                         </div>
                       </Link>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-xs font-medium text-text-body bg-surface-dim/50 px-2 py-1 rounded-md">{job.job_type || 'Genel'}</span>
+                      <span className="text-xs font-medium text-text-body bg-surface-dim/50 px-2 py-1 rounded-md" title={enumLabel(job.job_type || 'general', JOB_TYPE_LABELS)}>{enumLabel(job.job_type || 'general', JOB_TYPE_LABELS)}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <Badge variant={JOB_STATUS_MAP[job.status]?.variant as any || 'default'}>
+                      <Badge variant={JOB_STATUS_MAP[job.status]?.variant || 'default'}>
                         {JOB_STATUS_MAP[job.status]?.label || job.status}
                       </Badge>
                     </td>
@@ -214,7 +224,10 @@ export default function JobsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <ActionMenu items={menuItems} />
+                      {(can(role, 'job:update', !!user?.is_super_admin)
+                        || can(role, 'job:delete', !!user?.is_super_admin)) && (
+                        <ActionMenu items={menuItems} />
+                      )}
                     </td>
                   </tr>
                 );
@@ -241,17 +254,20 @@ export default function JobsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {getPriorityBadge(job.priority)}
-                  <ActionMenu items={[
-                    { label: 'Detayı Gör', icon: <Eye className="w-4 h-4" />, onClick: () => navigate(`/jobs/${job.id}`) },
-                    { label: 'Durumu Güncelle', icon: <RefreshCw className="w-4 h-4" />, onClick: () => openStatusModal(job) },
-                    { label: 'Sil', icon: <Trash2 className="w-4 h-4" />, onClick: () => handleDelete(job), variant: 'danger' },
-                  ]} />
+                  {(can(role, 'job:update', !!user?.is_super_admin)
+                    || can(role, 'job:delete', !!user?.is_super_admin)) && (
+                    <ActionMenu items={[
+                      { label: 'Detayı Gör', icon: <Eye className="w-4 h-4" />, onClick: () => navigate(`/jobs/${job.id}`) },
+                      { label: 'Durumu Güncelle', icon: <RefreshCw className="w-4 h-4" />, onClick: () => openStatusModal(job) },
+                      { label: 'Sil', icon: <Trash2 className="w-4 h-4" />, onClick: () => handleDelete(job), variant: 'danger' },
+                    ]} />
+                  )}
                 </div>
               </div>
               <div className="space-y-3">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-text-body flex items-center gap-1"><Clock className="w-3 h-3" /> Teslimat: {formatDate(job.due_date)}</span>
-                  <Badge variant={JOB_STATUS_MAP[job.status]?.variant as any || 'default'}>
+                  <span className="text-text-body flex items-center gap-1"><Clock className="w-3 h-3" /> Teslimat: {job.due_date ? formatDate(job.due_date) : '—'}</span>
+                  <Badge variant={JOB_STATUS_MAP[job.status]?.variant || 'default'}>
                     {JOB_STATUS_MAP[job.status]?.label || job.status}
                   </Badge>
                 </div>

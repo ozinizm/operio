@@ -57,16 +57,8 @@ def list_notifications(
     limit: int = 50,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
+    member = Depends(get_current_workspace_member),
 ):
-    from ..models.workspace import WorkspaceMember
-    member = db.query(WorkspaceMember).filter(
-        WorkspaceMember.user_id == current_user.id,
-        WorkspaceMember.is_active == True
-    ).first()
-    
-    if not member:
-        return []
-        
     notifications = db.query(Notification).filter(
         Notification.workspace_id == member.workspace_id,
         Notification.user_id == current_user.id
@@ -84,16 +76,8 @@ def list_notifications(
 def get_unread_count(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
+    member = Depends(get_current_workspace_member),
 ):
-    from ..models.workspace import WorkspaceMember
-    member = db.query(WorkspaceMember).filter(
-        WorkspaceMember.user_id == current_user.id,
-        WorkspaceMember.is_active == True
-    ).first()
-    
-    if not member:
-        return {"count": 0}
-        
     count = db.query(Notification).filter(
         Notification.workspace_id == member.workspace_id,
         Notification.user_id == current_user.id,
@@ -105,10 +89,12 @@ def get_unread_count(
 def mark_as_read(
     notification_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    member = Depends(get_current_workspace_member),
 ):
     notification = db.query(Notification).filter(
         Notification.id == notification_id,
+        Notification.workspace_id == member.workspace_id,
         Notification.user_id == current_user.id
     ).first()
     
@@ -195,10 +181,12 @@ def generate_task_reminders(
 def delete_notification(
     notification_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    member = Depends(get_current_workspace_member),
 ):
     notification = db.query(Notification).filter(
         Notification.id == notification_id,
+        Notification.workspace_id == member.workspace_id,
         Notification.user_id == current_user.id
     ).first()
     

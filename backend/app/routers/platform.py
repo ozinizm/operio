@@ -30,10 +30,54 @@ ADDITIONAL_MODULES = [
 ]
 ALL_MODULES = CORE_MODULES + ADDITIONAL_MODULES
 
-from ..core.module_registry import MODULE_REGISTRY, SECTOR_PACKS
+from ..core.module_registry import MODULE_REGISTRY, PRODUCT_PACKS, SECTOR_PACKS
 from ..models.workspace_module import WorkspaceModule
 
 router = APIRouter()
+
+@router.get("/module-packs")
+def list_module_packs(
+    current_super_admin: User = Depends(get_current_super_admin),
+) -> List[Any]:
+    return [{"key": key, "name": pack["name"], "modules": pack["modules"]} for key, pack in PRODUCT_PACKS.items()]
+
+
+@router.post("/workspaces/{workspace_id}/module-packs/{pack_key}")
+def assign_module_pack(
+    workspace_id: int,
+    pack_key: str,
+    db: Session = Depends(get_db),
+    current_super_admin: User = Depends(get_current_super_admin),
+) -> Any:
+    if not db.query(Workspace).filter(Workspace.id == workspace_id).first():
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    pack = PRODUCT_PACKS.get(pack_key)
+    if not pack:
+        raise HTTPException(status_code=404, detail="Module pack not found")
+    selected = set(pack["modules"])
+    existing = {item.module_key: item for item in db.query(WorkspaceModule).filter(WorkspaceModule.workspace_id == workspace_id).all()}
+    for module_key, definition in MODULE_REGISTRY.items():
+        if not definition.is_available or definition.is_core:
+            continue
+        enabled = module_key in selected
+        item = existing.get(module_key)
+        if not item:
+            item = WorkspaceModule(workspace_id=workspace_id, module_key=module_key)
+            db.add(item)
+        item.is_enabled = enabled
+        if enabled:
+            item.enabled_at = datetime.utcnow()
+            item.enabled_by_user_id = current_super_admin.id
+            item.disabled_at = None
+        else:
+            item.disabled_at = datetime.utcnow()
+    log_audit_event(
+        db=db, action="module.pack_assigned", entity_type="workspace", entity_id=workspace_id,
+        workspace_id=workspace_id, actor_user=current_super_admin,
+        description=f"Modül paketi atandı: {pack['name']}",
+    )
+    db.commit()
+    return {"status": "ok", "pack_key": pack_key, "modules": pack["modules"]}
 
 @router.get("/available-modules")
 def get_available_modules(

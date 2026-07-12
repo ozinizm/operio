@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { UserPlus, Copy, Check, X, CheckCircle2, User, Mail, Shield, Key } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { useToast } from '../ui/Toast';
+import { useToast } from '../ui/ToastContext';
+import type { WorkspaceUserInput } from '../../services/platformApi';
 
 interface PlatformUserCreateModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (userData: any) => Promise<void>;
+  onConfirm: (userData: WorkspaceUserInput) => Promise<void>;
 }
 
 type ModalStep = 'form' | 'result';
@@ -22,13 +23,13 @@ export function PlatformUserCreateModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState(() => ({
     full_name: '',
     email: '',
     password: Math.random().toString(36).slice(-10),
     role: 'staff',
     is_active: true
-  });
+  }));
 
   if (!isOpen) return null;
 
@@ -38,7 +39,7 @@ export function PlatformUserCreateModal({
       setIsCopied(true);
       showToast('Şifre kopyalandı.', 'success');
       setTimeout(() => setIsCopied(false), 2000);
-    } catch (err) {
+    } catch {
       showToast('Kopyalama başarısız oldu.', 'error');
     }
   };
@@ -54,8 +55,8 @@ export function PlatformUserCreateModal({
     try {
       await onConfirm(formData);
       setStep('result');
-    } catch (error: any) {
-      showToast(error.message || 'Kullanıcı oluşturulamadı.', 'error');
+    } catch (error: unknown) {
+      showToast(error instanceof Error ? error.message : 'Kullanıcı oluşturulamadı.', 'error');
     } finally {
       setIsSubmitting(false);
     }

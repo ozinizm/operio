@@ -6,8 +6,9 @@ import { DeliveryStatusBadge } from './DeliveryStatusBadge';
 import { DeliveryTypeBadge } from './DeliveryTypeBadge';
 import { CommentsPanel } from '../collaboration/CommentsPanel';
 import { EntityWatchButton } from '../collaboration/EntityWatchButton';
-import { useToast } from '../ui/Toast';
-import { ConfirmDialog, useConfirm } from '../ui/ConfirmDialog';
+import { useToast } from '../ui/ToastContext';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { useConfirm } from '../ui/useConfirm';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
@@ -19,6 +20,12 @@ interface DeliveryServiceDetailDrawerProps {
   onEdit: (delivery: DeliveryService) => void;
 }
 
+const detailTabs: Array<{ id: 'info' | 'comments' | 'files'; label: string; icon: typeof FileText }> = [
+  { id: 'info', label: 'Bilgiler', icon: FileText },
+  { id: 'comments', label: 'Yorumlar', icon: MessageSquare },
+  { id: 'files', label: 'Dosyalar', icon: Package },
+];
+
 export function DeliveryServiceDetailDrawer({ isOpen, onClose, deliveryId, onUpdate, onEdit }: DeliveryServiceDetailDrawerProps) {
   const [delivery, setDelivery] = useState<DeliveryService | null>(null);
   const [loading, setLoading] = useState(false);
@@ -26,24 +33,25 @@ export function DeliveryServiceDetailDrawer({ isOpen, onClose, deliveryId, onUpd
   const { showToast } = useToast();
   const { confirmProps, confirm } = useConfirm();
 
-  useEffect(() => {
-    if (isOpen && deliveryId) {
-      fetchDelivery();
-    }
-  }, [isOpen, deliveryId]);
-
   const fetchDelivery = async () => {
     if (!deliveryId) return;
     try {
       setLoading(true);
       const data = await deliveryServiceApi.get(deliveryId);
       setDelivery(data);
-    } catch (err) {
+    } catch {
       showToast('Detaylar yüklenemedi', 'error');
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!isOpen || !deliveryId) return;
+    void deliveryServiceApi.get(deliveryId).then(setDelivery).catch(() => {
+      showToast('Detaylar yüklenemedi', 'error');
+    });
+  }, [isOpen, deliveryId, showToast]);
 
   const handleStatusUpdate = async (action: 'complete' | 'cancel') => {
     if (!delivery) return;
@@ -153,14 +161,10 @@ export function DeliveryServiceDetailDrawer({ isOpen, onClose, deliveryId, onUpd
 
             {/* Tabs */}
             <div className="flex border-b border-border">
-              {[
-                { id: 'info', label: 'Bilgiler', icon: FileText },
-                { id: 'comments', label: 'Yorumlar', icon: MessageSquare },
-                { id: 'files', label: 'Dosyalar', icon: Package },
-              ].map(tab => (
+              {detailTabs.map(tab => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
+                  onClick={() => setActiveTab(tab.id)}
                   className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-bold transition-colors border-b-2 ${activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-text-body hover:text-text-high'}`}
                 >
                   <tab.icon className="w-4 h-4" />

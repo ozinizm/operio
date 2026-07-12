@@ -3,7 +3,8 @@ import { Card, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { ActionMenu, type ActionMenuItem } from '../components/ui/ActionMenu';
-import { ConfirmDialog, useConfirm } from '../components/ui/ConfirmDialog';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { useConfirm } from '../components/ui/useConfirm';
 import {
   Truck, Search, Plus, Filter, Calendar,
   MapPin, User, Eye, Edit2, CheckCircle2,
@@ -16,7 +17,8 @@ import { DeliveryServiceModal } from '../components/delivery/DeliveryServiceModa
 import { DeliveryServiceDetailDrawer } from '../components/delivery/DeliveryServiceDetailDrawer';
 import { LoadingState, ErrorState } from '../components/ui/States';
 import { formatDateTime } from '../utils/formatters';
-import { useToast } from '../components/ui/Toast';
+import { useToast } from '../components/ui/ToastContext';
+import type { ResourceCreatedEvent } from '../types/domain';
 
 export default function DeliveryServicePage() {
   const [items, setItems] = useState<DeliveryService[]>([]);
@@ -40,11 +42,13 @@ export default function DeliveryServicePage() {
   const [filters, setFilters] = useState({ status: '', type: '', search: '' });
 
   useEffect(() => {
-    fetchItems();
+    const params = { status: filters.status || undefined, type: filters.type || undefined };
+    void deliveryServiceApi.list(params).then(data => { setItems(data); setError(null); }).catch(() => setError('Veriler yüklenirken bir hata oluştu.')).finally(() => setLoading(false));
 
-    const handleResourceCreated = (e: any) => {
+    const handleResourceCreated = (event: Event) => {
+      const e = event as ResourceCreatedEvent;
       if (e.detail?.type === 'delivery_service') {
-        fetchItems();
+        void deliveryServiceApi.list(params).then(setItems);
       }
     };
 
@@ -61,7 +65,7 @@ export default function DeliveryServicePage() {
       });
       setItems(data);
       setError(null);
-    } catch (err) {
+    } catch {
       setError('Veriler yüklenirken bir hata oluştu.');
     } finally {
       setLoading(false);

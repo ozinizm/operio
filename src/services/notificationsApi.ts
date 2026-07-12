@@ -39,7 +39,7 @@ export const notificationsApi = {
     await api.delete(`/notifications/${id}`);
   },
   
-  generateReminders: async (): Promise<any> => {
+  generateReminders: async (): Promise<unknown> => {
     const response = await api.post('/notifications/generate-task-reminders');
     return response.data;
   }

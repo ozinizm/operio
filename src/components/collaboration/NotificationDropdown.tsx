@@ -1,11 +1,13 @@
-import { useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { Bell, CheckCircle2, MessageSquare, AlertCircle, Briefcase, FileText, CheckSquare, Clock, Loader2 } from 'lucide-react';
 import { notificationsApi, type Notification } from '../../services/notificationsApi';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
+import { getEntityPath } from '../../utils/entityRoutes';
+import { ensureUTC } from '../../utils/formatters';
 import { Link, useNavigate } from 'react-router-dom';
-import { useToast } from '../ui/Toast';
-import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../ui/ToastContext';
+import { useAuth } from '../../context/AuthContextValue';
 
 export function NotificationDropdown() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -19,27 +21,85 @@ export function NotificationDropdown() {
   // Ref to track last seen notification ID to prevent duplicate toasts
   const lastSeenIdRef = useRef<number | null>(null);
   const isInitialLoadRef = useRef(true);
+  const unreadCountRef = useRef(0);
+  const fetchInFlightRef = useRef<Promise<void> | null>(null);
+
+  const fetchData = useCallback(async (isInitial = false) => {
+    if (fetchInFlightRef.current) return fetchInFlightRef.current;
+    fetchInFlightRef.current = (async () => {
+    try {
+      const { count } = await notificationsApi.getUnreadCount();
+
+      if (isInitial || count > unreadCountRef.current) {
+        const latest = await notificationsApi.list(1);
+        if (latest && latest.length > 0) {
+          const newest = latest[0];
+
+          if (!isInitialLoadRef.current &&
+              lastSeenIdRef.current !== null &&
+              newest.id > lastSeenIdRef.current &&
+              !newest.is_read) {
+            showToast(newest.title || 'Yeni bildirim', 'info');
+          }
+
+          lastSeenIdRef.current = newest.id;
+        }
+      }
+
+      unreadCountRef.current = count;
+      setUnreadCount(count);
+      isInitialLoadRef.current = false;
+    } catch (err) {
+      console.error('Failed to fetch notification data:', err);
+    } finally {
+      fetchInFlightRef.current = null;
+    }
+    })();
+    return fetchInFlightRef.current;
+  }, [showToast]);
 
   useEffect(() => {
-    // 1. Initial Data Load & Polling Fallback
-    fetchData(true);
-    const interval = setInterval(() => fetchData(false), 30000); // 30s fallback polling
-
-    // 2. SSE Real-time Delivery
+    void fetchData(true);
     const token = localStorage.getItem('token');
     let eventSource: EventSource | null = null;
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let reconnectAttempt = 0;
+    let disposed = false;
 
-    if (token && user) {
+    const stopPolling = () => {
+      if (pollInterval) clearInterval(pollInterval);
+      pollInterval = null;
+    };
+    const startPolling = () => {
+      if (pollInterval || disposed) return;
+      void fetchData(false);
+      pollInterval = setInterval(() => void fetchData(false), 30000);
+    };
+
+    const connect = () => {
+      if (!token || !user || disposed) {
+        startPolling();
+        return;
+      }
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
-      // Native EventSource doesn't support headers, so we use query token
       eventSource = new EventSource(`${API_URL}/notifications/stream?token=${token}`);
+
+      eventSource.onopen = () => {
+        reconnectAttempt = 0;
+        stopPolling();
+      };
 
       eventSource.addEventListener('notification', (event) => {
         try {
           const data = JSON.parse(event.data);
           
           // Anlık UI güncelleme
-          setUnreadCount(prev => prev + 1);
+          setUnreadCount(prev => {
+            const next = prev + 1;
+            unreadCountRef.current = next;
+            return next;
+          });
           
           // Dropdown listesini de önden güncelle (opsiyonel ama UX için iyi)
           setNotifications(prev => {
@@ -59,48 +119,25 @@ export function NotificationDropdown() {
       });
 
       eventSource.onerror = (err) => {
-        // EventSource will automatically try to reconnect by default
-        console.warn('SSE Connection lost, waiting for auto-reconnect...', err);
+        console.warn('SSE connection lost; polling fallback enabled.', err);
+        eventSource?.close();
+        eventSource = null;
+        startPolling();
+        const delay = Math.min(30000, 1000 * (2 ** reconnectAttempt));
+        reconnectAttempt += 1;
+        reconnectTimer = setTimeout(connect, delay);
       };
-    }
+    };
+
+    connect();
 
     return () => {
-      clearInterval(interval);
-      if (eventSource) {
-        eventSource.close();
-      }
+      disposed = true;
+      stopPolling();
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      eventSource?.close();
     };
-  }, [user?.id, workspace?.id]); // Re-connect on user or workspace change
-
-  const fetchData = async (isInitial = false) => {
-    try {
-      // Get unread count from API (source of truth)
-      const { count } = await notificationsApi.getUnreadCount();
-      
-      // If count increased or it's initial load, check for the latest notification
-      if (isInitial || count > unreadCount) {
-        const latest = await notificationsApi.list(1);
-        if (latest && latest.length > 0) {
-          const newest = latest[0];
-          
-          // Only show toast if it's actually new and not first app load
-          if (!isInitialLoadRef.current && 
-              lastSeenIdRef.current !== null && 
-              newest.id > lastSeenIdRef.current && 
-              !newest.is_read) {
-            showToast(newest.title || 'Yeni bildirim', 'info');
-          }
-          
-          lastSeenIdRef.current = newest.id;
-        }
-      }
-
-      setUnreadCount(count);
-      isInitialLoadRef.current = false;
-    } catch (err) {
-      console.error('Failed to fetch notification data:', err);
-    }
-  };
+  }, [fetchData, showToast, user, workspace?.id]); // Re-connect on user or workspace change
 
   const fetchNotifications = async () => {
     try {
@@ -125,7 +162,11 @@ export function NotificationDropdown() {
     try {
       await notificationsApi.markAsRead(id);
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
-      setUnreadCount(prev => Math.max(0, prev - 1));
+      setUnreadCount(prev => {
+        const next = Math.max(0, prev - 1);
+        unreadCountRef.current = next;
+        return next;
+      });
     } catch (err) {
       console.error('Mark as read failed:', err);
     }
@@ -135,6 +176,7 @@ export function NotificationDropdown() {
     try {
       await notificationsApi.markAllRead();
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+      unreadCountRef.current = 0;
       setUnreadCount(0);
     } catch (err) {
       console.error('Mark all as read failed:', err);
@@ -160,16 +202,8 @@ export function NotificationDropdown() {
     setIsOpen(false);
     
     // Route based on entity
-    if (notification.entity_type && notification.entity_id) {
-      const routes: Record<string, string> = {
-        'customer': `/customers/${notification.entity_id}`,
-        'job': `/jobs/${notification.entity_id}`,
-        'task': `/tasks`, // For now, maybe direct link later
-        'offer': `/offers`,
-      };
-      const path = routes[notification.entity_type];
-      if (path) navigate(path);
-    }
+    const path = getEntityPath(notification.entity_type, notification.entity_id);
+    if (path) navigate(path);
   };
 
   return (
@@ -187,7 +221,7 @@ export function NotificationDropdown() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-surface border border-border rounded-2xl shadow-modal z-50 animate-in zoom-in-95 duration-100 flex flex-col max-h-[500px]">
+        <div className="fixed inset-x-3 top-[calc(4rem+env(safe-area-inset-top))] bottom-[calc(4.75rem+env(safe-area-inset-bottom))] w-auto bg-surface border border-border rounded-2xl shadow-modal z-50 animate-in zoom-in-95 duration-100 flex flex-col md:absolute md:inset-auto md:right-0 md:mt-2 md:w-96 md:max-h-[500px]">
           <div className="p-4 border-b border-border flex items-center justify-between">
             <h3 className="font-jakarta font-bold text-sm text-text-high">Bildirimler</h3>
             {unreadCount > 0 && (
@@ -215,12 +249,12 @@ export function NotificationDropdown() {
                   <div className={`p-2 rounded-lg flex-shrink-0 h-fit ${!n.is_read ? 'bg-white shadow-sm' : 'bg-surface-dim'}`}>
                     {getIcon(n.type)}
                   </div>
-                  <div className="flex-1 space-y-1">
+                  <div className="flex-1 min-w-0 space-y-1">
                     <p className={`text-xs ${!n.is_read ? 'font-bold text-text-high' : 'font-medium text-text-body'}`}>{n.title}</p>
                     <p className="text-[11px] text-text-body leading-relaxed">{n.message}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <Clock className="w-3 h-3 text-text-body/60" />
-                      <span className="text-[10px] text-text-body/60">{formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: tr })}</span>
+                      <span className="text-[10px] text-text-body/60">{formatDistanceToNow(ensureUTC(n.created_at), { addSuffix: true, locale: tr })}</span>
                     </div>
                   </div>
                   {!n.is_read && (
@@ -245,4 +279,3 @@ export function NotificationDropdown() {
     </div>
   );
 }
-

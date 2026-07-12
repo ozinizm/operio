@@ -5,7 +5,8 @@ import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { Upload, X, File as FileIcon, Loader2 } from 'lucide-react';
 import { filesApi } from '../../services/filesApi';
-import { useToast } from '../ui/Toast';
+import { getErrorMessage } from '../../services/apiClient';
+import { useToast } from '../ui/ToastContext';
 
 interface FileUploadModalProps {
   isOpen: boolean;
@@ -68,8 +69,8 @@ export function FileUploadModal({ isOpen, onClose, onSuccess, initialData }: Fil
       // Reset
       setFile(null);
       setDescription('');
-    } catch (err: any) {
-      showToast(err.response?.data?.detail || 'Dosya yüklenirken bir hata oluştu.', 'error');
+    } catch (err: unknown) {
+      showToast(getErrorMessage(err) || 'Dosya yüklenirken bir hata oluştu.', 'error');
     } finally {
       setIsUploading(false);
     }

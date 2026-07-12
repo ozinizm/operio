@@ -22,6 +22,7 @@ class DeliveryService(Base):
     address = Column(String, nullable=True)
     contact_person = Column(String, nullable=True)
     contact_phone = Column(String, nullable=True)
+    contact_email = Column(String(255), nullable=True)
     notes = Column(Text, nullable=True)
     result_note = Column(Text, nullable=True)
     

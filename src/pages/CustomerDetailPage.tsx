@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Card, CardHeader } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { 
   Phone, Mail, MapPin, 
-  ChevronLeft, MoreHorizontal, User
+  ChevronLeft, User, Edit2, UserX, Trash2
 } from 'lucide-react';
-import { customersApi } from '../services/customersApi';
+import { customersApi, type Customer } from '../services/customersApi';
 import { LoadingState, ErrorState } from '../components/ui/States';
 import { FileSection } from '../components/shared/FileSection';
 import { CommentsPanel } from '../components/collaboration/CommentsPanel';
@@ -18,14 +18,28 @@ import { DeliveryServiceDetailDrawer } from '../components/delivery/DeliveryServ
 import { DeliveryServiceModal } from '../components/delivery/DeliveryServiceModal';
 import { RequestTicketDetailDrawer } from '../components/requests/RequestTicketDetailDrawer';
 import { RequestTicketModal } from '../components/requests/RequestTicketModal';
+import { useAuth } from '../context/AuthContextValue';
+import { can } from '../utils/permissions';
+import { CustomerModal } from '../components/customers/CustomerModal';
+import { GlobalQuickCreateModal, type QuickCreateType } from '../components/shared/GlobalQuickCreateModal';
+import { ActionMenu } from '../components/ui/ActionMenu';
+import { useToast } from '../components/ui/ToastContext';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { useConfirm } from '../components/ui/useConfirm';
 
 
 export default function CustomerDetailPage() {
+  const { role, user } = useAuth();
+  const navigate = useNavigate();
+  const { showToast } = useToast();
+  const { confirmProps, confirm } = useConfirm();
   const { id } = useParams<{ id: string }>();
-  const [customer, setCustomer] = useState<any>(null);
+  const [customer, setCustomer] = useState<Customer | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('Aktif İşler');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [quickCreateType, setQuickCreateType] = useState<QuickCreateType>(null);
   
   const [selectedDeliveryId, setSelectedDeliveryId] = useState<number | null>(null);
   const [isDeliveryDrawerOpen, setIsDeliveryDrawerOpen] = useState(false);
@@ -36,8 +50,7 @@ export default function CustomerDetailPage() {
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
 
 
-  useEffect(() => {
-    const fetchCustomer = async () => {
+  const fetchCustomer = async () => {
       if (!id) return;
       try {
         const data = await customersApi.get(parseInt(id));
@@ -49,8 +62,45 @@ export default function CustomerDetailPage() {
         setIsLoading(false);
       }
     };
-    fetchCustomer();
+
+  useEffect(() => {
+    if (!id) return;
+    void customersApi.get(parseInt(id)).then(setCustomer).catch((err: unknown) => {
+      console.error('Customer load failed:', err);
+      setError('Müşteri detayları yüklenemedi.');
+    }).finally(() => setIsLoading(false));
   }, [id]);
+
+  const toggleCustomerStatus = () => {
+    if (!customer) return;
+    const nextStatus = customer.status === 'passive' ? 'active' : 'passive';
+    confirm({
+      title: nextStatus === 'passive' ? 'Müşteriyi Pasifleştir' : 'Müşteriyi Aktifleştir',
+      description: `${customer.name} müşterisinin durumu değiştirilecek.`,
+      confirmLabel: nextStatus === 'passive' ? 'Pasifleştir' : 'Aktifleştir',
+      variant: 'warning',
+      onConfirm: async () => {
+        await customersApi.update(customer.id, { status: nextStatus });
+        await fetchCustomer();
+        showToast(nextStatus === 'passive' ? 'Müşteri pasifleştirildi.' : 'Müşteri aktifleştirildi.', 'success');
+      },
+    });
+  };
+
+  const deleteCustomer = () => {
+    if (!customer) return;
+    confirm({
+    title: 'Müşteriyi Sil',
+    description: `${customer.name} müşterisi arşivlenecek.`,
+    confirmLabel: 'Sil',
+    variant: 'danger',
+    onConfirm: async () => {
+      await customersApi.delete(customer.id);
+      showToast('Müşteri silindi.', 'success');
+      navigate('/customers');
+    },
+    });
+  };
 
   if (isLoading) return <LoadingState message="Müşteri bilgileri yükleniyor..." />;
   if (error || !customer) return <ErrorState title="Hata" description={error || 'Müşteri bulunamadı.'} onRetry={() => window.location.reload()} />;
@@ -65,25 +115,29 @@ export default function CustomerDetailPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-5 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
+        <div className="min-w-0 flex items-start gap-3 sm:gap-4">
           <Link to="/customers" className="p-2 hover:bg-surface-dim rounded-lg transition-colors">
             <ChevronLeft className="w-5 h-5" />
           </Link>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-jakarta font-bold text-text-high">{customer.name}</h1>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="min-w-0 text-2xl font-jakarta font-bold text-text-high break-words">{customer.name}</h1>
               {getStatusBadge(customer.status)}
             </div>
             <p className="text-text-body mt-1">{customer.sector || 'Sektör Belirtilmedi'} • Kurumsal</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-1 min-[390px]:grid-cols-2 sm:flex items-center gap-2 w-full md:w-auto">
           <EntityWatchButton entityType="customer" entityId={parseInt(id || '0')} />
-          <Button variant="outline">Düzenle</Button>
-          <Button>Yeni İş Oluştur</Button>
+          {can(role, 'customer:update', !!user?.is_super_admin) && (
+            <Button className="w-full sm:w-auto" variant="outline" onClick={() => setIsEditModalOpen(true)}>Düzenle</Button>
+          )}
+          {can(role, 'job:create', !!user?.is_super_admin) && (
+            <Button className="w-full sm:w-auto" onClick={() => setQuickCreateType('job')}>Yeni İş Oluştur</Button>
+          )}
         </div>
       </div>
 
@@ -107,11 +161,21 @@ export default function CustomerDetailPage() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* Contact Info & Details */}
         <div className="lg:col-span-1 space-y-6">
           <Card>
-            <CardHeader title="İletişim Bilgileri" action={<MoreHorizontal className="w-5 h-5 text-text-body" />} />
+            <CardHeader
+              title="İletişim Bilgileri"
+              action={(can(role, 'customer:update', !!user?.is_super_admin)
+                || can(role, 'customer:delete', !!user?.is_super_admin)) ? (
+                <ActionMenu items={[
+                  { label: 'Düzenle', icon: <Edit2 className="w-4 h-4" />, onClick: () => setIsEditModalOpen(true) },
+                  { label: customer.status === 'passive' ? 'Aktifleştir' : 'Pasifleştir', icon: <UserX className="w-4 h-4" />, onClick: toggleCustomerStatus },
+                  { label: 'Sil', icon: <Trash2 className="w-4 h-4" />, onClick: deleteCustomer, variant: 'danger' },
+                ]} />
+              ) : undefined}
+            />
             <div className="space-y-4">
               <div className="flex items-start gap-3">
                 <div className="p-2 bg-surface-dim rounded-lg"><User className="w-4 h-4 text-text-body" /></div>
@@ -158,8 +222,8 @@ export default function CustomerDetailPage() {
         {/* Tabs / Detailed Sections */}
         <div className="lg:col-span-2 space-y-6">
           <Card noPadding>
-            <div className="border-b border-border">
-              <nav className="flex p-1">
+            <div className="border-b border-border overflow-x-auto no-scrollbar">
+              <nav className="flex p-1 w-max min-w-full">
                 {['Aktif İşler', 'Teklifler', 'Teslimat/Servis', 'Şikayet/Talepler', 'Dosyalar', 'Notlar'].map((tab) => (
                   <button 
                     key={tab} 
@@ -171,14 +235,13 @@ export default function CustomerDetailPage() {
                 ))}
               </nav>
             </div>
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               {activeTab === 'Aktif İşler' && (
                 <>
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="font-jakarta font-semibold text-text-high">Devam Eden Siparişler</h3>
-                    <Button variant="ghost" size="sm">Tümünü Gör</Button>
                   </div>
-                  <div className="p-10 text-center text-text-body italic border border-dashed border-border rounded-xl">
+                  <div className="p-6 text-center text-text-body italic border border-dashed border-border rounded-xl">
                     Bu müşteriye ait aktif iş bulunamadı.
                   </div>
                 </>
@@ -189,7 +252,7 @@ export default function CustomerDetailPage() {
                 </div>
               )}
               {activeTab === 'Teklifler' && (
-                <div className="p-10 text-center text-text-body italic">Henüz teklif bulunmuyor.</div>
+                <div className="p-6 text-center text-text-body italic">Henüz teklif bulunmuyor.</div>
               )}
               {activeTab === 'Teslimat/Servis' && (
                 <CustomerDeliveryList 
@@ -204,7 +267,7 @@ export default function CustomerDetailPage() {
                 />
               )}
               {activeTab === 'Notlar' && (
-                <div className="p-10 text-center text-text-body italic">Henüz not bulunmuyor.</div>
+                <div className="p-6 text-center text-text-body italic">Henüz not bulunmuyor.</div>
               )}
             </div>
           </Card>
@@ -212,8 +275,8 @@ export default function CustomerDetailPage() {
           <CommentsPanel entityType="customer" entityId={parseInt(id || '0')} />
 
           <Card>
-            <CardHeader title="Aktivite Geçmişi" action={<Button variant="ghost" size="sm">Not Ekle</Button>} />
-            <div className="p-10 text-center text-text-body italic">
+            <CardHeader title="Aktivite Geçmişi" />
+            <div className="p-6 text-center text-text-body italic">
               Henüz aktivite kaydı bulunmuyor.
             </div>
           </Card>
@@ -249,6 +312,19 @@ export default function CustomerDetailPage() {
         onSuccess={() => setActiveTab('Şikayet/Talepler')}
         customerId={parseInt(id || '0')}
       />
+
+      <CustomerModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSuccess={fetchCustomer}
+        customer={customer}
+      />
+      <GlobalQuickCreateModal
+        type={quickCreateType}
+        onClose={() => setQuickCreateType(null)}
+        initialValues={{ customer_id: customer.id }}
+      />
+      <ConfirmDialog {...confirmProps} />
     </div>
   );
 }

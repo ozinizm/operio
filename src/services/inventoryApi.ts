@@ -28,7 +28,7 @@ export interface InventorySummary {
 }
 
 export const inventoryApi = {
-  list: async (params?: any) => {
+  list: async (params?: object) => {
     const response = await api.get<InventoryItem[]>('/inventory', { params });
     return response.data;
   },
@@ -36,11 +36,11 @@ export const inventoryApi = {
     const response = await api.get<InventoryItem>(`/inventory/${id}`);
     return response.data;
   },
-  create: async (data: any) => {
+  create: async (data: object) => {
     const response = await api.post<InventoryItem>('/inventory', data);
     return response.data;
   },
-  update: async (id: number, data: any) => {
+  update: async (id: number, data: object) => {
     const response = await api.put<InventoryItem>(`/inventory/${id}`, data);
     return response.data;
   },

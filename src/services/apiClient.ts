@@ -1,6 +1,23 @@
 import axios from 'axios';
 import type { InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 
+interface ApiErrorBody {
+  detail?: string;
+}
+
+export type ApiErrorKind = 'unauthorized' | 'forbidden' | 'not_found' | 'validation' | 'server' | 'timeout' | 'offline' | 'network' | 'cancelled' | 'unknown';
+
+export interface ClassifiedApiError {
+  kind: ApiErrorKind;
+  message: string;
+  status?: number;
+  retryable: boolean;
+}
+
+function asAxiosError(error: unknown): AxiosError<ApiErrorBody> | null {
+  return axios.isAxiosError<ApiErrorBody>(error) ? error : null;
+}
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
 const apiClient = axios.create({
@@ -9,6 +26,8 @@ const apiClient = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+let unauthorizedHandled = false;
 
 // Request interceptor for API calls
 apiClient.interceptors.request.use(
@@ -39,52 +58,69 @@ apiClient.interceptors.request.use(
 
 // Response interceptor for API calls
 apiClient.interceptors.response.use(
-  (response: AxiosResponse) => response,
+  (response: AxiosResponse) => {
+    if (response.config.url?.includes('/auth/')) unauthorizedHandled = false;
+    return response;
+  },
   async (error: AxiosError) => {
     const status = error.response?.status;
 
     if (status === 401) {
-      if (window.location.pathname !== '/login') {
+      if (!unauthorizedHandled && window.location.pathname !== '/login') {
+        unauthorizedHandled = true;
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         localStorage.removeItem('workspace');
         localStorage.removeItem('role');
-        window.location.href = '/login';
+        window.dispatchEvent(new CustomEvent('tavelya:auth-expired'));
+        window.location.replace('/login');
       }
     }
 
     // Standardized error parsing
-    const errorMessage = (error.response?.data as any)?.detail || 'Bir hata oluştu.';
+    const errorMessage = (error.response?.data as ApiErrorBody | undefined)?.detail || 'Bir hata oluştu.';
     error.message = errorMessage;
 
     return Promise.reject(error);
   }
 );
 
+export const classifyApiError = (error: unknown): ClassifiedApiError => {
+  const axiosError = asAxiosError(error);
+  if (!axiosError) {
+    return { kind: 'unknown', message: error instanceof Error ? error.message : 'Bilinmeyen bir hata oluştu.', retryable: false };
+  }
+  if (axios.isCancel(axiosError) || axiosError.code === 'ERR_CANCELED') {
+    return { kind: 'cancelled', message: 'İstek iptal edildi.', retryable: false };
+  }
+  if (axiosError.code === 'ECONNABORTED' || axiosError.code === 'ETIMEDOUT') {
+    return { kind: 'timeout', message: 'Sunucu zamanında yanıt vermedi. Tekrar deneyin.', retryable: true };
+  }
+  const status = axiosError.response?.status;
+  const detail = axiosError.response?.data?.detail;
+  if (status) {
+    if (status === 401) return { kind: 'unauthorized', status, message: window.location.pathname === '/login' ? 'E-posta veya şifre hatalı.' : 'Oturum süreniz doldu. Lütfen tekrar giriş yapın.', retryable: false };
+    if (status === 403) return { kind: 'forbidden', status, message: detail || 'Bu işlem için yetkiniz bulunmuyor.', retryable: false };
+    if (status === 404) return { kind: 'not_found', status, message: detail || 'Aranan kayıt bulunamadı.', retryable: false };
+    if (status === 422) return { kind: 'validation', status, message: detail || 'Gönderilen bilgileri kontrol edin.', retryable: false };
+    if (status >= 500) return { kind: 'server', status, message: detail || 'Sunucu hatası oluştu. Lütfen tekrar deneyin.', retryable: true };
+    return { kind: 'unknown', status, message: detail || 'İşlem tamamlanamadı.', retryable: false };
+  }
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return { kind: 'offline', message: 'İnternet bağlantısı bulunamadı.', retryable: true };
+  }
+  if (axiosError.request) {
+    return { kind: 'network', message: 'Sunucuya ulaşılamadı. Bağlantınızı veya servisin durumunu kontrol edin.', retryable: true };
+  }
+  return { kind: 'unknown', message: axiosError.message || 'Bilinmeyen bir hata oluştu.', retryable: false };
+};
+
 /**
  * Clean Turkish error messages helper
  */
-export const getErrorMessage = (error: any): string => {
+export const getErrorMessage = (error: unknown): string => {
   if (typeof error === 'string') return error;
-  
-  if (error.response) {
-    const status = error.response.status;
-    const detail = error.response.data?.detail;
-    
-    if (status === 401) {
-      if (window.location.pathname === '/login') return 'E-posta veya şifre hatalı.';
-      return 'Oturum süreniz doldu. Lütfen tekrar giriş yapın.';
-    }
-    if (status === 403) return 'Bu işlem için yetkiniz bulunmuyor.';
-    if (status === 404) return 'Aranan kayıt bulunamadı.';
-    if (status === 500) return 'Sunucu hatası oluştu. Lütfen tekrar deneyin.';
-    
-    if (detail) return detail;
-  }
-  
-  if (error.request) return 'Bağlantı hatası. Lütfen internetinizi kontrol edin.';
-  
-  return error.message || 'Bilinmeyen bir hata oluştu.';
+  return classifyApiError(error).message;
 };
 
 export default apiClient;

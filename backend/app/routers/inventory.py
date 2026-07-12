@@ -154,7 +154,7 @@ def download_inventory_template():
     return StreamingResponse(
         buffer,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f"attachment; filename=operio-stok-sablonu.xlsx"}
+        headers={"Content-Disposition": "attachment; filename=tavelya-stok-sablonu.xlsx"}
     )
 
 @router.get("/export")
@@ -212,7 +212,7 @@ def export_inventory(
     return StreamingResponse(
         buffer,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f"attachment; filename=operio-stok-listesi.xlsx"}
+        headers={"Content-Disposition": "attachment; filename=tavelya-stok-listesi.xlsx"}
     )
 
 @router.get("/{item_id}", response_model=InventoryItem)

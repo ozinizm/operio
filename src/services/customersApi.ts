@@ -1,31 +1,21 @@
 import apiClient from './apiClient';
-
-export interface Customer {
-  id: number;
-  name: string;
-  contact_person?: string;
-  email?: string;
-  phone?: string;
-  status: string;
-  sector?: string;
-  address?: string;
-  created_at: string;
-}
+import type { Customer } from '../types/domain';
+export type { Customer } from '../types/domain';
 
 export const customersApi = {
   list: async (params?: { q?: string; status?: string }) => {
     const response = await apiClient.get('/customers/', { params });
-    return response.data;
+    return response.data as Customer[];
   },
   get: async (id: number) => {
     const response = await apiClient.get(`/customers/${id}`);
-    return response.data;
+    return response.data as Customer;
   },
-  create: async (data: any) => {
+  create: async (data: object) => {
     const response = await apiClient.post('/customers/', data);
     return response.data;
   },
-  update: async (id: number, data: any) => {
+  update: async (id: number, data: object) => {
     const response = await apiClient.put(`/customers/${id}`, data);
     return response.data;
   },

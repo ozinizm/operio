@@ -104,7 +104,7 @@ export function ForgotPasswordModal({ isOpen, onClose, onSupportClick }: ForgotP
               </div>
               <h3 className="text-2xl font-jakarta font-bold text-slate-800 mb-4">Talep Alındı</h3>
               <p className="text-sm text-slate-500 leading-relaxed mb-8">
-                Şifre sıfırlama talebiniz başarıyla alındı. Hesabınız doğrulandıktan sonra işletme yöneticiniz veya Operio destek ekibi sizinle iletişime geçecektir.
+                Şifre sıfırlama talebiniz başarıyla alındı. Hesabınız doğrulandıktan sonra işletme yöneticiniz veya Tavelya destek ekibi sizinle iletişime geçecektir.
               </p>
               
               <div className="space-y-3">

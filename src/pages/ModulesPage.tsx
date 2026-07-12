@@ -10,22 +10,24 @@ import {
   FileSpreadsheet, Database, UserCheck, Globe, Car,
   Users2, PieChart, Settings2, MessageCircle, Info,
   Layers, ShoppingBag, CheckCircle2, ArrowRight,
-  TrendingUp, Lock, HelpCircle
+  TrendingUp, Lock, HelpCircle, CalendarDays
 } from 'lucide-react';
-import { useToast } from '../components/ui/Toast';
-import { ConfirmDialog, useConfirm } from '../components/ui/ConfirmDialog';
+import type { LucideIcon } from 'lucide-react';
+import { useToast } from '../components/ui/ToastContext';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { useConfirm } from '../components/ui/useConfirm';
 import { modulesApi } from '../services/modulesApi';
 import type { ModuleDefinition } from '../services/modulesApi';
-import { useModules } from '../context/ModuleContext';
+import { useModules } from '../context/ModuleContextValue';
 import { LoadingState } from '../components/ui/States';
 
-const iconMap: Record<string, any> = {
+const iconMap: Record<string, LucideIcon> = {
   LayoutDashboard, Users, FileText, Briefcase, CheckSquare, 
   Settings, Activity, Truck, AlertCircle, DollarSign, 
   Folder, BarChart2, BarChart3, Package, Layers, 
   Menu: LayoutGrid, X: LayoutGrid, Bell, Box, FileSpreadsheet, 
   Database, ShieldCheck, UserCheck, Globe, Tool: Wrench, Car,
-  Users2, PieChart, Settings2, MessageCircle, Wrench
+  Users2, PieChart, Settings2, MessageCircle, Wrench, CalendarDays
 };
 
 const moduleMetadata: Record<string, { bullets: string[], impact: string }> = {
@@ -71,7 +73,7 @@ const moduleMetadata: Record<string, { bullets: string[], impact: string }> = {
   }
 };
 
-const sectorPackMetadata: Record<string, { description: string, icon: any, color: string, features?: string[] }> = {
+const sectorPackMetadata: Record<string, { description: string, icon: LucideIcon, color: string, features?: string[] }> = {
   small_business_op_pack: {
     description: "Excel ve WhatsApp yerine tüm iş akışınızı dijitalleştirin.",
     icon: Zap,
@@ -119,7 +121,7 @@ export default function ModulesPage() {
       setIsLoading(true);
       const data = await modulesApi.list();
       setModules(data);
-    } catch (err) {
+    } catch {
       showToast('Modüller yüklenirken hata oluştu.', 'error');
     } finally {
       setIsLoading(false);
@@ -127,8 +129,12 @@ export default function ModulesPage() {
   };
 
   useEffect(() => {
-    fetchModules();
-  }, []);
+    void modulesApi.list().then(setModules).catch(() => {
+      showToast('Modüller yüklenirken hata oluştu.', 'error');
+    }).finally(() => {
+      setIsLoading(false);
+    });
+  }, [showToast]);
 
   const handleEnable = async (module: ModuleDefinition) => {
     try {
@@ -137,7 +143,7 @@ export default function ModulesPage() {
       showToast(`${module.name} modülü aktif edildi.`, 'success');
       await fetchModules();
       await refreshModules();
-    } catch (err) {
+    } catch {
       showToast('İşlem başarısız.', 'error');
     } finally {
       setActionLoading(null);
@@ -166,7 +172,7 @@ export default function ModulesPage() {
           showToast(`${module.name} modülü devre dışı bırakıldı. Verileriniz silinmedi.`, 'info');
           await fetchModules();
           await refreshModules();
-        } catch (err) {
+        } catch {
           showToast('İşlem başarısız.', 'error');
         } finally {
           setActionLoading(null);
@@ -203,7 +209,7 @@ export default function ModulesPage() {
           showToast(`${packName} başarıyla uygulandı.`, 'success');
           await fetchModules();
           await refreshModules();
-        } catch (err) {
+        } catch {
           showToast('Paket yüklenirken hata oluştu.', 'error');
         } finally {
           setActionLoading(null);
@@ -227,7 +233,7 @@ export default function ModulesPage() {
   const futureModules = modules.filter(m => !m.is_available && !m.is_core);
 
   return (
-    <div className="space-y-10 font-inter pb-32">
+    <div className="min-w-0 space-y-6 sm:space-y-10 font-inter pb-8 sm:pb-20">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-1">
@@ -235,20 +241,20 @@ export default function ModulesPage() {
             <Layers className="w-4 h-4" />
             Sistem Özelleştirme
           </div>
-          <h1 className="text-4xl font-jakarta font-extrabold text-text-high tracking-tight">Modül Merkezi</h1>
+          <h1 className="text-3xl sm:text-4xl font-jakarta font-extrabold text-text-high tracking-tight break-words">Modül Merkezi</h1>
           <p className="text-text-body max-w-xl">İşletmenizin ihtiyacına göre modülleri aktif ederek menüyü ve çalışma alanınızı sadeleştirin.</p>
         </div>
         
-        <div className="flex bg-white p-1 rounded-2xl border border-border shadow-sm self-start">
+        <div className="w-full md:w-auto flex overflow-x-auto no-scrollbar bg-white p-1 rounded-2xl border border-border shadow-sm self-start">
           <button 
             onClick={() => setViewMode('packs')}
-            className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${viewMode === 'packs' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-text-body hover:bg-surface-dim'}`}
+            className={`flex-1 md:flex-none whitespace-nowrap px-4 sm:px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${viewMode === 'packs' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-text-body hover:bg-surface-dim'}`}
           >
             <Zap className="w-4 h-4" /> Paketle Hızlı Kurulum
           </button>
           <button 
             onClick={() => setViewMode('store')}
-            className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${viewMode === 'store' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-text-body hover:bg-surface-dim'}`}
+            className={`flex-1 md:flex-none whitespace-nowrap px-4 sm:px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${viewMode === 'store' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-text-body hover:bg-surface-dim'}`}
           >
             <ShoppingBag className="w-4 h-4" /> Tek Tek Yönet
           </button>
@@ -353,7 +359,7 @@ export default function ModulesPage() {
                 </Button>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 auto-rows-fr items-stretch">
                 {activeOptionalModules.map(mod => <ModuleCard key={mod.key} mod={mod} onAction={handleDisable} loading={actionLoading === mod.key} />)}
               </div>
             )}
@@ -370,7 +376,7 @@ export default function ModulesPage() {
               </div>
               <Badge variant="default" className="px-4 py-1.5 rounded-full text-[10px] font-bold">TÜMÜNÜ GÖR</Badge>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 auto-rows-fr items-stretch">
               {storeModules.map(mod => <ModuleCard key={mod.key} mod={mod} onAction={handleEnable} loading={actionLoading === mod.key} />)}
             </div>
           </section>
@@ -383,7 +389,7 @@ export default function ModulesPage() {
               </div>
               <h2 className="text-xl font-jakarta font-bold text-text-high">Yakında & Premium</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 auto-rows-fr items-stretch">
               {futureModules.map(mod => <ModuleCard key={mod.key} mod={mod} onAction={() => {}} disabled />)}
             </div>
           </section>
@@ -405,7 +411,7 @@ export default function ModulesPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 auto-rows-fr items-stretch">
             {Object.keys(sectorPackMetadata).map(key => (
               <SectorPackCard 
                 key={key} 
@@ -476,7 +482,7 @@ function ModuleCard({ mod, onAction, loading }: {
   const isComingSoon = mod.status === 'coming_soon' || mod.status === 'premium' || (!mod.is_available && !mod.is_core);
 
   return (
-    <Card className={`relative group transition-all duration-500 border-2 overflow-hidden flex flex-col h-full ${
+    <Card noPadding className={`relative group min-w-0 w-full h-full min-h-[28rem] sm:min-h-[30rem] flex flex-col transition-all duration-500 border-2 overflow-hidden ${
       mod.is_enabled 
         ? 'bg-white border-primary/10 shadow-soft' 
         : isComingSoon 
@@ -496,8 +502,9 @@ function ModuleCard({ mod, onAction, loading }: {
         )}
       </div>
 
-      <div className="p-6 flex-1 flex flex-col">
-        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-all duration-500 group-hover:scale-110 shadow-lg ${
+      <div className="p-5 sm:p-6 flex-1 flex flex-col min-w-0">
+        <div className="flex items-start justify-between gap-3 mb-5 sm:mb-6 pr-20">
+        <div className={`w-14 h-14 flex-shrink-0 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:scale-110 shadow-lg ${
           mod.is_enabled 
             ? 'bg-primary text-white shadow-primary/20' 
             : isComingSoon 
@@ -506,21 +513,23 @@ function ModuleCard({ mod, onAction, loading }: {
         }`}>
           <Icon className="w-6 h-6" />
         </div>
+        </div>
 
-        <div className="space-y-1 mb-4">
+        <div className="space-y-1 mb-4 min-h-[3.5rem]">
           <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em]">
             {categoryMap[mod.category] || mod.category}
           </p>
           <h3 className="text-lg font-jakarta font-extrabold text-text-high tracking-tight">{mod.name}</h3>
         </div>
 
-        <p className="text-xs text-text-body leading-relaxed mb-6">
+        <p className="text-xs text-text-body leading-relaxed mb-5 min-h-[3rem] break-words">
           {mod.description}
         </p>
 
-        {meta && (
-          <div className="space-y-4 mb-8 flex-1">
-            <div className="space-y-2">
+        <div className="flex-1 flex flex-col">
+        {meta ? (
+          <div className="flex-1 flex flex-col gap-4">
+            <div className="space-y-2 min-h-[4.5rem]">
               {meta.bullets.map((bullet, i) => (
                 <div key={i} className="flex items-start gap-2 text-[11px] font-medium text-text-body">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
@@ -528,7 +537,7 @@ function ModuleCard({ mod, onAction, loading }: {
                 </div>
               ))}
             </div>
-            <div className="bg-surface-dim/50 p-2.5 rounded-xl border border-border/50">
+            <div className="mt-auto bg-surface-dim/50 p-2.5 rounded-xl border border-border/50 min-h-[3.5rem]">
               <p className="text-[9px] font-bold text-text-body uppercase opacity-40 mb-1">Görünürlük Etkisi</p>
               <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-high">
                 <TrendingUp className="w-3 h-3 text-primary" />
@@ -536,10 +545,11 @@ function ModuleCard({ mod, onAction, loading }: {
               </div>
             </div>
           </div>
-        )}
+        ) : <div className="flex-1 flex flex-col"><div className="min-h-[4.5rem]" aria-hidden="true" /><div className="mt-auto bg-surface-dim/30 p-2.5 rounded-xl border border-border/40 min-h-[3.5rem]"><p className="text-[9px] font-bold text-text-body uppercase opacity-40 mb-1">Görünürlük Etkisi</p><p className="text-[10px] font-bold text-text-body">Menü ve çalışma alanı görünürlüğü</p></div></div>}
+        </div>
       </div>
 
-      <div className="p-6 pt-0 mt-auto">
+      <div className="mt-auto px-5 sm:px-6 pb-5 sm:pb-6 pt-0">
         {(mod.is_enabled && !isComingSoon) ? (
           <Button 
             variant="outline" 
@@ -591,7 +601,7 @@ function SectorPackCard({ packKey, modules, onActivate, loading }: {
   const Icon = meta.icon;
 
   return (
-    <Card className={`p-8 lg:p-10 transition-all duration-500 group border-2 relative overflow-hidden flex flex-col h-full ${
+    <Card noPadding className={`min-w-0 w-full h-full p-6 lg:p-10 transition-all duration-500 group border-2 relative overflow-hidden flex flex-col ${
       isAllActive 
         ? 'bg-emerald-50/30 border-emerald-500/20 shadow-soft' 
         : 'bg-white border-border hover:border-primary/20 hover:shadow-2xl'
@@ -617,7 +627,7 @@ function SectorPackCard({ packKey, modules, onActivate, loading }: {
           <p className="text-xs text-text-body leading-relaxed">{meta.description}</p>
         </div>
 
-        <div className="space-y-6 flex-1">
+        <div className="space-y-6">
           {meta.features && (
             <div className="space-y-2">
               {meta.features.map((f, i) => (
@@ -660,7 +670,7 @@ function SectorPackCard({ packKey, modules, onActivate, loading }: {
           </div>
         </div>
 
-        <div className="mt-10">
+        <div className="mt-auto pt-10">
           {isAllActive ? (
             <div className="w-full bg-emerald-500 text-white p-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-200">
               <CheckCircle2 className="w-5 h-5" />

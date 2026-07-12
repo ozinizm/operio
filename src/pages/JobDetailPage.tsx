@@ -8,9 +8,9 @@ import {
   CheckCircle2, AlertCircle, Plus,
   DollarSign, Loader2, Workflow, CheckCircle
 } from 'lucide-react';
-import { useToast } from '../components/ui/Toast';
-import { jobsApi } from '../services/jobsApi';
-import { operationsApi } from '../services/operationsApi';
+import { useToast } from '../components/ui/ToastContext';
+import { jobsApi, type Job } from '../services/jobsApi';
+import { operationsApi, type JobStage } from '../services/operationsApi';
 import { LoadingState, ErrorState } from '../components/ui/States';
 import { FileSection } from '../components/shared/FileSection';
 import { CommentsPanel } from '../components/collaboration/CommentsPanel';
@@ -21,13 +21,15 @@ import { DeliveryServiceDetailDrawer } from '../components/delivery/DeliveryServ
 import { DeliveryServiceModal } from '../components/delivery/DeliveryServiceModal';
 import { RequestTicketDetailDrawer } from '../components/requests/RequestTicketDetailDrawer';
 import { RequestTicketModal } from '../components/requests/RequestTicketModal';
+import { PRIORITY_LABELS, enumLabel } from '../utils/statusMaps';
+import { FinanceEntryModal } from '../components/shared/FinanceEntryModal';
 
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { showToast } = useToast();
-  const [job, setJob] = useState<any>(null);
-  const [stages, setStages] = useState<any[]>([]);
+  const [job, setJob] = useState<Job | null>(null);
+  const [stages, setStages] = useState<JobStage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isApplyingTemplate, setIsApplyingTemplate] = useState(false);
@@ -39,9 +41,18 @@ export default function JobDetailPage() {
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
   const [isRequestDrawerOpen, setIsRequestDrawerOpen] = useState(false);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+  const [isFinanceModalOpen, setIsFinanceModalOpen] = useState(false);
 
   useEffect(() => {
-    fetchData();
+    if (!id) return;
+    const jobId = parseInt(id);
+    void Promise.all([jobsApi.get(jobId), operationsApi.listStages(jobId)]).then(([jobData, stagesData]) => {
+      setJob(jobData);
+      setStages(stagesData);
+    }).catch((err: unknown) => {
+      console.error('Data load failed:', err);
+      setError('İş detayları yüklenemedi.');
+    }).finally(() => setIsLoading(false));
   }, [id]);
 
   const fetchData = async () => {
@@ -70,7 +81,7 @@ export default function JobDetailPage() {
       await operationsApi.applyTemplate(parseInt(id), templateName);
       showToast('İş akışı şablonu uygulandı.', 'success');
       fetchData(); // Refresh
-    } catch (err) {
+    } catch {
       showToast('Şablon uygulanırken hata oluştu.', 'error');
     } finally {
       setIsApplyingTemplate(false);
@@ -83,7 +94,7 @@ export default function JobDetailPage() {
     try {
       await operationsApi.updateStage(parseInt(id), stageId, { status: newStatus });
       fetchData(); // Refresh to get updated job progress too
-    } catch (err) {
+    } catch {
       showToast('Aşama güncellenirken hata oluştu.', 'error');
     }
   };
@@ -243,7 +254,7 @@ export default function JobDetailPage() {
               </div>
               <div className="flex justify-between items-center text-sm">
                 <span className="text-text-body font-medium flex items-center gap-2"><AlertCircle className="w-4 h-4 text-amber-500"/> Öncelik</span>
-                <Badge variant={job.priority === 'high' || job.priority === 'critical' ? 'error' : 'default'}>{job.priority}</Badge>
+                <Badge variant={job.priority === 'high' || job.priority === 'critical' ? 'error' : 'default'}>{enumLabel(job.priority, PRIORITY_LABELS)}</Badge>
               </div>
             </div>
           </Card>
@@ -253,17 +264,8 @@ export default function JobDetailPage() {
               <h3 className="font-jakarta font-bold text-lg mb-4 flex items-center gap-2">
                 <DollarSign className="w-6 h-6" /> Finansal Durum
               </h3>
-              <div className="space-y-3">
-                <div className="flex justify-between text-xs font-medium opacity-80">
-                  <span>Toplam Tahsilat</span>
-                  <span>₺{job.progress > 0 ? (job.progress * 1000).toLocaleString('tr-TR') : '0'}</span>
-                </div>
-                <div className="flex justify-between text-base font-bold pt-3 border-t border-white/20">
-                  <span>Proje Değeri</span>
-                  <span>₺150.000</span>
-                </div>
-              </div>
-              <Button className="w-full mt-6 bg-white text-primary hover:bg-surface-dim border-none shadow-lg">Tahsilat Gir</Button>
+              <p className="text-sm opacity-80">Bu işe bağlı gelir kaydını kontrollü olarak oluşturun. Aynı iş için ikinci gelir kaydı engellenir.</p>
+              <Button onClick={() => setIsFinanceModalOpen(true)} className="w-full mt-6 bg-white text-primary hover:bg-surface-dim border-none shadow-lg">Gelir Kaydı Ekle</Button>
             </div>
             <DollarSign className="absolute -right-4 -bottom-4 w-32 h-32 opacity-10 rotate-12" />
           </Card>
@@ -311,6 +313,14 @@ export default function JobDetailPage() {
         onSuccess={fetchData}
         customerId={job.customer_id}
         jobId={parseInt(id || '0')}
+      />
+      <FinanceEntryModal
+        isOpen={isFinanceModalOpen}
+        onClose={() => setIsFinanceModalOpen(false)}
+        onSuccess={fetchData}
+        customerId={job.customer_id}
+        jobId={job.id}
+        defaultTitle={`${job.title} geliri`}
       />
     </div>
   );

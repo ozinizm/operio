@@ -1,4 +1,14 @@
 import apiClient from './apiClient';
+import type { AuthSession, LoginResponse } from '../types/domain';
+
+export interface PublicPlatformSettings {
+  support_email: string;
+  support_whatsapp: string;
+  support_company_name: string;
+  support_working_hours: string;
+  support_emergency_note: string;
+  platform_name: string;
+}
 
 export const authApi = {
   login: async (formData: FormData) => {
@@ -7,16 +17,16 @@ export const authApi = {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
     });
-    return response.data;
+    return response.data as LoginResponse;
   },
   me: async () => {
     const response = await apiClient.get('/auth/me');
-    return response.data;
+    return response.data as AuthSession;
   },
   logout: () => {
     localStorage.removeItem('token');
   },
-  changePassword: async (data: any) => {
+  changePassword: async (data: object) => {
     const response = await apiClient.post('/auth/change-password', data);
     return response.data;
   },
@@ -26,6 +36,6 @@ export const authApi = {
   },
   getPublicSettings: async () => {
     const response = await apiClient.get('/public/platform-settings');
-    return response.data;
+    return response.data as PublicPlatformSettings;
   }
 };

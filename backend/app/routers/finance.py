@@ -9,12 +9,13 @@ from ..models.workspace import Workspace
 from ..models.finance import FinanceEntry as FinanceModel
 from ..schemas.finance import FinanceEntry, FinanceEntryCreate, FinanceEntryUpdate, FinanceSummary
 from ..services.activity_service import create_activity
+from ..core.entity_access import get_workspace_entity_or_404
 from datetime import datetime
 
 router = APIRouter()
 
 # Allowed roles for finance: owner, admin, finance
-finance_access = Depends(check_role(["owner", "admin", "finance"]))
+finance_access = Depends(check_role(["owner", "admin", "manager", "finance"]))
 
 @router.get("/entries", response_model=List[FinanceEntry])
 def read_finance_entries(
@@ -48,6 +49,21 @@ def create_finance_entry(
     entry_in: FinanceEntryCreate,
     _ = finance_access
 ) -> Any:
+    if entry_in.customer_id is not None:
+        get_workspace_entity_or_404(db, workspace_id=workspace.id, entity_type="customer", entity_id=entry_in.customer_id)
+    if entry_in.job_id is not None:
+        job = get_workspace_entity_or_404(db, workspace_id=workspace.id, entity_type="job", entity_id=entry_in.job_id)
+        if entry_in.customer_id is not None and job.customer_id != entry_in.customer_id:
+            raise HTTPException(status_code=422, detail="İş ve müşteri eşleşmiyor")
+        if entry_in.type == "income":
+            duplicate = db.query(FinanceModel).filter(
+                FinanceModel.workspace_id == workspace.id,
+                FinanceModel.job_id == entry_in.job_id,
+                FinanceModel.type == "income",
+                FinanceModel.is_deleted == False,
+            ).first()
+            if duplicate:
+                raise HTTPException(status_code=409, detail="Bu iş için gelir kaydı zaten mevcut")
     entry = FinanceModel(
         **entry_in.dict(),
         workspace_id=workspace.id

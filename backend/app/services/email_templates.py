@@ -6,12 +6,12 @@ def get_base_html(content: str) -> str:
     <body style="font-family: sans-serif; line-height: 1.6; color: #333;">
         <div style="max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
             <div style="text-align: center; margin-bottom: 20px;">
-                <h1 style="color: #000;">Operio</h1>
+                <h1 style="color: #000;">Tavelya</h1>
             </div>
             {content}
             <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
             <p style="font-size: 12px; color: #777; text-align: center;">
-                Bu e-posta Operio sistemi tarafından otomatik olarak gönderilmiştir.
+                Bu e-posta Tavelya sistemi tarafından otomatik olarak gönderilmiştir.
             </p>
         </div>
     </body>
@@ -31,7 +31,7 @@ def welcome_workspace_admin(full_name: str, email: str, temporary_password: Opti
 
     html = f"""
     <h2>Hoş Geldiniz, {full_name}!</h2>
-    <p>Operio platformuna işletme yöneticisi olarak başarıyla eklendiniz.</p>
+    <p>Tavelya platformuna işletme yöneticisi olarak başarıyla eklendiniz.</p>
     {password_info}
     <p>Aşağıdaki butona tıklayarak sisteme giriş yapabilirsiniz:</p>
     <div style="text-align: center; margin: 30px 0;">
@@ -39,13 +39,13 @@ def welcome_workspace_admin(full_name: str, email: str, temporary_password: Opti
     </div>
     """
     
-    text = f"Hoş Geldiniz {full_name}!\n\nOperio platformuna başarıyla eklendiniz.\nE-posta: {email}\n"
+    text = f"Hoş Geldiniz {full_name}!\n\nTavelya platformuna başarıyla eklendiniz.\nE-posta: {email}\n"
     if temporary_password:
         text += f"Geçici Şifre: {temporary_password}\nLütfen ilk girişte şifrenizi değiştirin.\n"
     text += "\nLink: https://operio.fikircreative.com"
 
     return {
-        "subject": "Operio'ya Hoş Geldiniz",
+        "subject": "Tavelya'ya Hoş Geldiniz",
         "html": get_base_html(html),
         "text": text
     }
@@ -96,7 +96,7 @@ def support_request_received_user_notice() -> Dict[str, str]:
     html = """
     <h2>Talebiniz Alındı</h2>
     <p>Şifre sıfırlama yardım talebiniz başarıyla alınmıştır.</p>
-    <p>Hesabınız doğrulandıktan sonra işletme yöneticiniz veya Operio destek ekibi sizinle iletişime geçecektir.</p>
+    <p>Hesabınız doğrulandıktan sonra işletme yöneticiniz veya Tavelya destek ekibi sizinle iletişime geçecektir.</p>
     <p>Eğer bu talebi siz oluşturmadıysanız, lütfen bu e-postayı dikkate almayın.</p>
     """
     

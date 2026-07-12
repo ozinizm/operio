@@ -1,4 +1,4 @@
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
 // Backend (especially SQLite) returns naive UTC strings like "2026-05-10T22:30:31"
@@ -39,6 +39,11 @@ export const formatFileSize = (bytes: number): string => {
 export const formatTime = (date: string | Date): string => {
   if (!date) return '—';
   return format(ensureUTC(date), 'HH:mm', { locale: tr });
+};
+
+export const formatRelativeTime = (date: string | Date): string => {
+  if (!date) return '—';
+  return formatDistanceToNow(ensureUTC(date), { addSuffix: true, locale: tr });
 };
 
 export { ensureUTC };

@@ -23,9 +23,15 @@
 }
 
 @layer base {
-  body {
-    @apply bg-background text-text-body font-inter antialiased;
+  *, *::before, *::after {
+    box-sizing: border-box;
   }
+  body {
+    @apply bg-background text-text-body font-inter antialiased overflow-x-hidden;
+  }
+  html, body, #root { min-height: 100%; width: 100%; max-width: 100%; }
+  img, svg { max-width: 100%; }
+  button, input, select, textarea { min-width: 0; }
   h1, h2, h3, h4, h5, h6 {
     @apply font-jakarta text-text-high;
   }

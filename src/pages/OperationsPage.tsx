@@ -9,7 +9,7 @@ import {
   CheckCircle2, AlertTriangle, BarChart3,
   Hammer, Wrench, Lightbulb
 } from 'lucide-react';
-import { jobsApi } from '../services/jobsApi';
+import { jobsApi, type Job } from '../services/jobsApi';
 import { useNavigate } from 'react-router-dom';
 import { LoadingState, ErrorState } from '../components/ui/States';
 import { JOB_STATUS_MAP } from '../utils/statusMaps';
@@ -22,7 +22,7 @@ const workflows = [
 
 export default function OperationsPage() {
   const [selectedWorkflow, setSelectedWorkflow] = useState(workflows[0]);
-  const [jobs, setJobs] = useState<any[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -30,7 +30,13 @@ export default function OperationsPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchJobs();
+    void Promise.all([
+      jobsApi.list({ status: 'in_progress' }),
+      jobsApi.list({ status: 'planned' }),
+    ]).then(([active, planned]) => {
+      setJobs(active.length < 3 ? [...active, ...planned] : active);
+      setError(null);
+    }).catch(() => setError('Operasyonel veriler yüklenirken bir hata oluştu.')).finally(() => setLoading(false));
   }, []);
 
   const fetchJobs = async () => {
@@ -45,7 +51,7 @@ export default function OperationsPage() {
         setJobs(data);
       }
       setError(null);
-    } catch (err) {
+    } catch {
       setError('Operasyonel veriler yüklenirken bir hata oluştu.');
     } finally {
       setLoading(false);
@@ -135,7 +141,7 @@ export default function OperationsPage() {
                       <p className="text-xs text-text-body mt-0.5 font-medium">{job.customer?.name || 'Müşteri Yok'}</p>
                     </div>
                     <div className="text-right">
-                      <Badge variant={JOB_STATUS_MAP[job.status]?.variant as any || 'default'}>
+                      <Badge variant={JOB_STATUS_MAP[job.status]?.variant || 'default'}>
                         {JOB_STATUS_MAP[job.status]?.label || job.status}
                       </Badge>
                       <span className="text-[10px] text-text-body uppercase font-bold opacity-50 block mt-1">{job.responsible_user?.full_name || 'Atanmamış'}</span>

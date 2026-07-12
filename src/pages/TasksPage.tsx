@@ -4,18 +4,25 @@ import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { ActionMenu, type ActionMenuItem } from '../components/ui/ActionMenu';
-import { ConfirmDialog, useConfirm } from '../components/ui/ConfirmDialog';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { useConfirm } from '../components/ui/useConfirm';
 import { GlobalQuickCreateModal, type QuickCreateType } from '../components/shared/GlobalQuickCreateModal';
 import {
   Plus, Filter, Search, Clock,
   Calendar, Tag, MessageSquare,
   CheckCircle2, Edit2, Trash2
 } from 'lucide-react';
-import { useToast } from '../components/ui/Toast';
+import { useToast } from '../components/ui/ToastContext';
 import { tasksApi } from '../services/tasksApi';
 import { LoadingState, ErrorState } from '../components/ui/States';
 import { formatDate } from '../utils/formatters';
 import { TASK_STATUS_MAP } from '../utils/statusMaps';
+import { getErrorMessage } from '../services/apiClient';
+import type { ResourceCreatedEvent, Task, TaskEditForm, TeamMember } from '../types/domain';
+
+const emptyEditForm: TaskEditForm = {
+  title: '', priority: 'normal', status: 'todo', due_date: '', description: '', assignee_user_id: '',
+};
 
 const priorityConfig: Record<string, { label: string, color: string }> = {
   'critical': { label: 'Kritik', color: 'text-red-600' },
@@ -35,15 +42,15 @@ const TASK_STATUSES = [
 export default function TasksPage() {
   const { showToast } = useToast();
   const { confirmProps, confirm } = useConfirm();
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [quickCreateType, setQuickCreateType] = useState<QuickCreateType>(null);
-  const [editingTask, setEditingTask] = useState<any>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editForm, setEditForm] = useState<any>({});
+  const [editForm, setEditForm] = useState<TaskEditForm>(emptyEditForm);
   const [isSaving, setIsSaving] = useState(false);
-  const [team, setTeam] = useState<any[]>([]);
+  const [team, setTeam] = useState<TeamMember[]>([]);
 
   const fetchTasks = async () => {
     setIsLoading(true);
@@ -58,20 +65,18 @@ export default function TasksPage() {
     }
   };
 
-  const fetchTeam = async () => {
-    try {
-      const data = await tasksApi.listTeam(); // I need to add this to tasksApi or use teamApi
-      setTeam(data);
-    } catch (err) {
-      console.error('Team load failed:', err);
-    }
-  };
-
   useEffect(() => {
-    fetchTasks();
-    fetchTeam();
+    void Promise.all([tasksApi.list(), tasksApi.listTeam()]).then(([taskData, teamData]) => {
+      setTasks(taskData);
+      setTeam(teamData);
+    }).catch(() => {
+      setError('Görev listesi yüklenemedi.');
+    }).finally(() => {
+      setIsLoading(false);
+    });
 
-    const handleResourceCreated = (e: any) => {
+    const handleResourceCreated = (event: Event) => {
+      const e = event as ResourceCreatedEvent;
       if (e.detail?.type === 'task') {
         fetchTasks();
       }
@@ -81,7 +86,7 @@ export default function TasksPage() {
     return () => window.removeEventListener('operio:resource-created', handleResourceCreated);
   }, []);
 
-  const handleToggleComplete = async (task: any) => {
+  const handleToggleComplete = async (task: Task) => {
     const newStatus = task.status === 'completed' ? 'todo' : 'completed';
     try {
       await tasksApi.update(task.id, { status: newStatus });
@@ -92,7 +97,7 @@ export default function TasksPage() {
     }
   };
 
-  const openEdit = (task: any) => {
+  const openEdit = (task: Task) => {
     setEditingTask(task);
     setEditForm({
       title: task.title,
@@ -109,6 +114,7 @@ export default function TasksPage() {
     e.preventDefault();
     setIsSaving(true);
     try {
+      if (!editingTask) return;
       await tasksApi.update(editingTask.id, editForm);
       showToast('Görev güncellendi.', 'success');
       setIsEditModalOpen(false);
@@ -120,7 +126,7 @@ export default function TasksPage() {
     }
   };
 
-  const handleDelete = (task: any) => {
+  const handleDelete = (task: Task) => {
     confirm({
       title: 'Görevi Sil',
       description: `"${task.title}" görevi kalıcı olarak silinecek. Bu işlem geri alınamaz.`,
@@ -132,8 +138,8 @@ export default function TasksPage() {
           await tasksApi.delete(task.id);
           showToast('Görev silindi.', 'success');
           fetchTasks();
-        } catch (err: any) {
-          showToast(err.response?.data?.detail || 'Silme başarısız.', 'error');
+        } catch (err: unknown) {
+          showToast(getErrorMessage(err) || 'Silme başarısız.', 'error');
         }
       },
     });
@@ -231,11 +237,11 @@ export default function TasksPage() {
 
                   <div className="flex items-center justify-between md:justify-end gap-4">
                     <div className="flex flex-col items-end">
-                      <Badge variant={TASK_STATUS_MAP[task.status]?.variant as any || 'default'}>
+                      <Badge variant={TASK_STATUS_MAP[task.status]?.variant || 'default'}>
                         {TASK_STATUS_MAP[task.status]?.label || task.status}
                       </Badge>
                       <span className="text-[10px] text-text-body mt-1.5 font-bold flex items-center gap-1.5 opacity-60">
-                        <Calendar className="w-3.5 h-3.5" /> {formatDate(task.due_date)}
+                        <Calendar className="w-3.5 h-3.5" /> {task.due_date ? formatDate(task.due_date) : '—'}
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
@@ -267,12 +273,12 @@ export default function TasksPage() {
       <form onSubmit={handleSaveEdit} className="space-y-4">
         <div>
           <label className={labelClass}>Başlık</label>
-          <input className={fieldClass} value={editForm.title || ''} onChange={e => setEditForm((p: any) => ({ ...p, title: e.target.value }))} required />
+          <input className={fieldClass} value={editForm.title} onChange={e => setEditForm(p => ({ ...p, title: e.target.value }))} required />
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Öncelik</label>
-            <select className={fieldClass} value={editForm.priority || 'normal'} onChange={e => setEditForm((p: any) => ({ ...p, priority: e.target.value }))}>
+            <select className={fieldClass} value={editForm.priority} onChange={e => setEditForm(p => ({ ...p, priority: e.target.value }))}>
               <option value="low">Düşük</option>
               <option value="normal">Normal</option>
               <option value="high">Yüksek</option>
@@ -281,25 +287,25 @@ export default function TasksPage() {
           </div>
           <div>
             <label className={labelClass}>Durum</label>
-            <select className={fieldClass} value={editForm.status || 'todo'} onChange={e => setEditForm((p: any) => ({ ...p, status: e.target.value }))}>
+            <select className={fieldClass} value={editForm.status} onChange={e => setEditForm(p => ({ ...p, status: e.target.value }))}>
               {TASK_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
           </div>
         </div>
         <div>
           <label className={labelClass}>Son Tarih</label>
-          <input className={fieldClass} type="date" value={editForm.due_date || ''} onChange={e => setEditForm((p: any) => ({ ...p, due_date: e.target.value }))} />
+          <input className={fieldClass} type="date" value={editForm.due_date} onChange={e => setEditForm(p => ({ ...p, due_date: e.target.value }))} />
         </div>
         <div>
           <label className={labelClass}>Açıklama</label>
-          <textarea className={`${fieldClass} h-20 resize-none`} value={editForm.description || ''} onChange={e => setEditForm((p: any) => ({ ...p, description: e.target.value }))} />
+          <textarea className={`${fieldClass} h-20 resize-none`} value={editForm.description} onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))} />
         </div>
         <div>
           <label className={labelClass}>Sorumlu Kişi</label>
           <select 
             className={fieldClass} 
             value={editForm.assignee_user_id || ''} 
-            onChange={e => setEditForm((p: any) => ({ ...p, assignee_user_id: e.target.value ? Number(e.target.value) : null }))}
+            onChange={e => setEditForm(p => ({ ...p, assignee_user_id: e.target.value ? Number(e.target.value) : null }))}
           >
             <option value="">Seçilmedi</option>
             {team.map(member => (

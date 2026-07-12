@@ -5,8 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { Lock, Mail, ChevronRight, Loader2 } from 'lucide-react';
 import { authApi } from '../services/authApi';
 import { getErrorMessage } from '../services/apiClient';
-import { useAuth } from '../context/AuthContext';
-import { useToast } from '../components/ui/Toast';
+import { useAuth } from '../context/AuthContextValue';
+import { useToast } from '../components/ui/ToastContext';
 import { BrandLogo } from '../components/brand/BrandLogo';
 import { SupportContactModal } from '../components/support/SupportContactModal';
 import { ForgotPasswordModal } from '../components/auth/ForgotPasswordModal';
@@ -48,7 +48,7 @@ export default function LoginPage() {
       // Clean up URL without triggering re-render
       window.history.replaceState({}, '', window.location.pathname);
     }
-  }, []); // Empty deps to run only once
+  }, [showToast]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,7 +85,7 @@ export default function LoginPage() {
       } else {
         navigate('/dashboard', { replace: true });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Login error:', error);
       localStorage.removeItem('token');
       localStorage.removeItem('user');
@@ -100,7 +100,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-10 flex flex-col items-center">
           <BrandLogo size="xl" className="mb-6" showText={false} />
-          <h1 className="text-3xl font-jakarta font-bold text-text-high">Operio</h1>
+          <h1 className="text-3xl font-jakarta font-bold text-text-high">Tavelya</h1>
           <p className="text-text-body mt-2">Modüler İşletme Yönetim Platformu</p>
           <p className="text-[10px] font-bold text-primary uppercase mt-3 tracking-widest">Fikir Creative tarafından geliştirildi</p>
         </div>
@@ -165,7 +165,7 @@ export default function LoginPage() {
           </button>
           
           <p className="text-[11px] text-text-body opacity-60 font-medium">
-            © 2026 Operio. <span className="font-bold">Fikir Creative</span> tarafından geliştirilmiştir.
+            © 2026 Tavelya. <span className="font-bold">Fikir Creative</span> tarafından geliştirilmiştir.
           </p>
         </div>
       </div>

@@ -4,8 +4,8 @@ import {
   Menu, X, Bell, ChevronDown, LogOut, 
   UserCircle, ShieldCheck, Globe, Activity, Plus, Settings
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { useToast } from '../ui/Toast';
+import { useAuth } from '../../context/AuthContextValue';
+import { useToast } from '../ui/ToastContext';
 import PlatformSidebar from './PlatformSidebar';
 import { BrandLogo } from '../brand/BrandLogo';
 
@@ -22,7 +22,7 @@ export default function PlatformLayout() {
   };
 
   return (
-    <div className="flex h-screen bg-[#f8fafc] overflow-hidden font-jakarta">
+    <div className="flex h-[100dvh] min-h-0 bg-[#f8fafc] overflow-hidden font-jakarta">
       {/* Desktop Sidebar */}
       <PlatformSidebar />
 
@@ -30,7 +30,7 @@ export default function PlatformLayout() {
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="fixed inset-0 bg-indigo-950/60 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
-          <aside className="fixed inset-y-0 left-0 w-80 bg-indigo-950 shadow-2xl flex flex-col animate-in slide-in-from-left duration-300 text-white">
+          <aside className="fixed inset-y-0 left-0 w-[min(20rem,calc(100vw-2rem))] bg-indigo-950 shadow-2xl flex flex-col animate-in slide-in-from-left duration-300 text-white">
             <div className="h-20 flex items-center justify-between px-6 border-b border-indigo-900/50">
               <BrandLogo variant="white" size="md" isPlatform={true} />
               <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 hover:bg-indigo-900 rounded-xl transition-colors">
@@ -61,14 +61,14 @@ export default function PlatformLayout() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header */}
-        <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-10 sticky top-0 z-20 shadow-sm">
+        <header className="h-16 md:h-20 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-10 sticky top-0 z-20 shadow-sm flex-shrink-0 pt-[env(safe-area-inset-top)]">
           <div className="flex items-center gap-4">
             <button onClick={() => setIsMobileMenuOpen(true)} className="lg:hidden p-2 hover:bg-slate-100 rounded-xl transition-colors">
               <Menu className="w-6 h-6 text-slate-600" />
             </button>
             <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 rounded-2xl border border-indigo-100">
               <ShieldCheck className="w-4 h-4 text-indigo-600" />
-              <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider">Platform Yönetim Modu</span>
+              <span className="hidden sm:inline text-xs font-bold text-indigo-700 uppercase tracking-wider">Platform Yönetim Modu</span>
             </div>
           </div>
 
@@ -116,14 +116,14 @@ export default function PlatformLayout() {
         </header>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-10 no-scrollbar relative flex flex-col">
+        <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-10 pb-[calc(2rem+env(safe-area-inset-bottom))] lg:pb-10 no-scrollbar relative flex flex-col">
           <div className="flex-1">
             <Outlet />
           </div>
           
-          <footer className="mt-12 py-8 border-t border-slate-200 text-center">
+          <footer className="hidden sm:block mt-12 py-8 border-t border-slate-200 text-center">
             <p className="text-xs text-slate-400 font-medium">
-              OPERIO PLATFORM ADMIN &copy; 2026. <span className="font-bold text-indigo-600/60">Fikir Software Operations Group</span>
+              TAVELYA PLATFORM ADMIN &copy; 2026. <span className="font-bold text-indigo-600/60">Fikir Software Operations Group</span>
             </p>
           </footer>
         </main>

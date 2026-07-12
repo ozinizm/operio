@@ -13,6 +13,7 @@ class DeliveryServiceBase(BaseModel):
     address: Optional[str] = None
     contact_person: Optional[str] = None
     contact_phone: Optional[str] = None
+    contact_email: Optional[str] = None
     notes: Optional[str] = None
     result_note: Optional[str] = None
 
@@ -28,6 +29,7 @@ class DeliveryServiceUpdate(BaseModel):
     address: Optional[str] = None
     contact_person: Optional[str] = None
     contact_phone: Optional[str] = None
+    contact_email: Optional[str] = None
     notes: Optional[str] = None
     result_note: Optional[str] = None
 

@@ -6,11 +6,14 @@ import {
   UserCheck, ShieldCheck
 } from 'lucide-react';
 import { teamApi, type TeamMember } from '../services/teamApi';
-import { useToast } from '../components/ui/Toast';
+import { useToast } from '../components/ui/ToastContext';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
+import { ROLE_LABELS, enumLabel } from '../utils/statusMaps';
+import type { LucideIcon } from 'lucide-react';
+import { getErrorMessage } from '../services/apiClient';
 
 export default function TeamPage() {
   const [members, setMembers] = useState<TeamMember[]>([]);
@@ -38,7 +41,7 @@ export default function TeamPage() {
     try {
       const data = await teamApi.list();
       setMembers(data);
-    } catch (error) {
+    } catch {
       showToast('Ekip listesi yüklenemedi.', 'error');
     } finally {
       setIsLoading(false);
@@ -46,8 +49,8 @@ export default function TeamPage() {
   };
 
   useEffect(() => {
-    fetchTeam();
-  }, []);
+    void teamApi.list().then(setMembers).catch(() => showToast('Ekip listesi yüklenemedi.', 'error')).finally(() => setIsLoading(false));
+  }, [showToast]);
 
   const handleOpenCreate = () => {
     setEditingMember(null);
@@ -75,7 +78,7 @@ export default function TeamPage() {
 
   const handleOpenReset = (member: TeamMember) => {
     setResettingMember(member);
-    setTempPassword(Math.random().toString(36).slice(-8));
+    setTempPassword(crypto.randomUUID().replaceAll('-', '').slice(0, 8));
     setIsResetModalOpen(true);
   };
 
@@ -96,8 +99,8 @@ export default function TeamPage() {
       }
       setIsModalOpen(false);
       fetchTeam();
-    } catch (error: any) {
-      showToast(error.response?.data?.detail || 'Bir hata oluştu.', 'error');
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error) || 'Bir hata oluştu.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -110,7 +113,7 @@ export default function TeamPage() {
       await teamApi.resetPassword(resettingMember.id, tempPassword);
       showToast('Şifre sıfırlandı.', 'success');
       setIsResetModalOpen(false);
-    } catch (error) {
+    } catch {
       showToast('Şifre sıfırlanamadı.', 'error');
     } finally {
       setIsSubmitting(false);
@@ -123,11 +126,11 @@ export default function TeamPage() {
   );
 
   const getRoleBadge = (role: string) => {
-    const roles: any = {
-      owner: { label: 'Kurucu', color: 'bg-indigo-600', icon: ShieldCheck },
-      admin: { label: 'Yönetici', color: 'bg-indigo-500', icon: Shield },
-      manager: { label: 'Müdür', color: 'bg-blue-500', icon: UserCheck },
-      staff: { label: 'Personel', color: 'bg-slate-500', icon: Users2 },
+    const roles: Record<string, { label: string; color: string; icon: LucideIcon }> = {
+      owner: { label: enumLabel('owner', ROLE_LABELS), color: 'bg-indigo-600', icon: ShieldCheck },
+      admin: { label: enumLabel('admin', ROLE_LABELS), color: 'bg-indigo-500', icon: Shield },
+      manager: { label: enumLabel('manager', ROLE_LABELS), color: 'bg-blue-500', icon: UserCheck },
+      staff: { label: enumLabel('staff', ROLE_LABELS), color: 'bg-slate-500', icon: Users2 },
       finance: { label: 'Finans', color: 'bg-emerald-600', icon: ShieldAlert },
       field: { label: 'Saha', color: 'bg-orange-500', icon: ShieldAlert }
     };
@@ -149,14 +152,14 @@ export default function TeamPage() {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="min-w-0 space-y-5 sm:space-y-8 animate-in fade-in duration-500">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-8 rounded-[32px] border border-slate-200 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 bg-white p-4 sm:p-6 lg:p-8 rounded-3xl md:rounded-[32px] border border-slate-200 shadow-sm">
         <div>
-          <h1 className="text-3xl font-jakarta font-bold text-slate-800">Ekip Yönetimi</h1>
+          <h1 className="text-2xl sm:text-3xl font-jakarta font-bold text-slate-800 break-words">Ekip Yönetimi</h1>
           <p className="text-slate-500 font-medium mt-1">Çalışma alanınızdaki personelleri ve yetkilerini yönetin.</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:gap-4 w-full md:w-auto">
           <div className="relative group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
             <input 
@@ -164,37 +167,37 @@ export default function TeamPage() {
               placeholder="Personel ara..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 w-64 transition-all"
+              className="pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 w-full sm:w-64 transition-all"
             />
           </div>
-          <Button className="rounded-2xl gap-2 h-12 px-6" onClick={handleOpenCreate}>
+          <Button className="w-full sm:w-auto rounded-2xl gap-2 h-12 px-6" onClick={handleOpenCreate}>
             <UserPlus className="w-5 h-5" /> Personel Ekle
           </Button>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
+        <div className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200 shadow-sm">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Toplam Ekip</p>
           <p className="text-3xl font-jakarta font-black text-slate-800 mt-1">{members.length}</p>
         </div>
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200 shadow-sm">
           <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Yöneticiler</p>
           <p className="text-3xl font-jakarta font-black text-indigo-600 mt-1">{members.filter(m => ['owner', 'admin'].includes(m.role)).length}</p>
         </div>
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200 shadow-sm">
           <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Aktif Personel</p>
           <p className="text-3xl font-jakarta font-black text-emerald-600 mt-1">{members.filter(m => m.is_active).length}</p>
         </div>
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200 shadow-sm">
           <p className="text-[10px] font-black text-red-400 uppercase tracking-widest">Pasif</p>
           <p className="text-3xl font-jakarta font-black text-red-600 mt-1">{members.filter(m => !m.is_active).length}</p>
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-[32px] border border-slate-200 shadow-xl shadow-slate-100 overflow-hidden">
+      <div className="hidden md:block bg-white rounded-[32px] border border-slate-200 shadow-xl shadow-slate-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -263,12 +266,27 @@ export default function TeamPage() {
         </div>
       </div>
 
+      <div className="md:hidden space-y-3">
+        {filteredMembers.map(member => (
+          <article key={member.id} className="min-w-0 bg-white rounded-3xl border border-slate-200 p-4 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="w-11 h-11 rounded-xl bg-slate-100 flex-shrink-0 flex items-center justify-center text-slate-600 font-bold">{member.full_name.charAt(0)}</div>
+              <div className="min-w-0 flex-1"><h2 className="font-jakarta font-bold text-slate-800 break-words">{member.full_name}</h2><p className="text-xs text-slate-500 break-all">{member.email}</p></div>
+              <span className={`flex-shrink-0 px-2 py-1 rounded-lg text-[10px] font-bold ${member.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>{member.is_active ? 'Aktif' : 'Pasif'}</span>
+            </div>
+            <div className="flex items-center justify-between gap-2 mt-4 pt-4 border-t border-slate-100"><div>{getRoleBadge(member.role)}</div><span className="text-[11px] text-slate-400">{format(new Date(member.created_at), 'd MMM yyyy', { locale: tr })}</span></div>
+            <div className="grid grid-cols-2 gap-2 mt-4"><Button variant="ghost" size="sm" className="w-full h-10 text-amber-600 border border-amber-100" onClick={() => handleOpenReset(member)}><ShieldAlert className="w-4 h-4 mr-1" /> Şifre</Button><Button variant="ghost" size="sm" className="w-full h-10 text-indigo-600 border border-indigo-100" onClick={() => handleOpenEdit(member)}><Edit className="w-4 h-4 mr-1" /> Düzenle</Button></div>
+          </article>
+        ))}
+        {filteredMembers.length === 0 && <div className="rounded-3xl bg-white border border-slate-200 p-10 text-center text-slate-400">Personel bulunamadı.</div>}
+      </div>
+
       {/* Create/Edit Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 max-[430px]:items-end max-[430px]:p-0">
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setIsModalOpen(false)} />
-          <div className="bg-white w-full max-w-md rounded-[32px] shadow-2xl relative z-10 overflow-hidden animate-in zoom-in duration-300">
-            <div className="p-8 border-b border-slate-100 flex items-center justify-between">
+          <div className="bg-white w-full max-w-md max-h-[calc(100dvh-2rem)] rounded-[32px] shadow-2xl relative z-10 overflow-hidden animate-in zoom-in duration-300 flex flex-col max-[430px]:max-h-[calc(100dvh-env(safe-area-inset-top))] max-[430px]:rounded-b-none">
+            <div className="p-4 sm:p-8 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
               <div>
                 <h3 className="text-xl font-jakarta font-black text-slate-800">{editingMember ? 'Personel Düzenle' : 'Yeni Personel Ekle'}</h3>
                 <p className="text-xs text-slate-400 font-medium mt-1">Lütfen gerekli bilgileri eksiksiz doldurun.</p>
@@ -277,7 +295,7 @@ export default function TeamPage() {
                 <X className="w-5 h-5 text-slate-400" />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-8 space-y-6">
+            <form onSubmit={handleSubmit} className="p-4 sm:p-8 space-y-5 sm:space-y-6 overflow-y-auto min-h-0">
               <Input 
                 label="Tam Ad Soyad" 
                 placeholder="Örn: Ahmet Yılmaz"

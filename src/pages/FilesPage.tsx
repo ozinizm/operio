@@ -8,12 +8,14 @@ import {
   FileText, Image as ImageIcon,
   Filter
 } from 'lucide-react';
-import { filesApi } from '../services/filesApi';
-import { useToast } from '../components/ui/Toast';
+import { filesApi, type StoredFile } from '../services/filesApi';
+import { getErrorMessage } from '../services/apiClient';
+import { useToast } from '../components/ui/ToastContext';
 import { LoadingState, ErrorState, EmptyState } from '../components/ui/States';
 import { FileUploadModal } from '../components/shared/FileUploadModal';
 import { Badge } from '../components/ui/Badge';
-import { ConfirmDialog, useConfirm } from '../components/ui/ConfirmDialog';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { useConfirm } from '../components/ui/useConfirm';
 
 const CATEGORY_LABELS: Record<string, string> = {
   'general': 'Genel',
@@ -28,7 +30,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export default function FilesPage() {
-  const [files, setFiles] = useState<any[]>([]);
+  const [files, setFiles] = useState<StoredFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -37,7 +39,9 @@ export default function FilesPage() {
   const { confirmProps, confirm } = useConfirm();
 
   useEffect(() => {
-    fetchFiles();
+    void filesApi.list().then(setFiles).catch(() => {
+      setError('Dosyalar yüklenirken bir hata oluştu.');
+    }).finally(() => setLoading(false));
   }, []);
 
   const fetchFiles = async () => {
@@ -46,18 +50,18 @@ export default function FilesPage() {
       const data = await filesApi.list();
       setFiles(data);
       setError(null);
-    } catch (err) {
+    } catch {
       setError('Dosyalar yüklenirken bir hata oluştu.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDownload = async (file: any) => {
+  const handleDownload = async (file: StoredFile) => {
     try {
       await filesApi.download(file.id, file.original_filename);
       showToast('Dosya indiriliyor...', 'success');
-    } catch (err) {
+    } catch {
       showToast('Dosya indirilirken hata oluştu.', 'error');
     }
   };
@@ -74,8 +78,8 @@ export default function FilesPage() {
           await filesApi.delete(fileId);
           showToast('Dosya silindi.', 'success');
           fetchFiles();
-        } catch (err: any) {
-          showToast(err.response?.data?.detail || 'Dosya silinirken hata oluştu.', 'error');
+        } catch (err: unknown) {
+          showToast(getErrorMessage(err) || 'Dosya silinirken hata oluştu.', 'error');
         }
       },
     });

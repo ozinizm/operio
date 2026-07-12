@@ -3,12 +3,12 @@ import {
   Search, Filter, Calendar,
   User, Globe, Zap, Loader2
 } from 'lucide-react';
-import { platformApi } from '../../services/platformApi';
+import { platformApi, type PlatformActivity } from '../../services/platformApi';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
 export default function PlatformAuditLogs() {
-  const [logs, setLogs] = useState<any[]>([]);
+  const [logs, setLogs] = useState<PlatformActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {

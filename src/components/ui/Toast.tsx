@@ -1,19 +1,12 @@
-import React, { useState, createContext, useContext } from 'react';
+import React, { useState } from 'react';
 import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react';
-
-type ToastType = 'success' | 'error' | 'info' | 'warning';
+import { ToastContext, type ToastType } from './ToastContext';
 
 interface Toast {
   id: string;
   message: string;
   type: ToastType;
 }
-
-interface ToastContextType {
-  showToast: (message: string, type?: ToastType) => void;
-}
-
-const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -38,11 +31,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2">
+      <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-4 right-4 md:left-auto md:bottom-4 md:right-4 z-[100] flex flex-col gap-2 md:w-auto max-h-[calc(100dvh-1.5rem)] overflow-y-auto pointer-events-none">
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border animate-in slide-in-from-right-full transition-all bg-surface ${
+            className={`pointer-events-auto w-full md:w-auto md:min-w-80 md:max-w-md flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border animate-in slide-in-from-right-full transition-all bg-surface ${
               toast.type === 'success' ? 'border-emerald-100 text-emerald-800' :
               toast.type === 'error' ? 'border-red-100 text-red-800' :
               toast.type === 'warning' ? 'border-amber-100 text-amber-800' :
@@ -56,7 +49,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             <span className="text-sm font-medium">
               {typeof toast.message === 'string' ? toast.message : JSON.stringify(toast.message)}
             </span>
-            <button onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))} className="ml-2">
+            <button aria-label="Bildirimi kapat" title="Kapat" onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))} className="ml-auto flex-shrink-0">
               <X className="w-4 h-4 opacity-50 hover:opacity-100" />
             </button>
           </div>
@@ -65,9 +58,3 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     </ToastContext.Provider>
   );
 }
-
-export const useToast = () => {
-  const context = useContext(ToastContext);
-  if (!context) throw new Error('useToast must be used within a ToastProvider');
-  return context;
-};

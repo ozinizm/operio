@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import { useToast } from '../ui/Toast';
-import { customersApi } from '../../services/customersApi';
+import { useToast } from '../ui/ToastContext';
+import { customersApi, type Customer } from '../../services/customersApi';
 import { jobsApi } from '../../services/jobsApi';
 import { tasksApi } from '../../services/tasksApi';
 import { financeApi } from '../../services/financeApi';
@@ -11,6 +11,10 @@ import { deliveryServiceApi } from '../../services/deliveryServiceApi';
 import { requestsApi } from '../../services/requestsApi';
 import { inventoryApi } from '../../services/inventoryApi';
 import { useNavigate } from 'react-router-dom';
+import { getErrorMessage } from '../../services/apiClient';
+import type { TeamMember } from '../../types/domain';
+import { useAuth } from '../../context/AuthContextValue';
+import { can } from '../../utils/permissions';
 
 export type QuickCreateType = 'customer' | 'offer' | 'job' | 'task' | 'finance' | 'delivery_service' | 'request_ticket' | 'inventory_item' | null;
 
@@ -18,6 +22,7 @@ interface GlobalQuickCreateModalProps {
   type: QuickCreateType;
   onClose: () => void;
   onSuccess?: () => void;
+  initialValues?: Record<string, string | number>;
 }
 
 const TITLES: Record<string, string> = {
@@ -31,21 +36,25 @@ const TITLES: Record<string, string> = {
   inventory_item: 'Yeni Stok Kalemi',
 };
 
-export function GlobalQuickCreateModal({ type, onClose, onSuccess }: GlobalQuickCreateModalProps) {
+const EMPTY_INITIAL_VALUES: Record<string, string | number> = {};
+
+export function GlobalQuickCreateModal({ type, onClose, onSuccess, initialValues = EMPTY_INITIAL_VALUES }: GlobalQuickCreateModalProps) {
   const { showToast } = useToast();
   const navigate = useNavigate();
-  const [customers, setCustomers] = useState<any[]>([]);
-  const [team, setTeam] = useState<any[]>([]);
+  const { role, user } = useAuth();
+  const canAssignTasks = can(role, 'task:assign', !!user?.is_super_admin);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [team, setTeam] = useState<TeamMember[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [form, setForm] = useState<Record<string, any>>({});
+  const [form, setForm] = useState<Record<string, string | number>>({});
 
   useEffect(() => {
     if (type) {
-      setForm({});
+      void Promise.resolve().then(() => setForm(initialValues));
       customersApi.list().then(setCustomers).catch(() => {});
       tasksApi.listTeam().then(setTeam).catch(() => {});
     }
-  }, [type]);
+  }, [type, initialValues]);
 
   const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm(p => ({ ...p, [field]: e.target.value }));
@@ -57,31 +66,31 @@ export function GlobalQuickCreateModal({ type, onClose, onSuccess }: GlobalQuick
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      let created: any;
+      let created: { id?: number } | undefined;
       if (type === 'customer') {
         if (!form.name) { showToast('Müşteri adı zorunludur.', 'error'); return; }
         created = await customersApi.create({ name: form.name, sector: form.sector, contact_person: form.contact_person, phone: form.phone, email: form.email, status: 'active' });
       } else if (type === 'job') {
         if (!form.title || !form.customer_id) { showToast('Başlık ve müşteri zorunludur.', 'error'); return; }
-        created = await jobsApi.create({ title: form.title, customer_id: parseInt(form.customer_id), job_type: form.job_type || 'general', priority: form.priority || 'normal', description: form.description });
+        created = await jobsApi.create({ title: form.title, customer_id: parseInt(String(form.customer_id)), job_type: form.job_type || 'general', priority: form.priority || 'normal', description: form.description, responsible_user_id: form.responsible_user_id ? parseInt(String(form.responsible_user_id)) : null });
       } else if (type === 'task') {
         if (!form.title) { showToast('Görev başlığı zorunludur.', 'error'); return; }
-        created = await tasksApi.create({ title: form.title, priority: form.priority || 'normal', status: 'todo', customer_id: form.customer_id ? parseInt(form.customer_id) : null, due_date: form.due_date || null, assignee_user_id: form.assignee_user_id ? parseInt(form.assignee_user_id) : null });
+        created = await tasksApi.create({ title: form.title, priority: form.priority || 'normal', status: 'todo', customer_id: form.customer_id ? parseInt(String(form.customer_id)) : null, due_date: form.due_date || null, assignee_user_id: form.assignee_user_id ? parseInt(String(form.assignee_user_id)) : null });
       } else if (type === 'finance') {
         if (!form.title || !form.amount) { showToast('Başlık ve tutar zorunludur.', 'error'); return; }
-        created = await financeApi.createEntry({ title: form.title, type: form.fin_type || 'income', amount: parseFloat(form.amount), status: 'pending', category: form.category || '', customer_id: form.customer_id ? parseInt(form.customer_id) : null });
+        created = await financeApi.createEntry({ title: form.title, type: form.fin_type || 'income', amount: parseFloat(String(form.amount)), status: 'pending', category: form.category || '', customer_id: form.customer_id ? parseInt(String(form.customer_id)) : null });
       } else if (type === 'offer') {
         if (!form.title || !form.customer_id) { showToast('Başlık ve müşteri zorunludur.', 'error'); return; }
-        created = await offersApi.create({ title: form.title, customer_id: parseInt(form.customer_id), amount: parseFloat(form.amount || '0'), status: 'draft', description: form.description });
+        created = await offersApi.create({ title: form.title, customer_id: parseInt(String(form.customer_id)), amount: parseFloat(String(form.amount || '0')), status: 'draft', description: form.description });
       } else if (type === 'delivery_service') {
         if (!form.title || !form.customer_id) { showToast('Başlık ve müşteri zorunludur.', 'error'); return; }
-        created = await deliveryServiceApi.create({ title: form.title, customer_id: parseInt(form.customer_id), type: (form.del_type || 'delivery') as any, scheduled_at: form.scheduled_at || new Date().toISOString(), notes: form.notes });
+        created = await deliveryServiceApi.create({ title: String(form.title), customer_id: parseInt(String(form.customer_id)), type: String(form.del_type || 'delivery'), scheduled_at: String(form.scheduled_at || new Date().toISOString()), notes: form.notes ? String(form.notes) : undefined });
       } else if (type === 'request_ticket') {
         if (!form.title || !form.customer_id) { showToast('Başlık ve müşteri zorunludur.', 'error'); return; }
-        created = await requestsApi.create({ title: form.title, customer_id: parseInt(form.customer_id), priority: (form.priority || 'normal') as any, type: (form.req_type || 'complaint') as any, description: form.description });
+        created = await requestsApi.create({ title: String(form.title), customer_id: parseInt(String(form.customer_id)), priority: String(form.priority || 'normal'), type: String(form.req_type || 'complaint'), description: form.description ? String(form.description) : undefined });
       } else if (type === 'inventory_item') {
         if (!form.name || !form.unit) { showToast('Ad ve birim zorunludur.', 'error'); return; }
-        created = await inventoryApi.create({ ...form, quantity: parseFloat(form.quantity || '0'), min_quantity: parseFloat(form.min_quantity || '0') });
+        created = await inventoryApi.create({ ...form, quantity: parseFloat(String(form.quantity || '0')), min_quantity: parseFloat(String(form.min_quantity || '0')) });
       }
 
       if (type) {
@@ -97,8 +106,8 @@ export function GlobalQuickCreateModal({ type, onClose, onSuccess }: GlobalQuick
       onClose();
       
       // Navigation logic
-      if (type === 'customer') navigate(`/customers/${created.id}`);
-      else if (type === 'job') navigate(`/jobs/${created.id}`);
+      if (type === 'customer' && created?.id) navigate(`/customers/${created.id}`);
+      else if (type === 'job' && created?.id) navigate(`/jobs/${created.id}`);
       else if (type === 'task') navigate('/tasks');
       else if (type === 'finance') navigate('/finance');
       else if (type === 'offer') navigate('/offers');
@@ -106,8 +115,8 @@ export function GlobalQuickCreateModal({ type, onClose, onSuccess }: GlobalQuick
       else if (type === 'request_ticket') navigate('/complaints');
       else if (type === 'inventory_item') navigate('/inventory');
 
-    } catch (err: any) {
-      showToast(err.response?.data?.detail || 'İşlem başarısız.', 'error');
+    } catch (err: unknown) {
+      showToast(getErrorMessage(err) || 'İşlem başarısız.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -122,9 +131,8 @@ export function GlobalQuickCreateModal({ type, onClose, onSuccess }: GlobalQuick
         {type === 'customer' && (<>
           <div>
             <label className={labelClass}>Müşteri / Şirket Adı *</label>
-            <input className={fieldClass} value={form.name || ''} onChange={set('name')} placeholder="Ör: ABC Teknoloji A.Ş." required />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Sektör</label>
               <input className={fieldClass} value={form.sector || ''} onChange={set('sector')} placeholder="Teknoloji" />
@@ -134,7 +142,7 @@ export function GlobalQuickCreateModal({ type, onClose, onSuccess }: GlobalQuick
               <input className={fieldClass} value={form.contact_person || ''} onChange={set('contact_person')} placeholder="Ad Soyad" />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Telefon</label>
               <input className={fieldClass} value={form.phone || ''} onChange={set('phone')} placeholder="5551234567" />
@@ -158,7 +166,7 @@ export function GlobalQuickCreateModal({ type, onClose, onSuccess }: GlobalQuick
               {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Öncelik</label>
               <select className={fieldClass} value={form.priority || 'normal'} onChange={set('priority')}>
@@ -174,6 +182,13 @@ export function GlobalQuickCreateModal({ type, onClose, onSuccess }: GlobalQuick
             </div>
           </div>
           <div>
+            <label className={labelClass}>Sorumlu Kişi</label>
+            <select className={fieldClass} value={form.responsible_user_id || ''} onChange={set('responsible_user_id')}>
+              <option value="">Atanmamış</option>
+              {team.map(m => <option key={m.user_id} value={m.user_id}>{m.full_name} ({m.email})</option>)}
+            </select>
+          </div>
+          <div>
             <label className={labelClass}>Açıklama</label>
             <textarea className={`${fieldClass} h-16 resize-none`} value={form.description || ''} onChange={set('description')} />
           </div>
@@ -184,7 +199,7 @@ export function GlobalQuickCreateModal({ type, onClose, onSuccess }: GlobalQuick
             <label className={labelClass}>Görev Başlığı *</label>
             <input className={fieldClass} value={form.title || ''} onChange={set('title')} placeholder="Ör: Müşteri görüşmesi yapılacak" required />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Öncelik</label>
               <select className={fieldClass} value={form.priority || 'normal'} onChange={set('priority')}>
@@ -209,14 +224,14 @@ export function GlobalQuickCreateModal({ type, onClose, onSuccess }: GlobalQuick
           <div>
             <label className={labelClass}>Sorumlu Personel</label>
             <select className={fieldClass} value={form.assignee_user_id || ''} onChange={set('assignee_user_id')}>
-              <option value="">Personel seçin (opsiyonel)</option>
-              {team.map((m: any) => <option key={m.user_id} value={m.user_id}>{m.full_name} ({m.email})</option>)}
+              <option value="">Atanmamış</option>
+              {(canAssignTasks ? team : team.filter(m => m.user_id === user?.id)).map(m => <option key={m.user_id} value={m.user_id}>{m.full_name} ({m.email})</option>)}
             </select>
           </div>
         </>)}
 
         {type === 'finance' && (<>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {(['income', 'expense'] as const).map(t => (
               <button key={t} type="button" onClick={() => setForm(p => ({ ...p, fin_type: t }))}
                 className={`py-3 rounded-2xl font-bold text-sm border-2 transition-all ${form.fin_type === t ? (t === 'income' ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-red-50 border-red-500 text-red-700') : 'border-border text-text-body'}`}>
@@ -228,7 +243,7 @@ export function GlobalQuickCreateModal({ type, onClose, onSuccess }: GlobalQuick
             <label className={labelClass}>Başlık *</label>
             <input className={fieldClass} value={form.title || ''} onChange={set('title')} placeholder="Ör: Müşteri Ödemesi" required />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Tutar (₺) *</label>
               <input className={fieldClass} type="number" value={form.amount || ''} onChange={set('amount')} placeholder="0.00" required />
@@ -274,7 +289,7 @@ export function GlobalQuickCreateModal({ type, onClose, onSuccess }: GlobalQuick
               {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Tip</label>
               <select className={fieldClass} value={form.del_type || 'delivery'} onChange={set('del_type')}>
@@ -302,7 +317,7 @@ export function GlobalQuickCreateModal({ type, onClose, onSuccess }: GlobalQuick
               {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Tip</label>
               <select className={fieldClass} value={form.req_type || 'complaint'} onChange={set('req_type')}>
@@ -332,7 +347,7 @@ export function GlobalQuickCreateModal({ type, onClose, onSuccess }: GlobalQuick
             <label className={labelClass}>Ürün / Malzeme Adı *</label>
             <input className={fieldClass} value={form.name || ''} onChange={set('name')} placeholder="Ör: MDF Levha" required />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>SKU / Kod</label>
               <input className={fieldClass} value={form.sku || ''} onChange={set('sku')} placeholder="STK-001" />
@@ -342,7 +357,7 @@ export function GlobalQuickCreateModal({ type, onClose, onSuccess }: GlobalQuick
               <input className={fieldClass} value={form.unit || 'Adet'} onChange={set('unit')} placeholder="Adet, KG..." required />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Miktar</label>
               <input className={fieldClass} type="number" value={form.quantity || '0'} onChange={set('quantity')} />

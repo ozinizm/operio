@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '../ui/Button';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { watchersApi } from '../../services/watchersApi';
-import { useToast } from '../ui/Toast';
+import { useToast } from '../ui/ToastContext';
 
 interface EntityWatchButtonProps {
   entityType: string;
@@ -14,25 +14,17 @@ export function EntityWatchButton({ entityType, entityId }: EntityWatchButtonPro
   const [isLoading, setIsLoading] = useState(true);
   const [isActioning, setIsActioning] = useState(false);
   const { showToast } = useToast();
+  const actionLock = useRef(false);
 
   useEffect(() => {
-    checkWatchStatus();
+    void watchersApi.list().then(watched => {
+      setIsWatching(watched.some(w => w.entity_type === entityType && w.entity_id === entityId));
+    }).catch((err: unknown) => console.error('Watch status check failed:', err)).finally(() => setIsLoading(false));
   }, [entityType, entityId]);
 
-  const checkWatchStatus = async () => {
-    try {
-      setIsLoading(true);
-      const watched = await watchersApi.list();
-      const match = watched.find(w => w.entity_type === entityType && w.entity_id === entityId);
-      setIsWatching(!!match);
-    } catch (err) {
-      console.error('Watch status check failed:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const toggleWatch = async () => {
+    if (actionLock.current) return;
+    actionLock.current = true;
     try {
       setIsActioning(true);
       if (isWatching) {
@@ -44,9 +36,10 @@ export function EntityWatchButton({ entityType, entityId }: EntityWatchButtonPro
         setIsWatching(true);
         showToast('Takibe aldınız. Güncellemelerden haberdar olacaksınız.', 'success');
       }
-    } catch (err) {
+    } catch {
       showToast('İşlem başarısız.', 'error');
     } finally {
+      actionLock.current = false;
       setIsActioning(false);
     }
   };

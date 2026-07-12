@@ -5,31 +5,32 @@ import {
   Zap, Lock, Mail, Building, Plus
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { platformApi } from '../../services/platformApi';
-import { useToast } from '../../components/ui/Toast';
+import { platformApi, type PlatformModuleDefinition } from '../../services/platformApi';
+import { getErrorMessage } from '../../services/apiClient';
+import { useToast } from '../../components/ui/ToastContext';
 
 export default function PlatformWorkspaceCreate() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [availableModules, setAvailableModules] = useState<any[]>([]);
-  const [formData, setFormData] = useState({
+  const [availableModules, setAvailableModules] = useState<Array<{ key: string; label: string }>>([]);
+  const [formData, setFormData] = useState(() => ({
     name: '',
     slug: '',
     sector: '',
     status: 'pilot',
     owner_name: '',
     owner_email: '',
-    owner_password: 'Operio' + Math.floor(Math.random() * 9000 + 1000) + '!',
+    owner_password: 'Tavelya' + Math.floor(Math.random() * 9000 + 1000) + '!',
     active_modules: [] as string[]
-  });
+  }));
 
   useEffect(() => {
     const fetchAvailableModules = async () => {
       try {
         const data = await platformApi.getAvailableModules();
         // The backend returns a list of module definitions
-        setAvailableModules(data.map((m: any) => ({
+        setAvailableModules(data.map((m: PlatformModuleDefinition) => ({
           key: m.key,
           label: m.name // In module_registry, 'name' is the display label
         })));
@@ -40,7 +41,7 @@ export default function PlatformWorkspaceCreate() {
     fetchAvailableModules();
   }, []);
 
-  const [successData, setSuccessData] = useState<any>(null);
+  const [successData, setSuccessData] = useState<null | { id: number; name: string; owner_email: string; owner_password: string }>(null);
   const [isManuallyEditingSlug, setIsManuallyEditingSlug] = useState(false);
 
   const slugify = (text: string) => {
@@ -87,9 +88,9 @@ export default function PlatformWorkspaceCreate() {
         id: response.id
       });
       showToast('İşletme başarıyla oluşturuldu.', 'success');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to create workspace:', error);
-      showToast(error.response?.data?.detail || 'İşletme oluşturulurken bir hata oluştu.', 'error');
+      showToast(getErrorMessage(error) || 'İşletme oluşturulurken bir hata oluştu.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -152,7 +153,7 @@ export default function PlatformWorkspaceCreate() {
                 setFormData({
                   name: '', slug: '', sector: '', status: 'pilot',
                   owner_name: '', owner_email: '',
-                  owner_password: 'Operio' + Math.floor(Math.random() * 9000 + 1000) + '!',
+                  owner_password: 'Tavelya' + Math.floor(Math.random() * 9000 + 1000) + '!',
                   active_modules: []
                 });
                 setIsManuallyEditingSlug(false);
@@ -168,7 +169,7 @@ export default function PlatformWorkspaceCreate() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
+    <div className="w-full max-w-6xl mx-auto space-y-6 sm:space-y-8 lg:space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-8 lg:pb-12">
       <div className="flex flex-col gap-4">
         <button 
           onClick={() => navigate('/platform/workspaces')}
@@ -183,10 +184,10 @@ export default function PlatformWorkspaceCreate() {
         <p className="text-slate-500 font-medium">Platform üzerinde yeni bir müşteri ekosistemi ve yönetici hesabı oluşturun.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        <div className="lg:col-span-2 space-y-10">
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] gap-6 lg:gap-10 items-start">
+        <div className="min-w-0 space-y-6 lg:space-y-10">
           {/* İşletme Bilgileri */}
-          <section className="bg-white p-10 rounded-[40px] border border-slate-200 shadow-xl shadow-slate-100/50 space-y-8 relative overflow-hidden">
+          <section className="bg-white p-6 sm:p-8 lg:p-10 rounded-[32px] lg:rounded-[40px] border border-slate-200 shadow-xl shadow-slate-100/50 space-y-6 lg:space-y-8 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/50 rounded-bl-full -mr-16 -mt-16" />
             <div className="flex items-center gap-3">
               <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
@@ -247,7 +248,7 @@ export default function PlatformWorkspaceCreate() {
           </section>
 
           {/* Yetkili/Admin Bilgileri */}
-          <section className="bg-white p-10 rounded-[40px] border border-slate-200 shadow-xl shadow-slate-100/50 space-y-8">
+          <section className="bg-white p-6 sm:p-8 lg:p-10 rounded-[32px] lg:rounded-[40px] border border-slate-200 shadow-xl shadow-slate-100/50 space-y-6 lg:space-y-8">
             <div className="flex items-center gap-3">
               <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
                 <User className="w-6 h-6" />
@@ -302,7 +303,7 @@ export default function PlatformWorkspaceCreate() {
                   </div>
                   <button 
                     type="button"
-                    onClick={() => setFormData({...formData, owner_password: 'Operio' + Math.floor(Math.random() * 9000 + 1000) + '!'})}
+                    onClick={() => setFormData({...formData, owner_password: 'Tavelya' + Math.floor(Math.random() * 9000 + 1000) + '!'})}
                     className="px-6 py-3.5 bg-slate-100 hover:bg-slate-200 rounded-2xl text-sm font-extrabold text-slate-600 transition-all uppercase tracking-tighter"
                   >
                     Yeni Üret
@@ -317,9 +318,20 @@ export default function PlatformWorkspaceCreate() {
           </section>
         </div>
 
-        <div className="space-y-8">
+        <div className="min-w-0 space-y-6 lg:space-y-8">
+          <div className="lg:sticky lg:top-24 z-10 bg-white/95 backdrop-blur p-4 rounded-[28px] border border-slate-200 shadow-xl">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full flex items-center justify-center gap-3 py-5 bg-indigo-600 text-white rounded-3xl font-black text-lg hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed group active:scale-[0.98]"
+            >
+              {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-6 h-6 group-hover:scale-110 transition-transform" />}
+              {isSubmitting ? 'İŞLEM SÜRÜYOR...' : 'İŞLETMEYİ KUR'}
+            </button>
+          </div>
+
           {/* Modül Seçimi */}
-          <section className="bg-white p-10 rounded-[40px] border border-slate-200 shadow-xl shadow-slate-100/50 space-y-6">
+          <section className="bg-white p-6 sm:p-8 lg:p-10 rounded-[32px] lg:rounded-[40px] border border-slate-200 shadow-xl shadow-slate-100/50 space-y-6">
             <div className="flex items-center gap-3">
               <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
                 <Shield className="w-6 h-6" />
@@ -356,29 +368,13 @@ export default function PlatformWorkspaceCreate() {
             </div>
           </section>
 
-          {/* Kaydet Butonu */}
-          <div className="sticky top-10 space-y-4">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full flex items-center justify-center gap-3 py-5 bg-indigo-600 text-white rounded-3xl font-black text-lg hover:bg-indigo-700 transition-all shadow-2xl shadow-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed group active:scale-[0.98]"
-            >
-              {isSubmitting ? (
-                <Loader2 className="w-6 h-6 animate-spin" />
-              ) : (
-                <Save className="w-6 h-6 group-hover:scale-110 transition-transform" />
-              )}
-              {isSubmitting ? 'İŞLEM SÜRÜYOR...' : 'İŞLETMEYİ KUR'}
-            </button>
-
-            <div className="bg-amber-50 border border-amber-100 p-6 rounded-[32px] flex gap-4 shadow-sm">
-              <AlertCircle className="w-6 h-6 text-amber-600 shrink-0" />
-              <div className="space-y-1">
-                <p className="text-xs font-bold text-amber-900">Dikkat</p>
-                <p className="text-[10px] text-amber-800 font-medium leading-relaxed">
-                  Bu işlem yeni bir işletme çalışma alanı, yönetici hesabı ve seçilen modül ayarlarını oluşturur.
-                </p>
-              </div>
+          <div className="bg-amber-50 border border-amber-100 p-6 rounded-[32px] flex gap-4 shadow-sm">
+            <AlertCircle className="w-6 h-6 text-amber-600 shrink-0" />
+            <div className="space-y-1">
+              <p className="text-xs font-bold text-amber-900">Dikkat</p>
+              <p className="text-[10px] text-amber-800 font-medium leading-relaxed">
+                Bu işlem yeni bir işletme çalışma alanı, yönetici hesabı ve seçilen modül ayarlarını oluşturur.
+              </p>
             </div>
           </div>
         </div>

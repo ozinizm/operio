@@ -3,17 +3,18 @@ import {
   Settings, Shield, Zap, Lock, 
   Info, Mail, Phone, Clock, MessageSquare, CheckCircle2, XCircle, Loader2, Save
 } from 'lucide-react';
-import { platformApi } from '../../services/platformApi';
+import { platformApi, type EmailLog, type PlatformSettingsValues, type PlatformUserSearchResult, type SupportRequest } from '../../services/platformApi';
+import { getErrorMessage } from '../../services/apiClient';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { useToast } from '../../components/ui/Toast';
+import { useToast } from '../../components/ui/ToastContext';
 import { UserPasswordResetModal } from '../../components/platform/UserPasswordResetModal';
 import { formatDate, formatTime } from '../../utils/formatters';
 
 export default function PlatformSettings() {
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'settings' | 'requests' | 'logs'>('settings');
-  const [settings, setSettings] = useState<any>({
+  const [settings, setSettings] = useState<PlatformSettingsValues>({
     support_email: '',
     support_whatsapp: '',
     support_company_name: '',
@@ -22,20 +23,32 @@ export default function PlatformSettings() {
     platform_name: '',
     platform_footer_text: ''
   });
-  const [requests, setRequests] = useState<any[]>([]);
-  const [logs, setLogs] = useState<any[]>([]);
+  const [requests, setRequests] = useState<SupportRequest[]>([]);
+  const [logs, setLogs] = useState<EmailLog[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // Password Reset Flow for Requests
   const [resetModalOpen, setResetModalOpen] = useState(false);
-  const [resettingUser, setResettingUser] = useState<any>(null);
+  const [resettingUser, setResettingUser] = useState<PlatformUserSearchResult | null>(null);
   const [activeRequestId, setActiveRequestId] = useState<number | null>(null);
   const [isSearchingUser, setIsSearchingUser] = useState(false);
 
   useEffect(() => {
-    fetchData();
-  }, [activeTab]);
+    const load = activeTab === 'settings'
+      ? platformApi.getSettings().then(data => {
+          const values: Partial<PlatformSettingsValues> = {};
+          data.forEach(item => { values[item.key] = item.value; });
+          setSettings(prev => ({ ...prev, ...values }));
+        })
+      : activeTab === 'requests'
+        ? platformApi.getSupportRequests().then(setRequests)
+        : platformApi.getEmailLogs().then(data => setLogs(data.items || []));
+    void load.catch((error: unknown) => {
+      console.error('Failed to fetch platform data:', error);
+      showToast('Veriler yüklenemedi.', 'error');
+    }).finally(() => setIsLoading(false));
+  }, [activeTab, showToast]);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -43,11 +56,11 @@ export default function PlatformSettings() {
       if (activeTab === 'settings') {
         const data = await platformApi.getSettings();
         // Convert array of {key, value} to object
-        const settingsObj: any = {};
-        data.forEach((s: any) => {
+        const settingsObj: Partial<PlatformSettingsValues> = {};
+        data.forEach((s) => {
           settingsObj[s.key] = s.value;
         });
-        setSettings((prev: any) => ({ ...prev, ...settingsObj }));
+        setSettings(prev => ({ ...prev, ...settingsObj }));
       } else if (activeTab === 'requests') {
         const data = await platformApi.getSupportRequests();
         setRequests(data);
@@ -69,7 +82,7 @@ export default function PlatformSettings() {
     try {
       await platformApi.updateSettings(settings);
       showToast('Sistem ayarları başarıyla güncellendi.', 'success');
-    } catch (error) {
+    } catch {
       showToast('Ayarlar kaydedilemedi.', 'error');
     } finally {
       setIsSaving(false);
@@ -81,7 +94,7 @@ export default function PlatformSettings() {
       await platformApi.updateSupportRequest(id, { status });
       showToast('Talep durumu güncellendi.', 'success');
       fetchData();
-    } catch (error) {
+    } catch {
       showToast('İşlem başarısız.', 'error');
     }
   };
@@ -93,8 +106,8 @@ export default function PlatformSettings() {
       const userData = await platformApi.searchUserByEmail(email);
       setResettingUser(userData);
       setResetModalOpen(true);
-    } catch (error: any) {
-      const detail = error.response?.data?.detail || 'Kullanıcı bulunamadı.';
+    } catch (error: unknown) {
+      const detail = getErrorMessage(error) || 'Kullanıcı bulunamadı.';
       showToast(detail, 'error');
     } finally {
       setIsSearchingUser(false);
@@ -137,7 +150,7 @@ export default function PlatformSettings() {
           <Zap className="w-4 h-4" /> Global Configuration
         </div>
         <h1 className="text-4xl font-jakarta font-extrabold text-slate-800 tracking-tight">Platform Yönetimi</h1>
-        <p className="text-slate-500 font-medium">Operio platformuna ait genel yapılandırma, destek bilgileri ve kullanıcı yardım talepleri.</p>
+        <p className="text-slate-500 font-medium">Tavelya platformuna ait genel yapılandırma, destek bilgileri ve kullanıcı yardım talepleri.</p>
       </div>
 
       <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl w-fit">
@@ -193,7 +206,7 @@ export default function PlatformSettings() {
                   icon={<Mail className="w-4 h-4" />}
                   value={settings.support_email}
                   onChange={e => setSettings({ ...settings, support_email: e.target.value })}
-                  placeholder="info@operio.dev"
+                  placeholder="info@tavelya.app"
                 />
                 <Input 
                   label="WhatsApp / Telefon"
@@ -255,13 +268,13 @@ export default function PlatformSettings() {
                   label="Platform Adı"
                   value={settings.platform_name}
                   onChange={e => setSettings({ ...settings, platform_name: e.target.value })}
-                  placeholder="Operio"
+                  placeholder="Tavelya"
                 />
                 <Input 
                   label="Footer Alt Metni"
                   value={settings.platform_footer_text}
                   onChange={e => setSettings({ ...settings, platform_footer_text: e.target.value })}
-                  placeholder="© 2026 Operio."
+                  placeholder="© 2026 Tavelya."
                 />
               </div>
             </div>

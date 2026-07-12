@@ -47,16 +47,21 @@ async def preview_inventory_import(
     user: User = Depends(get_current_user),
 ) -> Any:
     contents = await file.read()
-    filename = file.filename
+    filename = file.filename or ""
+    normalized_filename = filename.lower()
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Dosya boyutu 10 MB sınırını aşıyor.")
+    if not normalized_filename.endswith((".csv", ".xlsx")):
+        raise HTTPException(status_code=400, detail="Desteklenmeyen dosya formatı. Sadece .csv ve .xlsx desteklenir.")
     
     rows = []
     try:
-        if filename.endswith(".csv"):
+        if normalized_filename.endswith(".csv"):
             decoded = contents.decode("utf-8").splitlines()
             reader = csv.DictReader(decoded)
             for row in reader:
                 rows.append(row)
-        elif filename.endswith(".xlsx"):
+        elif normalized_filename.endswith(".xlsx"):
             wb = load_workbook(filename=io.BytesIO(contents), data_only=True)
             ws = wb.active
             headers = [cell.value for cell in ws[1]]
@@ -64,8 +69,6 @@ async def preview_inventory_import(
                 # Skip if entire row is truly empty (all None or whitespace)
                 if any(v is not None and str(v).strip() != "" for v in row):
                     rows.append(dict(zip(headers, row)))
-        else:
-            raise HTTPException(status_code=400, detail="Desteklenmeyen dosya formatı. Sadece .csv ve .xlsx desteklenir.")
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Dosya okuma hatası: {str(e)}")
 

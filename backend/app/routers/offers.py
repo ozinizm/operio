@@ -2,7 +2,8 @@ from typing import Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from ..core.database import get_db
-from ..core.deps import get_current_user, get_current_workspace
+from ..core.deps import get_current_user, get_current_workspace, require_permission
+from ..core.permissions import Permission
 from ..models.user import User
 from ..models.workspace import Workspace
 from ..models.offer import Offer as OfferModel
@@ -10,10 +11,11 @@ from ..models.job import Job as JobModel
 from ..schemas.offer import Offer, OfferCreate, OfferUpdate
 from ..services.activity_service import create_activity
 from ..services.notification_service import create_notification, notify_watchers, add_watcher
+from ..core.entity_access import get_workspace_entity_or_404
 from datetime import datetime
 import random
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_permission(Permission.OFFER_VIEW))])
 
 @router.get("/", response_model=List[Offer])
 def read_offers(
@@ -35,6 +37,9 @@ def create_offer(
     user: User = Depends(get_current_user),
     offer_in: OfferCreate,
 ) -> Any:
+    get_workspace_entity_or_404(
+        db, workspace_id=workspace.id, entity_type="customer", entity_id=offer_in.customer_id
+    )
     offer_no = f"OFF-{datetime.now().strftime('%Y%m%d')}-{random.randint(100, 999)}"
     offer = OfferModel(
         **offer_in.dict(),
@@ -48,6 +53,11 @@ def create_offer(
     create_activity(
         db, workspace.id, user.id, "offer", offer.id, "offer.created",
         f"{offer.title} teklifi oluşturuldu."
+    )
+    notify_watchers(
+        db, workspace.id, "customer", offer.customer_id, "customer_offer_created",
+        "Müşteriye Yeni Teklif Eklendi", f"'{offer.title}' teklifi müşteri kaydına eklendi.",
+        actor_user_id=user.id,
     )
     
     # Auto-watch
@@ -98,6 +108,11 @@ def update_offer(
         raise HTTPException(status_code=404, detail="Offer not found")
     
     update_data = offer_in.dict(exclude_unset=True)
+    if update_data.get("customer_id") is not None:
+        get_workspace_entity_or_404(
+            db, workspace_id=workspace.id, entity_type="customer",
+            entity_id=update_data["customer_id"],
+        )
     for field, value in update_data.items():
         setattr(offer, field, value)
         
@@ -108,6 +123,14 @@ def update_offer(
     create_activity(
         db, workspace.id, user.id, "offer", offer.id, "offer.updated",
         f"{offer.title} teklifi güncellendi."
+    )
+    notify_watchers(
+        db, workspace.id, "offer", offer.id, "offer_updated",
+        "Teklif Güncellendi", f"'{offer.title}' teklifi güncellendi.", actor_user_id=user.id,
+    )
+    notify_watchers(
+        db, workspace.id, "customer", offer.customer_id, "customer_offer_updated",
+        "Müşteri Teklifi Güncellendi", f"'{offer.title}' teklifi güncellendi.", actor_user_id=user.id,
     )
     
     return offer

@@ -1,20 +1,24 @@
 import { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import { financeApi } from '../../services/financeApi';
-import { useToast } from '../ui/Toast';
-import { customersApi } from '../../services/customersApi';
+import { financeApi, type FinanceEntry } from '../../services/financeApi';
+import { getErrorMessage } from '../../services/apiClient';
+import { useToast } from '../ui/ToastContext';
+import { customersApi, type Customer } from '../../services/customersApi';
 
 interface FinanceEntryModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  entry?: any; // for edit mode
+  entry?: FinanceEntry | null;
+  customerId?: number;
+  jobId?: number;
+  defaultTitle?: string;
 }
 
-export function FinanceEntryModal({ isOpen, onClose, onSuccess, entry }: FinanceEntryModalProps) {
+export function FinanceEntryModal({ isOpen, onClose, onSuccess, entry, customerId, jobId, defaultTitle }: FinanceEntryModalProps) {
   const { showToast } = useToast();
-  const [customers, setCustomers] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({
     title: '',
@@ -23,6 +27,7 @@ export function FinanceEntryModal({ isOpen, onClose, onSuccess, entry }: Finance
     status: 'pending',
     category: '',
     customer_id: '',
+    job_id: '',
     due_date: '',
     description: '',
   });
@@ -31,30 +36,32 @@ export function FinanceEntryModal({ isOpen, onClose, onSuccess, entry }: Finance
     if (isOpen) {
       customersApi.list().then(setCustomers).catch(() => {});
       if (entry) {
-        setForm({
+        void Promise.resolve().then(() => setForm({
           title: entry.title || '',
           type: entry.type || 'income',
           amount: String(entry.amount || ''),
           status: entry.status || 'pending',
           category: entry.category || '',
           customer_id: entry.customer_id ? String(entry.customer_id) : '',
+          job_id: entry.job_id ? String(entry.job_id) : '',
           due_date: entry.due_date ? entry.due_date.split('T')[0] : '',
           description: entry.description || '',
-        });
+        }));
       } else {
-        setForm({
-          title: '',
+        void Promise.resolve().then(() => setForm({
+          title: defaultTitle || '',
           type: 'income',
           amount: '',
           status: 'pending',
           category: '',
-          customer_id: '',
+          customer_id: customerId ? String(customerId) : '',
+          job_id: jobId ? String(jobId) : '',
           due_date: '',
           description: '',
-        });
+        }));
       }
     }
-  }, [isOpen, entry]);
+  }, [isOpen, entry, customerId, jobId, defaultTitle]);
 
   const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm(prev => ({ ...prev, [field]: e.target.value }));
@@ -70,6 +77,7 @@ export function FinanceEntryModal({ isOpen, onClose, onSuccess, entry }: Finance
         ...form,
         amount: parseFloat(form.amount),
         customer_id: form.customer_id ? parseInt(form.customer_id) : null,
+        job_id: form.job_id ? parseInt(form.job_id) : null,
         due_date: form.due_date || null,
       };
 
@@ -82,8 +90,8 @@ export function FinanceEntryModal({ isOpen, onClose, onSuccess, entry }: Finance
       }
       onSuccess();
       onClose();
-    } catch (err: any) {
-      showToast(err.response?.data?.detail || 'Kayıt oluşturulamadı.', 'error');
+    } catch (err: unknown) {
+      showToast(getErrorMessage(err) || 'Kayıt oluşturulamadı.', 'error');
     } finally {
       setIsSubmitting(false);
     }

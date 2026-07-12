@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useModules } from '../../context/ModuleContext';
+import { useModules } from '../../context/ModuleContextValue';
 import { ShieldAlert } from 'lucide-react';
 import { Button } from '../ui/Button';
 

@@ -2,16 +2,18 @@ from typing import Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from ..core.database import get_db
-from ..core.deps import get_current_user, get_current_workspace
+from ..core.deps import get_current_user, get_current_workspace, require_permission
+from ..core.permissions import Permission
 from ..models.user import User
 from ..models.workspace import Workspace
 from ..models.delivery_service import DeliveryService as DeliveryModel
 from ..schemas.delivery_service import DeliveryServiceResponse, DeliveryServiceCreate, DeliveryServiceUpdate
 from ..services.activity_service import create_activity
 from ..services.notification_service import create_notification, notify_watchers, add_watcher
+from ..core.entity_access import get_workspace_entity_or_404
 from datetime import datetime
 
-router = APIRouter(tags=["Delivery & Service"])
+router = APIRouter(tags=["Delivery & Service"], dependencies=[Depends(require_permission(Permission.DELIVERY_VIEW))])
 
 @router.get("/", response_model=List[DeliveryServiceResponse])
 def read_delivery_services(
@@ -68,6 +70,9 @@ def create_delivery_service(
     user: User = Depends(get_current_user),
     delivery_in: DeliveryServiceCreate,
 ) -> Any:
+    for entity_type, entity_id in {"customer": delivery_in.customer_id, "job": delivery_in.job_id}.items():
+        if entity_id is not None:
+            get_workspace_entity_or_404(db, workspace_id=workspace.id, entity_type=entity_type, entity_id=entity_id)
     delivery = DeliveryModel(
         **delivery_in.dict(),
         workspace_id=workspace.id
@@ -139,6 +144,9 @@ def update_delivery_service(
     
     old_status = delivery.status
     update_data = delivery_in.dict(exclude_unset=True)
+    for field, entity_type in {"customer_id": "customer", "job_id": "job"}.items():
+        if update_data.get(field) is not None:
+            get_workspace_entity_or_404(db, workspace_id=workspace.id, entity_type=entity_type, entity_id=update_data[field])
     for field, value in update_data.items():
         setattr(delivery, field, value)
         

@@ -5,7 +5,7 @@ export function RequestStatusBadge({ status }: { status: string }) {
   const config = TICKET_STATUS_MAP[status] || { label: status, variant: 'default' };
   
   return (
-    <Badge variant={config.variant as any}>
+    <Badge variant={config.variant}>
       {config.label}
     </Badge>
   );

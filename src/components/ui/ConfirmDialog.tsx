@@ -1,17 +1,7 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { AlertTriangle, Trash2, Info } from 'lucide-react';
 import { Button } from './Button';
-
-interface ConfirmDialogProps {
-  isOpen: boolean;
-  title: string;
-  description: React.ReactNode;
-  confirmLabel?: string;
-  cancelLabel?: string;
-  variant?: 'default' | 'danger' | 'warning';
-  onConfirm: () => void;
-  onCancel: () => void;
-}
+import type { ConfirmDialogProps } from './useConfirm';
 
 export function ConfirmDialog({
   isOpen,
@@ -89,53 +79,4 @@ export function ConfirmDialog({
       </div>
     </div>
   );
-}
-
-/**
- * Hook for easy confirm dialog management.
- *
- * Usage:
- *   const { confirmProps, confirm } = useConfirm();
- *   // in JSX: <ConfirmDialog {...confirmProps} />
- *   // to open: confirm({ title, description, onConfirm })
- */
-export function useConfirm() {
-  const [state, setState] = React.useState<{
-    isOpen: boolean;
-    title: string;
-    description: React.ReactNode;
-    confirmLabel?: string;
-    cancelLabel?: string;
-    variant?: 'default' | 'danger' | 'warning';
-    onConfirm: () => void;
-  }>({
-    isOpen: false,
-    title: '',
-    description: '',
-    onConfirm: () => {},
-  });
-
-  const confirm = (opts: {
-    title: string;
-    description: React.ReactNode;
-    confirmLabel?: string;
-    cancelLabel?: string;
-    variant?: 'default' | 'danger' | 'warning';
-    onConfirm: () => void;
-  }) => {
-    setState({ ...opts, isOpen: true });
-  };
-
-  const close = () => setState(s => ({ ...s, isOpen: false }));
-
-  const confirmProps: ConfirmDialogProps = {
-    ...state,
-    onCancel: close,
-    onConfirm: () => {
-      close();
-      state.onConfirm();
-    },
-  };
-
-  return { confirmProps, confirm };
 }

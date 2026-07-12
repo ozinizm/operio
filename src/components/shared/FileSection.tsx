@@ -6,10 +6,11 @@ import {
   FileText, Image as ImageIcon, Plus, 
   Loader2
 } from 'lucide-react';
-import { filesApi } from '../../services/filesApi';
-import { useToast } from '../ui/Toast';
+import { filesApi, type StoredFile } from '../../services/filesApi';
+import { useToast } from '../ui/ToastContext';
 import { FileUploadModal } from './FileUploadModal';
-import { ConfirmDialog, useConfirm } from '../ui/ConfirmDialog';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { useConfirm } from '../ui/useConfirm';
 
 interface FileSectionProps {
   entityType: 'customer' | 'job' | 'offer' | 'task' | 'finance_entry';
@@ -18,15 +19,18 @@ interface FileSectionProps {
 }
 
 export function FileSection({ entityType, entityId, title = 'Dosyalar' }: FileSectionProps) {
-  const [files, setFiles] = useState<any[]>([]);
+  const [files, setFiles] = useState<StoredFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const { showToast } = useToast();
   const { confirmProps, confirm } = useConfirm();
 
   useEffect(() => {
-    fetchFiles();
-  }, [entityId]);
+    const params = { [`${entityType}_id`]: entityId };
+    void filesApi.list(params).then(setFiles).catch((err: unknown) => {
+      console.error('Files load failed:', err);
+    }).finally(() => setLoading(false));
+  }, [entityId, entityType]);
 
   const fetchFiles = async () => {
     try {
@@ -41,11 +45,11 @@ export function FileSection({ entityType, entityId, title = 'Dosyalar' }: FileSe
     }
   };
 
-  const handleDownload = async (file: any) => {
+  const handleDownload = async (file: StoredFile) => {
     try {
       await filesApi.download(file.id, file.original_filename);
       showToast('Dosya indiriliyor...', 'success');
-    } catch (err) {
+    } catch {
       showToast('Dosya indirilirken hata oluştu.', 'error');
     }
   };

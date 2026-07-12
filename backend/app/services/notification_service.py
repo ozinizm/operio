@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from ..models.notification import Notification
 from ..models.watcher import EntityWatcher
 from ..models.user import User
+from ..models.workspace import WorkspaceMember
 from typing import Optional, List
 
 from ..core.broadcaster import broadcaster
@@ -22,6 +23,14 @@ def create_notification(
     if user_id == actor_user_id:
         return None
         
+    recipient = db.query(WorkspaceMember).filter(
+        WorkspaceMember.workspace_id == workspace_id,
+        WorkspaceMember.user_id == user_id,
+        WorkspaceMember.is_active == True,
+    ).one_or_none()
+    if recipient is None:
+        return None
+
     notification = Notification(
         workspace_id=workspace_id,
         user_id=user_id,
@@ -60,15 +69,21 @@ def notify_watchers(
     message: str,
     actor_user_id: Optional[int] = None
 ):
-    watchers = db.query(EntityWatcher).filter(
+    watchers = db.query(EntityWatcher).join(
+        WorkspaceMember,
+        (WorkspaceMember.workspace_id == EntityWatcher.workspace_id)
+        & (WorkspaceMember.user_id == EntityWatcher.user_id),
+    ).filter(
         EntityWatcher.workspace_id == workspace_id,
         EntityWatcher.entity_type == entity_type,
-        EntityWatcher.entity_id == entity_id
+        EntityWatcher.entity_id == entity_id,
+        WorkspaceMember.is_active == True,
     ).all()
     
     notifications = []
+    notified_user_ids = set()
     for watcher in watchers:
-        if watcher.user_id != actor_user_id:
+        if watcher.user_id != actor_user_id and watcher.user_id not in notified_user_ids:
             n = create_notification(
                 db, 
                 workspace_id=workspace_id,
@@ -82,6 +97,7 @@ def notify_watchers(
             )
             if n:
                 notifications.append(n)
+                notified_user_ids.add(watcher.user_id)
     return notifications
 
 def add_watcher(db: Session, workspace_id: int, user_id: int, entity_type: str, entity_id: int):
@@ -125,7 +141,9 @@ def notify_mentions(
     for mention in mentions:
         mention = mention.strip()
         # Search by email or full name
-        user = db.query(User).filter(
+        user = db.query(User).join(WorkspaceMember).filter(
+            WorkspaceMember.workspace_id == workspace_id,
+            WorkspaceMember.is_active == True,
             (User.email == mention) | (User.full_name.ilike(f"%{mention}%"))
         ).first()
         

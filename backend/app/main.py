@@ -1,9 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
-from .routers import auth, customers, jobs, tasks, dashboard, offers, finance, files, reports, comments, notifications, watchers, delivery_services, request_tickets, modules, inventory, imports, platform, public, users
+from .routers import auth, customers, jobs, tasks, dashboard, offers, finance, files, reports, comments, notifications, watchers, delivery_services, request_tickets, modules, inventory, imports, platform, public, users, appointments, public_appointments, search
 from .core.database import engine, Base
 from . import models
+from .core.deps import require_module
 
 import os
 
@@ -22,6 +23,13 @@ app = FastAPI(
     docs_url="/docs"
 )
 
+from app.core.limiter import limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -37,22 +45,25 @@ app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(customers.router, prefix="/api/customers", tags=["customers"])
 app.include_router(jobs.router, prefix="/api/jobs", tags=["jobs"])
-app.include_router(tasks.router, prefix="/api/tasks", tags=["tasks"])
-app.include_router(offers.router, prefix="/api/offers", tags=["offers"])
-app.include_router(finance.router, prefix="/api/finance", tags=["finance"])
-app.include_router(files.router, prefix="/api", tags=["files"])
-app.include_router(reports.router, prefix="/api", tags=["reports"])
+app.include_router(tasks.router, prefix="/api/tasks", tags=["tasks"], dependencies=[Depends(require_module("tasks"))])
+app.include_router(offers.router, prefix="/api/offers", tags=["offers"], dependencies=[Depends(require_module("offers"))])
+app.include_router(finance.router, prefix="/api/finance", tags=["finance"], dependencies=[Depends(require_module("finance"))])
+app.include_router(files.router, prefix="/api", tags=["files"], dependencies=[Depends(require_module("files"))])
+app.include_router(reports.router, prefix="/api", tags=["reports"], dependencies=[Depends(require_module("reports"))])
 app.include_router(comments.router, prefix="/api", tags=["comments"])
-app.include_router(notifications.router, prefix="/api", tags=["notifications"])
+app.include_router(notifications.router, prefix="/api", tags=["notifications"], dependencies=[Depends(require_module("notifications"))])
 app.include_router(watchers.router, prefix="/api", tags=["watchers"])
-app.include_router(delivery_services.router, prefix="/api/delivery-services", tags=["delivery_services"])
-app.include_router(request_tickets.router, prefix="/api/requests", tags=["request_tickets"])
+app.include_router(delivery_services.router, prefix="/api/delivery-services", tags=["delivery_services"], dependencies=[Depends(require_module("delivery_service"))])
+app.include_router(request_tickets.router, prefix="/api/requests", tags=["request_tickets"], dependencies=[Depends(require_module("complaints"))])
 app.include_router(modules.router, prefix="/api/modules", tags=["modules"])
-app.include_router(inventory.router, prefix="/api/inventory", tags=["inventory"])
-app.include_router(imports.router, prefix="/api/imports", tags=["imports"])
+app.include_router(inventory.router, prefix="/api/inventory", tags=["inventory"], dependencies=[Depends(require_module("inventory"))])
+app.include_router(imports.router, prefix="/api/imports", tags=["imports"], dependencies=[Depends(require_module("data_import"))])
 app.include_router(platform.router, prefix="/api/platform", tags=["platform"])
 app.include_router(users.router, prefix="/api/users", tags=["users"])
+app.include_router(appointments.router, prefix="/api/appointments", tags=["appointments"], dependencies=[Depends(require_module("appointments"))])
+app.include_router(public_appointments.router, prefix="/api/public/appointments", tags=["public_appointments"])
 app.include_router(public.router, prefix="/api/public", tags=["public"])
+app.include_router(search.router, prefix="/api/search", tags=["search"])
 
 @app.get("/api/docs", include_in_schema=False)
 def api_docs_redirect():
@@ -111,4 +122,10 @@ if settings.APP_ENV == "production":
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(
+        "app.main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        reload_excludes=[".venv/*", "**/.venv/*"],
+    )

@@ -7,19 +7,21 @@ import {
   AlertTriangle, DollarSign,
   ChevronRight, Calendar
 } from 'lucide-react';
-import { reportsApi } from '../services/reportsApi';
+import { reportsApi, type ReportOverview } from '../services/reportsApi';
 import { LoadingState, ErrorState } from '../components/ui/States';
 import { formatCurrency } from '../utils/formatters';
-import { useToast } from '../components/ui/Toast';
+import { useToast } from '../components/ui/ToastContext';
 
 export default function ReportsPage() {
   const { showToast } = useToast();
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<ReportOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchReport();
+    void reportsApi.getOverview().then(setData).catch(() => {
+      setError('Rapor verileri yüklenirken bir hata oluştu.');
+    }).finally(() => setLoading(false));
   }, []);
 
   const fetchReport = async () => {
@@ -27,7 +29,7 @@ export default function ReportsPage() {
       setLoading(true);
       const overview = await reportsApi.getOverview();
       setData(overview);
-    } catch (err) {
+    } catch {
       setError('Rapor verileri yüklenirken bir hata oluştu.');
     } finally {
       setLoading(false);
@@ -44,6 +46,8 @@ export default function ReportsPage() {
 
   if (loading) return <LoadingState message="Raporlar hazırlanıyor..." />;
   if (error) return <ErrorState description={error} onRetry={fetchReport} />;
+
+  if (!data) return <ErrorState description="Rapor verisi bulunamadı." onRetry={fetchReport} />;
 
   const sections = [
     { 

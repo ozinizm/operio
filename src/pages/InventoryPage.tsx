@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { ActionMenu, type ActionMenuItem } from '../components/ui/ActionMenu';
-import { ConfirmDialog, useConfirm } from '../components/ui/ConfirmDialog';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { useConfirm } from '../components/ui/useConfirm';
 import { 
   Search, Filter, Plus, FileSpreadsheet, 
   Download, Edit2, Trash2, AlertTriangle, 
@@ -13,8 +14,9 @@ import {
 import { inventoryApi, type InventoryItem, type InventorySummary } from '../services/inventoryApi';
 import { LoadingState, ErrorState } from '../components/ui/States';
 import { InventoryItemModal } from '../components/inventory/InventoryItemModal';
-import { useToast } from '../components/ui/Toast';
+import { useToast } from '../components/ui/ToastContext';
 import { Link } from 'react-router-dom';
+import type { ResourceCreatedEvent } from '../types/domain';
 
 export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -22,6 +24,9 @@ export default function InventoryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('name');
+  const searchTimerRef = useRef<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const { showToast } = useToast();
@@ -45,25 +50,40 @@ export default function InventoryPage() {
   };
 
   useEffect(() => {
-    fetchData();
+    void Promise.all([inventoryApi.list(), inventoryApi.getSummary()]).then(([itemsData, summaryData]) => {
+      setItems(itemsData); setSummary(summaryData);
+    }).catch((err: unknown) => {
+      console.error('Inventory load failed:', err); setError('Stok listesi yüklenemedi.');
+    }).finally(() => setIsLoading(false));
 
-    const handleResourceCreated = (e: any) => {
+    const handleResourceCreated = (event: Event) => {
+      const e = event as ResourceCreatedEvent;
       if (e.detail?.type === 'inventory_item') {
-        fetchData();
+        void Promise.all([inventoryApi.list(), inventoryApi.getSummary()]).then(([itemsData, summaryData]) => {
+          setItems(itemsData); setSummary(summaryData);
+        });
       }
     };
 
     window.addEventListener('operio:resource-created', handleResourceCreated);
-    return () => window.removeEventListener('operio:resource-created', handleResourceCreated);
+    return () => {
+      window.removeEventListener('operio:resource-created', handleResourceCreated);
+      if (searchTimerRef.current) window.clearTimeout(searchTimerRef.current);
+    };
   }, []);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
-    const timeout = setTimeout(() => {
+    if (searchTimerRef.current) window.clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = window.setTimeout(() => {
       fetchData(e.target.value);
     }, 500);
-    return () => clearTimeout(timeout);
   };
+
+  const visibleItems = useMemo(() => items
+    .filter(item => statusFilter === 'all' || item.status === statusFilter)
+    .sort((a, b) => sortBy === 'quantity' ? a.quantity - b.quantity : a.name.localeCompare(b.name, 'tr')),
+  [items, statusFilter, sortBy]);
 
   const handleNewItem = () => {
     setSelectedItem(null);
@@ -87,7 +107,7 @@ export default function InventoryPage() {
           await inventoryApi.delete(item.id);
           showToast(`${item.name} silindi.`, 'success');
           fetchData();
-        } catch (err) {
+        } catch {
           showToast('Silme işlemi başarısız.', 'error');
         }
       },
@@ -197,9 +217,8 @@ export default function InventoryPage() {
                 <Download className="w-3 h-3 mr-2" /> Excel'e Aktar
               </Button>
             </a>
-            <Button variant="outline" size="sm">
-              <Filter className="w-3 h-3 mr-2" /> Filtre
-            </Button>
+            <label className="relative"><Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-text-body" /><select aria-label="Stok durumu filtresi" value={statusFilter} onChange={event => setStatusFilter(event.target.value)} className="h-9 rounded-xl border border-border bg-white pl-8 pr-3 text-xs font-bold"><option value="all">Tüm durumlar</option><option value="active">Aktif</option><option value="low_stock">Kritik stok</option><option value="out_of_stock">Stokta yok</option><option value="passive">Pasif</option></select></label>
+            <select aria-label="Stok sıralaması" value={sortBy} onChange={event => setSortBy(event.target.value)} className="h-9 rounded-xl border border-border bg-white px-3 text-xs font-bold"><option value="name">Ada göre</option><option value="quantity">Miktara göre</option></select>
           </div>
         </div>
 
@@ -218,7 +237,7 @@ export default function InventoryPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {items.map((item) => {
+              {visibleItems.map((item) => {
                 const menuItems: ActionMenuItem[] = [
                   {
                     label: 'Düzenle',
@@ -262,7 +281,7 @@ export default function InventoryPage() {
                   </tr>
                 );
               })}
-              {items.length === 0 && !isLoading && (
+              {visibleItems.length === 0 && !isLoading && (
                 <tr>
                   <td colSpan={7} className="px-6 py-10 text-center text-text-body italic">
                     Stok kalemi bulunamadı.
@@ -275,7 +294,7 @@ export default function InventoryPage() {
 
         {/* Mobile Card Layout */}
         <div className="md:hidden divide-y divide-border">
-          {items.map((item) => (
+          {visibleItems.map((item) => (
             <div key={item.id} className="p-4">
               <div className="flex justify-between items-start mb-3">
                 <div>

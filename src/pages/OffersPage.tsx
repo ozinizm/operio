@@ -5,7 +5,8 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { ActionMenu, type ActionMenuItem } from '../components/ui/ActionMenu';
-import { ConfirmDialog, useConfirm } from '../components/ui/ConfirmDialog';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { useConfirm } from '../components/ui/useConfirm';
 import { GlobalQuickCreateModal, type QuickCreateType } from '../components/shared/GlobalQuickCreateModal';
 import {
   Search, Plus, Filter, FileText, ArrowRight,
@@ -13,49 +14,32 @@ import {
 } from 'lucide-react';
 import { offersApi } from '../services/offersApi';
 import { customersApi } from '../services/customersApi';
-import { useToast } from '../components/ui/Toast';
+import { useToast } from '../components/ui/ToastContext';
 import { useNavigate } from 'react-router-dom';
 import { LoadingState, ErrorState } from '../components/ui/States';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { OFFER_STATUS_MAP } from '../utils/statusMaps';
+import { getErrorMessage } from '../services/apiClient';
+import type { Customer, Offer, OfferEditForm, ResourceCreatedEvent } from '../types/domain';
+
+const emptyEditForm: OfferEditForm = {
+  title: '', amount: '', status: 'draft', description: '', valid_until: '', customer_id: '',
+};
 
 export default function OffersPage() {
-  const [offers, setOffers] = useState<any[]>([]);
+  const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [convertingId, setConvertingId] = useState<number | null>(null);
   const [quickCreateType, setQuickCreateType] = useState<QuickCreateType>(null);
-  const [editingOffer, setEditingOffer] = useState<any>(null);
+  const [editingOffer, setEditingOffer] = useState<Offer | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editForm, setEditForm] = useState<any>({});
+  const [editForm, setEditForm] = useState<OfferEditForm>(emptyEditForm);
   const [isSaving, setIsSaving] = useState(false);
-  const [customers, setCustomers] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const { showToast } = useToast();
   const navigate = useNavigate();
   const { confirmProps, confirm } = useConfirm();
-
-  useEffect(() => {
-    fetchOffers();
-    fetchCustomers();
-
-    const handleResourceCreated = (e: any) => {
-      if (e.detail?.type === 'offer') {
-        fetchOffers();
-      }
-    };
-
-    window.addEventListener('operio:resource-created', handleResourceCreated);
-    return () => window.removeEventListener('operio:resource-created', handleResourceCreated);
-  }, []);
-
-  const fetchCustomers = async () => {
-    try {
-      const data = await customersApi.list();
-      setCustomers(data);
-    } catch (err) {
-      console.error('Customers load failed:', err);
-    }
-  };
 
   const fetchOffers = async () => {
     try {
@@ -63,14 +47,37 @@ export default function OffersPage() {
       const data = await offersApi.list();
       setOffers(data);
       setError(null);
-    } catch (err) {
+    } catch {
       setError('Teklifler yüklenirken bir hata oluştu.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleConvertToJob = (offer: any) => {
+  useEffect(() => {
+    void Promise.all([offersApi.list(), customersApi.list()]).then(([offerData, customerData]) => {
+      setOffers(offerData);
+      setCustomers(customerData);
+      setError(null);
+    }).catch(() => {
+      setError('Teklifler yüklenirken bir hata oluştu.');
+    }).finally(() => {
+      setLoading(false);
+    });
+
+    const handleResourceCreated = (event: Event) => {
+      const e = event as ResourceCreatedEvent;
+      if (e.detail?.type === 'offer') {
+        void offersApi.list().then(setOffers).catch(() => {
+          setError('Teklifler yüklenirken bir hata oluştu.');
+        });
+      }
+    };
+    window.addEventListener('operio:resource-created', handleResourceCreated);
+    return () => window.removeEventListener('operio:resource-created', handleResourceCreated);
+  }, []);
+
+  const handleConvertToJob = (offer: Offer) => {
     confirm({
       title: 'Teklifi İşe Dönüştür',
       description: `"${offer.title}" teklifinden yeni bir iş/sipariş kaydı oluşturulacak. Devam etmek istiyor musunuz?`,
@@ -92,7 +99,7 @@ export default function OffersPage() {
     });
   };
 
-  const openEdit = (offer: any) => {
+  const openEdit = (offer: Offer) => {
     setEditingOffer(offer);
     setEditForm({
       title: offer.title,
@@ -113,6 +120,7 @@ export default function OffersPage() {
         ? parseFloat(editForm.amount.replace(',', '.')) 
         : editForm.amount;
         
+      if (!editingOffer) return;
       await offersApi.update(editingOffer.id, {
         ...editForm,
         amount: amountVal,
@@ -127,7 +135,7 @@ export default function OffersPage() {
     }
   };
 
-  const handleDelete = (offer: any) => {
+  const handleDelete = (offer: Offer) => {
     confirm({
       title: 'Teklifi Sil',
       description: `"${offer.title}" teklifi kalıcı olarak silinecek. Bu işlem geri alınamaz.`,
@@ -139,8 +147,8 @@ export default function OffersPage() {
           await offersApi.delete(offer.id);
           showToast('Teklif silindi.', 'success');
           fetchOffers();
-        } catch (err: any) {
-          showToast(err.response?.data?.detail || 'Silme işlemi başarısız.', 'error');
+        } catch (err: unknown) {
+          showToast(getErrorMessage(err) || 'Silme işlemi başarısız.', 'error');
         }
       },
     });
@@ -232,11 +240,11 @@ export default function OffersPage() {
                       <td className="px-6 py-4 text-text-high font-medium">{offer.customer?.name || 'Belirtilmemiş'}</td>
                       <td className="px-6 py-4 text-text-high font-bold">{formatCurrency(offer.amount)}</td>
                       <td className="px-6 py-4">
-                        <Badge variant={OFFER_STATUS_MAP[offer.status]?.variant as any || 'default'}>
+                        <Badge variant={OFFER_STATUS_MAP[offer.status]?.variant || 'default'}>
                           {OFFER_STATUS_MAP[offer.status]?.label || offer.status}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4 text-text-body">{formatDate(offer.valid_until)}</td>
+                      <td className="px-6 py-4 text-text-body">{offer.valid_until ? formatDate(offer.valid_until) : '—'}</td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           {offer.status?.toLowerCase() === 'approved' && !offer.converted_job_id && (
@@ -299,12 +307,12 @@ export default function OffersPage() {
                 ]} />
               </div>
               <div className="flex justify-between items-center">
-                <Badge variant={OFFER_STATUS_MAP[offer.status]?.variant as any || 'default'}>
+                <Badge variant={OFFER_STATUS_MAP[offer.status]?.variant || 'default'}>
                   {OFFER_STATUS_MAP[offer.status]?.label || offer.status}
                 </Badge>
                 <span className="font-bold text-sm text-text-high">{formatCurrency(offer.amount)}</span>
               </div>
-              <div className="text-xs text-text-body">Geçerlilik: {formatDate(offer.valid_until)}</div>
+              <div className="text-xs text-text-body">Geçerlilik: {offer.valid_until ? formatDate(offer.valid_until) : '—'}</div>
             </div>
           ))}
         </div>
@@ -316,11 +324,11 @@ export default function OffersPage() {
       <form onSubmit={handleSaveEdit} className="space-y-4">
         <div>
           <label className={labelClass}>Başlık</label>
-          <input className={fieldClass} value={editForm.title || ''} onChange={e => setEditForm((p: any) => ({ ...p, title: e.target.value }))} />
+          <input className={fieldClass} value={editForm.title} onChange={e => setEditForm(p => ({ ...p, title: e.target.value }))} />
         </div>
         <div>
           <label className={labelClass}>Müşteri</label>
-          <select className={fieldClass} value={editForm.customer_id || ''} onChange={e => setEditForm((p: any) => ({ ...p, customer_id: e.target.value }))}>
+          <select className={fieldClass} value={editForm.customer_id} onChange={e => setEditForm(p => ({ ...p, customer_id: e.target.value }))}>
             <option value="">Müşteri Seçin</option>
             {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
@@ -328,11 +336,11 @@ export default function OffersPage() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Tutar (₺)</label>
-            <input className={fieldClass} type="number" value={editForm.amount || ''} onChange={e => setEditForm((p: any) => ({ ...p, amount: e.target.value }))} />
+            <input className={fieldClass} type="number" value={editForm.amount} onChange={e => setEditForm(p => ({ ...p, amount: e.target.value }))} />
           </div>
           <div>
             <label className={labelClass}>Durum</label>
-            <select className={fieldClass} value={editForm.status || 'draft'} onChange={e => setEditForm((p: any) => ({ ...p, status: e.target.value }))}>
+            <select className={fieldClass} value={editForm.status} onChange={e => setEditForm(p => ({ ...p, status: e.target.value }))}>
               <option value="draft">Taslak</option>
               <option value="sent">Gönderildi</option>
               <option value="approved">Onaylandı</option>
@@ -343,11 +351,11 @@ export default function OffersPage() {
         </div>
         <div>
           <label className={labelClass}>Geçerlilik Tarihi</label>
-          <input className={fieldClass} type="date" value={editForm.valid_until || ''} onChange={e => setEditForm((p: any) => ({ ...p, valid_until: e.target.value }))} />
+          <input className={fieldClass} type="date" value={editForm.valid_until} onChange={e => setEditForm(p => ({ ...p, valid_until: e.target.value }))} />
         </div>
         <div>
           <label className={labelClass}>Açıklama</label>
-          <textarea className={`${fieldClass} h-16 resize-none`} value={editForm.description || ''} onChange={e => setEditForm((p: any) => ({ ...p, description: e.target.value }))} />
+          <textarea className={`${fieldClass} h-16 resize-none`} value={editForm.description} onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))} />
         </div>
         <div className="flex gap-3 pt-2">
           <Button type="button" variant="outline" className="flex-1" onClick={() => setIsEditModalOpen(false)}>İptal</Button>

@@ -29,10 +29,14 @@ import PlatformWorkspaceDetail from '../pages/platform/PlatformWorkspaceDetail';
 import PlatformAuditLogs from '../pages/platform/PlatformAuditLogs';
 import PlatformSettings from '../pages/platform/PlatformSettings';
 import TeamPage from '../pages/TeamPage';
+import AppointmentsPage from '../pages/AppointmentsPage';
+import PublicBookingPage from '../pages/PublicBookingPage';
+import ModulesPage from '../pages/ModulesPage';
 
 export default function AppRoutes() {
   return (
     <Routes>
+      <Route path="/book/:slug" element={<PublicBookingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/change-password" element={
         <ProtectedRoute>
@@ -96,6 +100,13 @@ export default function AppRoutes() {
             </ModuleRouteGuard>
           </ProtectedRoute>
         } />
+        <Route path="appointments" element={
+          <ProtectedRoute requiredRoles={['owner', 'admin', 'manager', 'staff']}>
+            <ModuleRouteGuard moduleKey="appointments">
+              <AppointmentsPage />
+            </ModuleRouteGuard>
+          </ProtectedRoute>
+        } />
         
         <Route path="complaints" element={
           <ProtectedRoute requiredRoles={['owner', 'admin', 'manager', 'staff']}>
@@ -143,8 +154,11 @@ export default function AppRoutes() {
           </ProtectedRoute>
         } />
         
-        {/* Modules page is hidden for customers - redirecting to dashboard */}
-        <Route path="modules" element={<Navigate to="/dashboard" replace />} />
+        <Route path="modules" element={
+          <ProtectedRoute requiredRoles={['owner', 'admin']}>
+            <ModulesPage />
+          </ProtectedRoute>
+        } />
         
         <Route path="settings" element={
           <ProtectedRoute requiredRoles={['owner', 'admin']}>
@@ -172,8 +186,8 @@ export default function AppRoutes() {
       }>
         <Route index element={<PlatformDashboard />} />
         <Route path="workspaces" element={<PlatformWorkspaces />} />
-        <Route path="workspaces/:id" element={<PlatformWorkspaceDetail />} />
         <Route path="workspaces/new" element={<PlatformWorkspaceCreate />} />
+        <Route path="workspaces/:id" element={<PlatformWorkspaceDetail />} />
         <Route path="audit-logs" element={<PlatformAuditLogs />} />
         <Route path="settings" element={<PlatformSettings />} />
       </Route>

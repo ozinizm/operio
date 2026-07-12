@@ -5,21 +5,21 @@ import {
   CheckCircle2, Clock, AlertTriangle, ShieldOff
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { platformApi } from '../../services/platformApi';
+import { platformApi, type PlatformWorkspace } from '../../services/platformApi';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
-import { useToast } from '../../components/ui/Toast';
+import { useToast } from '../../components/ui/ToastContext';
 
 export default function PlatformWorkspaces() {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const [workspaces, setWorkspaces] = useState<any[]>([]);
+  const [workspaces, setWorkspaces] = useState<PlatformWorkspace[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   
   // Status change states
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [selectedWorkspace, setSelectedWorkspace] = useState<any>(null);
+  const [selectedWorkspace, setSelectedWorkspace] = useState<PlatformWorkspace | null>(null);
   const [pendingStatus, setPendingStatus] = useState('');
 
   const fetchWorkspaces = async () => {
@@ -36,10 +36,13 @@ export default function PlatformWorkspaces() {
   };
 
   useEffect(() => {
-    fetchWorkspaces();
-  }, []);
+    void platformApi.getWorkspaces().then(setWorkspaces).catch((error: unknown) => {
+      console.error('Failed to fetch workspaces:', error);
+      showToast('İşletmeler yüklenemedi.', 'error');
+    }).finally(() => setIsLoading(false));
+  }, [showToast]);
 
-  const handleStatusChangeClick = (w: any) => {
+  const handleStatusChangeClick = (w: PlatformWorkspace) => {
     setSelectedWorkspace(w);
     setPendingStatus(w.status === 'suspended' ? 'active' : 'suspended');
     setIsConfirmOpen(true);
@@ -54,7 +57,7 @@ export default function PlatformWorkspaces() {
       });
       showToast(`İşletme durumu ${pendingStatus === 'active' ? 'aktif' : 'askıya'} alındı.`, 'success');
       fetchWorkspaces();
-    } catch (error) {
+    } catch {
       showToast('Durum değiştirilemedi.', 'error');
     } finally {
       setIsConfirmOpen(false);
@@ -85,15 +88,15 @@ export default function PlatformWorkspaces() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="min-w-0 space-y-5 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-jakarta font-bold text-slate-800">İşletmeler</h1>
           <p className="text-slate-500 font-medium">Platforma kayıtlı tüm müşteri workspace'leri.</p>
         </div>
         <Link 
           to="/platform/workspaces/new"
-          className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+          className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
         >
           <Plus className="w-5 h-5" />
           Yeni İşletme Kur
@@ -128,7 +131,7 @@ export default function PlatformWorkspaces() {
           </div>
         </div>
 
-        <div className="overflow-x-auto no-scrollbar">
+        <div className="hidden md:block overflow-x-auto no-scrollbar">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/50">
@@ -232,6 +235,17 @@ export default function PlatformWorkspaces() {
               )}
             </tbody>
           </table>
+        </div>
+        <div className="md:hidden p-4 space-y-3">
+          {isLoading ? <div className="py-12 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-indigo-500" /></div> : filteredWorkspaces.map(w => (
+            <article key={w.id} className="min-w-0 rounded-3xl border border-slate-200 p-4 bg-white shadow-sm">
+              <div className="flex items-start gap-3"><div className="w-11 h-11 flex-shrink-0 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black">{w.name.charAt(0)}</div><div className="min-w-0 flex-1"><h2 className="font-extrabold text-slate-800 break-words">{w.name}</h2><p className="text-xs text-slate-400 break-all">/{w.slug}</p></div>{getStatusBadge(w.status)}</div>
+              <div className="grid grid-cols-2 gap-3 mt-4 text-xs"><div><p className="text-slate-400">Sektör</p><p className="font-bold text-slate-700 break-words">{w.sector || 'Belirtilmedi'}</p></div><div><p className="text-slate-400">Plan</p><p className="font-bold text-indigo-600">{w.plan || 'STANDART'}</p></div></div>
+              <div className="mt-3 pt-3 border-t border-slate-100 min-w-0"><p className="font-bold text-sm text-slate-800 break-words">{w.primary_contact_name || '-'}</p><p className="text-xs text-slate-400 break-all">{w.primary_contact_email}</p></div>
+              <div className="grid grid-cols-2 gap-2 mt-4"><button onClick={() => navigate(`/platform/workspaces/${w.id}`)} className="min-h-11 rounded-xl border border-indigo-100 text-indigo-600 font-bold flex items-center justify-center gap-2"><Eye className="w-4 h-4" /> Görüntüle</button><button onClick={() => handleStatusChangeClick(w)} className="min-h-11 rounded-xl border border-slate-200 text-slate-600 font-bold flex items-center justify-center gap-2">{w.status === 'suspended' ? <CheckCircle2 className="w-4 h-4" /> : <ShieldOff className="w-4 h-4" />}{w.status === 'suspended' ? 'Aktifleştir' : 'Askıya Al'}</button></div>
+            </article>
+          ))}
+          {!isLoading && filteredWorkspaces.length === 0 && <div className="py-12 text-center text-sm text-slate-400">İşletme bulunamadı.</div>}
         </div>
       </div>
 

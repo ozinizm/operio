@@ -96,7 +96,7 @@ export default function PlatformSidebar() {
 
       <div className="p-6 mt-auto">
         <div className="bg-indigo-900/40 rounded-2xl p-4 border border-indigo-800/50">
-          <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-2 opacity-70">Operio Cloud</p>
+          <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-2 opacity-70">Tavelya Cloud</p>
           <div className="flex items-center gap-2 text-white">
             <Database className="w-4 h-4 text-indigo-400" />
             <span className="text-xs font-bold">v1.2.0-Production</span>
